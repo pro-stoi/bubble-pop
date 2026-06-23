@@ -74,11 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== НАЗАД =====
     document.getElementById('backBtnTop').addEventListener('click', () => {
-        goTo('menu.html');
+        goTo('index.html');
     });
     document.getElementById('backBtnTop').addEventListener('touchend', (e) => {
         e.preventDefault();
-        goTo('menu.html');
+        goTo('index.html');
     });
 
     // ===== ЗВУК =====

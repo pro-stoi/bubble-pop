@@ -33,12 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== КНОПКА НАЗАД =====
     document.getElementById('backMenuBtn').addEventListener('click', () => {
         game.saveGameResult();
-        goTo('menu.html');
+        goTo('index.html');
     });
     document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
         game.saveGameResult();
-        goTo('menu.html');
+        goTo('index.html');
     });
 
     // ===== КНОПКА РЕСТАРТ =====

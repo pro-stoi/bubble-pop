@@ -1,0 +1,166 @@
+/* ===== МЕНЮ ===== */
+body {
+    background: #0a0a2a;
+    overflow: hidden;
+    font-family: 'Segoe UI', sans-serif;
+    touch-action: none;
+    height: 100vh;
+    width: 100vw;
+}
+
+#menuCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    touch-action: none;
+    cursor: pointer;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+/* ===== ЗАГОЛОВОК ===== */
+.menu-title {
+    position: fixed;
+    top: 8%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    text-align: center;
+    pointer-events: none;
+}
+
+.menu-title h1 {
+    font-size: 72px;
+    margin: 0;
+    animation: float 3s ease-in-out infinite;
+}
+
+.menu-title h2 {
+    font-size: 28px;
+    color: white;
+    letter-spacing: 8px;
+    font-weight: 300;
+    text-shadow: 0 0 40px rgba(100, 200, 255, 0.3);
+    margin-top: -8px;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+}
+
+/* ===== КНОПКИ-ШАРЫ ===== */
+.menu-btn {
+    position: fixed;
+    z-index: 10;
+    pointer-events: auto;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.bubble-btn {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(
+        circle at 35% 35%,
+        hsl(var(--hue, 200), 80%, 70%),
+        hsl(var(--hue, 200), 80%, 40%)
+    );
+    box-shadow: 
+        0 0 40px hsla(var(--hue, 200), 80%, 60%, 0.4),
+        inset 0 -8px 20px rgba(0,0,0,0.3),
+        inset 0 8px 20px rgba(255,255,255,0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.3s ease;
+    position: relative;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bubble-btn:active {
+    transform: scale(0.92);
+    box-shadow: 0 0 60px hsla(var(--hue, 200), 80%, 60%, 0.6);
+}
+
+.bubble-btn span:first-child {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.btn-label {
+    font-size: 10px;
+    color: white;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    letter-spacing: 2px;
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+/* Позиции кнопок */
+.play-btn {
+    bottom: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.top-btn {
+    bottom: 8%;
+    left: 28%;
+    transform: translateX(-50%);
+}
+
+.sound-btn {
+    bottom: 8%;
+    right: 28%;
+    transform: translateX(50%);
+}
+
+/* ===== АДАПТАЦИЯ ===== */
+@media (max-width: 480px) {
+    .menu-title h1 {
+        font-size: 56px;
+    }
+    .menu-title h2 {
+        font-size: 20px;
+        letter-spacing: 4px;
+    }
+    
+    .bubble-btn {
+        width: 76px;
+        height: 76px;
+    }
+    .bubble-btn span:first-child {
+        font-size: 24px;
+    }
+    .btn-label {
+        font-size: 8px;
+    }
+    
+    .play-btn {
+        bottom: 24%;
+    }
+    .top-btn {
+        bottom: 10%;
+        left: 24%;
+    }
+    .sound-btn {
+        bottom: 10%;
+        right: 24%;
+    }
+}
+
+@media (max-width: 380px) {
+    .bubble-btn {
+        width: 64px;
+        height: 64px;
+    }
+    .bubble-btn span:first-child {
+        font-size: 20px;
+    }
+}

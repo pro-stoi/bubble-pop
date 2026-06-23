@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Топ 🏆</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/top.css" />
+</head>
+<body>
+    <div class="top-container">
+      <div class="top-header">
+    <h1>🏆 ТОП</h1>
+    <div id="backBtnTop">←</div>
+    <button id="shareTopBtn" class="share-top-btn">📤</button>
+    <button class="game-btn sound-btn" id="soundToggleTop">
+        <span class="sound-icon">🔊</span>
+    </button>
+</div>
+
+        <!-- Кнопки фильтрации -->
+        <div class="top-filters">
+            <button class="filter-btn active" data-sort="score">По очкам</button>
+            <button class="filter-btn" data-sort="combo">По комбо</button>
+            <button class="filter-btn" data-sort="bonus">По бонусу</button>
+        </div>
+
+        <!-- Таблица -->
+        <div class="top-table">
+            <div class="top-table-header">
+                <span class="col-place">#</span>
+                <span class="col-date">Дата</span>
+                <span class="col-score">Очки</span>
+                <span class="col-combo">Комбо</span>
+                <span class="col-bonus">Бонус</span>
+            </div>
+            <div id="topList"></div>
+        </div>
+
+        <button id="clearTopBtn">Очистить топ</button>
+    </div>
+
+    <script src="js/nav.js"></script>
+    <script src="js/top.js"></script>
+    
+  <!-- VK Bridge -->
+<script src="https://vk.com/js/api/openapi.js?169"></script>
+<script>
+    VK.init({
+        apiId: 12345678 // ТОТ ЖЕ ID
+    });
+</script>  
+    
+   <!-- VK Bridge -->
+<script src="https://vk.com/js/api/openapi.js?169"></script>
+<script>
+    // ID приложения (замени на свой)
+    const APP_ID = 12345678;
+    
+    // Инициализация VK Bridge
+    VK.init({ apiId: APP_ID });
+    
+    // Отправляем сигнал о загрузке
+    VK.bridge.send('VKWebAppInit', {})
+        .then(() => {
+            console.log('✅ VK Mini App инициализировано');
+        })
+        .catch((error) => {
+            console.warn('⚠️ Ошибка инициализации:', error);
+            // Приложение всё равно работает, просто без VK-функций
+        });
+</script> 
+    
+</body>
+</html>

@@ -1,0 +1,273 @@
+body {
+    background: #0a0a2a;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    color: white;
+}
+
+.top-container {
+    text-align: center;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    padding: 30px 20px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
+    max-width: 520px;
+    width: 100%;
+    position: relative;
+}
+
+.top-header {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.top-header h1 {
+    font-size: 28px;
+    letter-spacing: 4px;
+    font-weight: 300;
+}
+
+#backBtnTop {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 28px;
+    cursor: pointer;
+    touch-action: manipulation;
+    color: white;
+    opacity: 0.7;
+}
+
+#soundToggleTop {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(12px);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+/* ===== ФИЛЬТРЫ ===== */
+.top-filters {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.3s ease;
+}
+
+.filter-btn.active {
+    background: rgba(255,215,0,0.15);
+    border-color: gold;
+    color: gold;
+}
+
+.filter-btn:active {
+    transform: scale(0.95);
+}
+
+/* ===== ТАБЛИЦА ===== */
+.top-table {
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.top-table-header {
+    display: grid;
+    grid-template-columns: 40px 100px 70px 60px 60px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.05);
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.col-place { text-align: center; }
+.col-date { text-align: left; }
+.col-score { text-align: right; }
+.col-combo { text-align: center; }
+.col-bonus { text-align: right; }
+
+#topList {
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+#topList::-webkit-scrollbar {
+    width: 4px;
+}
+
+#topList::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+}
+
+#topList::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+}
+
+/* ===== СТРОКА ТОПА ===== */
+.top-row {
+    display: grid;
+    grid-template-columns: 40px 100px 70px 60px 60px;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.top-row:last-child {
+    border-bottom: none;
+}
+
+.top-row .place {
+    text-align: center;
+    font-weight: bold;
+}
+
+.top-row .place.gold { color: gold; }
+.top-row .place.silver { color: silver; }
+.top-row .place.bronze { color: #cd7f32; }
+
+.top-row .date {
+    text-align: left;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+}
+
+.top-row .score {
+    text-align: right;
+    font-weight: bold;
+    color: #ffcc00;
+}
+
+.top-row .combo {
+    text-align: center;
+    color: #ff6b6b;
+    font-size: 12px;
+}
+
+.top-row .bonus {
+    text-align: right;
+    color: #74b9ff;
+    font-size: 12px;
+}
+
+.top-row:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.top-empty {
+    padding: 40px 20px;
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+    text-align: center;
+}
+
+/* ===== КНОПКА ОЧИСТКИ ===== */
+#clearTopBtn {
+    padding: 10px 30px;
+    border: none;
+    border-radius: 30px;
+    background: rgba(255,80,80,0.1);
+    color: rgba(255,80,80,0.6);
+    font-size: 13px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255,80,80,0.1);
+}
+
+#clearTopBtn:active {
+    transform: scale(0.95);
+}
+
+/* ===== АДАПТАЦИЯ ===== */
+@media (max-width: 480px) {
+    .top-container {
+        padding: 20px 12px;
+        border-radius: 24px;
+    }
+    
+    .top-table-header {
+        grid-template-columns: 30px 70px 50px 45px 45px;
+        font-size: 9px;
+        padding: 8px 10px;
+    }
+    
+    .top-row {
+        grid-template-columns: 30px 70px 50px 45px 45px;
+        font-size: 11px;
+        padding: 6px 10px;
+    }
+    
+    .top-row .date {
+        font-size: 9px;
+    }
+    
+    .top-header h1 {
+        font-size: 22px;
+    }
+    
+    .filter-btn {
+        font-size: 10px;
+        padding: 4px 12px;
+    }
+    
+    #backBtnTop {
+        font-size: 22px;
+    }
+    #soundToggleTop {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 380px) {
+    .top-table-header {
+        grid-template-columns: 24px 55px 40px 35px 35px;
+        font-size: 8px;
+        padding: 6px 8px;
+    }
+    
+    .top-row {
+        grid-template-columns: 24px 55px 40px 35px 35px;
+        font-size: 10px;
+        padding: 5px 8px;
+    }
+    .top-row .date {
+        font-size: 8px;
+    }
+}

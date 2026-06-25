@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Игра 🫧</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="score">💎 0</div>
+        <div id="pendingScore">+0</div>
+        <div id="combo">🔥 x0</div>
+        <div id="multiplier">×1</div>
+
+        <div id="gameControls">
+            <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
+                <span>🏠</span>
+            </button>
+            <button class="game-btn restart-btn" id="restartBtn" aria-label="Рестарт">
+                <span>🔄</span>
+            </button>
+            <button class="game-btn sound-btn" id="soundToggleBtn" aria-label="Звук">
+                <span class="sound-icon">🔊</span>
+            </button>
+        </div>
+
+        <div id="bonusContainer" class="bonus-container"></div>
+    </div>
+
+    <div id="bonusHint" style="display:none;">🎯 Нажми на пузырёк!</div>
+
+    <script src="js/sound.js"></script>
+    <script src="js/bubble.js"></script>
+    <script src="js/particle.js"></script>
+    <script src="js/bonus.js"></script>
+    <script src="js/challengeTracker.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

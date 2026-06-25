@@ -5,7 +5,7 @@ class VKManager {
         this.isReady = false;
         this.userId = null;
         this.userName = 'Игрок';
-        this.appId = 12345678; // Замени на свой ID
+        this.appId = 54650664; // ← ТВОЙ ID
     }
 
     // ===== ИНИЦИАЛИЗАЦИЯ =====
@@ -35,17 +35,14 @@ class VKManager {
     // ===== ПОКАЗАТЬ КНОПКУ "ПОДЕЛИТЬСЯ" =====
     shareResult(score, combo) {
         if (!this.isReady) {
-            // Если VK не загружен — открываем обычное окно
             this.fallbackShare(score, combo);
             return;
         }
 
-        // Создаём сообщение для публикации
         const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧`;
 
         VK.api('wall.post', {
             message: message,
-            // Можно добавить ссылку на игру
             attachments: 'https://vk.com/app' + this.appId
         }, (response) => {
             if (response.error) {
@@ -63,7 +60,6 @@ class VKManager {
         const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;
         const url = encodeURIComponent('https://pro-stoi.github.io/bubble-pop/');
         
-        // Копируем в буфер обмена
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text + ' ' + decodeURIComponent(url));
             this.showNotification('📋 Текст скопирован! Вставь в соцсети.');
@@ -104,7 +100,6 @@ class VKManager {
 // ===== СОЗДАЁМ ГЛОБАЛЬНЫЙ ЭКЗЕМПЛЯР =====
 const vk = new VKManager();
 
-// Инициализируем при загрузке
 document.addEventListener('DOMContentLoaded', () => {
     vk.init();
 });

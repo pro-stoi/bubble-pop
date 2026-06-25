@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== ПУЗЫРЬКИ ДЛЯ ФОНА =====
     const bgBubbles = [];
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 15; i++) {
         const b = new Bubble(width, height);
         b.y = Math.random() * height;
-        b.speed = 0.2 + Math.random() * 0.6;
-        b.radius = 15 + Math.random() * 50;
+        b.speed = 0.15 + Math.random() * 0.4;
+        b.radius = 20 + Math.random() * 50;
         b.hue = Math.random() * 360;
         bgBubbles.push(b);
     }
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== ЧАСТИЦЫ =====
     let particles = [];
 
+    // ===== ФУНКЦИЯ ДЛЯ ЧАСТИЦ ПРИ НАЖАТИИ НА КНОПКИ =====
     window.spawnParticles = function(x, y, hue) {
         for (let i = 0; i < 20 + Math.random() * 20; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -71,10 +72,108 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.globalAlpha = 1;
     }
 
-    // ===== АНИМАЦИЯ =====
+    // ===== POP MANAGER ДЛЯ ЛОПАНИЯ ШАРИКОВ =====
+    const popManager = {
+        particles: particles,
+        bubbles: bgBubbles,
+
+        handleTap(x, y) {
+            for (let i = this.bubbles.length - 1; i >= 0; i--) {
+                const b = this.bubbles[i];
+                if (b.contains(x, y)) {
+                    this.spawnParticles(b.x, b.y, b.hue);
+                    this.bubbles.splice(i, 1);
+                    this.respawnBubble();
+                    if (window.sound) {
+                        sound.pop(500 + Math.random() * 300, 0.1, 0.15);
+                    }
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        spawnParticles(x, y, hue) {
+            for (let i = 0; i < 15 + Math.random() * 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 4;
+                this.particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1,
+                    radius: 1.5 + Math.random() * 4,
+                    hue: hue + (Math.random() - 0.5) * 30,
+                    life: 30 + Math.random() * 30,
+                    maxLife: 50,
+                    gravity: 0.06
+                });
+            }
+        },
+
+        respawnBubble() {
+            const b = new Bubble(width, height);
+            b.y = Math.random() * height;
+            b.x = Math.random() * width;
+            b.radius = 20 + Math.random() * 50;
+            b.speed = 0.1 + Math.random() * 0.3;
+            b.hue = Math.random() * 360;
+            this.bubbles.push(b);
+        },
+
+        updateParticles() {
+            for (let i = this.particles.length - 1; i >= 0; i--) {
+                const p = this.particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity;
+                p.vx *= 0.99;
+                p.vy *= 0.99;
+                p.life--;
+                p.radius *= 0.995;
+                if (p.life <= 0 || p.radius < 0.3) {
+                    this.particles.splice(i, 1);
+                }
+            }
+        },
+
+        drawParticles() {
+            for (const p of this.particles) {
+                const alpha = p.life / p.maxLife;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI * 2);
+                ctx.fillStyle = `hsl(${p.hue}, 100%, 60%)`;
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+    };
+
+    // ===== ОБРАБОТКА ТАПА ПО КАНВАСУ (ЛОПАНИЕ ШАРИКОВ) =====
+    function handleCanvasTap(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+            e.preventDefault();
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        popManager.handleTap(x, y);
+    }
+
+    canvas.addEventListener('click', handleCanvasTap);
+    canvas.addEventListener('touchstart', handleCanvasTap, { passive: false });
+
+    // ===== АНИМАЦИЯ ФОНА =====
     function animate() {
         ctx.clearRect(0, 0, width, height);
 
+        // Фон
         const grad = ctx.createLinearGradient(0, 0, 0, height);
         grad.addColorStop(0, '#0a0a2a');
         grad.addColorStop(0.5, '#1a0a3a');
@@ -103,78 +202,107 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctx.globalAlpha = 1;
 
+        // Шарики
         for (const b of bgBubbles) {
             b.update();
             if (!b.alive) {
                 b.y = height + b.radius;
                 b.x = Math.random() * width;
                 b.alive = true;
-                b.radius = 15 + Math.random() * 50;
-                b.speed = 0.2 + Math.random() * 0.6;
+                b.radius = 20 + Math.random() * 50;
+                b.speed = 0.15 + Math.random() * 0.4;
                 b.hue = Math.random() * 360;
             }
             b.draw(ctx);
         }
 
-        updateParticles();
-        drawParticles();
+        // Частицы
+        popManager.updateParticles();
+        popManager.drawParticles();
 
         requestAnimationFrame(animate);
     }
     animate();
 
-    // ===== ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ КНОПОК =====
-    function setupMenuButton(btnId, targetPage, hue) {
-        const btn = document.getElementById(btnId);
-        if (!btn) return;
-        
-        function handleAction(e) {
-            if (e) {
-                e.stopPropagation();
-                if (e.type === 'touchend') e.preventDefault();
-            }
-            
-            const rect = btn.getBoundingClientRect();
-            const x = rect.left + rect.width / 2;
-            const y = rect.top + rect.height / 2;
-            
-            spawnParticles(x, y, hue);
-            
+    // ===== КНОПКИ МЕНЮ =====
+    document.getElementById('playBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = document.getElementById('playBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
+        setTimeout(() => {
+            window.location.href = 'game.html';
+        }, 300);
+    });
+
+    document.getElementById('playBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const rect = document.getElementById('playBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
+        setTimeout(() => {
+            window.location.href = 'game.html';
+        }, 300);
+    });
+
+    document.getElementById('topBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = document.getElementById('topBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 45);
+        setTimeout(() => {
+            window.location.href = 'top.html';
+        }, 300);
+    });
+
+    document.getElementById('topBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const rect = document.getElementById('topBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 45);
+        setTimeout(() => {
+            window.location.href = 'top.html';
+        }, 300);
+    });
+
+    document.getElementById('soundBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = document.getElementById('soundBtn').getBoundingClientRect();
+        const icon = document.getElementById('soundIcon');
+        const label = document.getElementById('soundLabel');
+        const isOn = icon.textContent === '🔊';
+        icon.textContent = isOn ? '🔇' : '🔊';
+        label.textContent = isOn ? 'ВЫКЛ' : 'ВКЛ';
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 320);
+        toggleSound();
+    });
+
+    document.getElementById('soundBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const rect = document.getElementById('soundBtn').getBoundingClientRect();
+        const icon = document.getElementById('soundIcon');
+        const label = document.getElementById('soundLabel');
+        const isOn = icon.textContent === '🔊';
+        icon.textContent = isOn ? '🔇' : '🔊';
+        label.textContent = isOn ? 'ВЫКЛ' : 'ВКЛ';
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 320);
+        toggleSound();
+    });
+
+    // ===== КНОПКА ИСПЫТАНИЙ =====
+    const challengesBtn = document.getElementById('challengesBtn');
+    if (challengesBtn) {
+        challengesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const rect = challengesBtn.getBoundingClientRect();
+            spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
             setTimeout(() => {
-                goToWithAd(targetPage);
+                window.location.href = 'challenges.html';
             }, 300);
-        }
-        
-        btn.addEventListener('click', handleAction);
-        btn.addEventListener('touchend', handleAction);
-    }
-
-    // ===== НАСТРАИВАЕМ КНОПКИ =====
-    setupMenuButton('playBtn', 'game.html', 200);
-    setupMenuButton('topBtn', 'top.html', 45);
-
-    // ===== КНОПКА ЗВУКА =====
-    const soundBtn = document.getElementById('soundBtn');
-    if (soundBtn) {
-        function handleSound(e) {
-            if (e) {
-                e.stopPropagation();
-                if (e.type === 'touchend') e.preventDefault();
-            }
-            
-            const rect = soundBtn.getBoundingClientRect();
-            spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 320);
-            
-            const icon = document.getElementById('soundIcon');
-            const label = document.getElementById('soundLabel');
-            const isOn = icon.textContent === '🔊';
-            
-            toggleSound();
-            icon.textContent = isOn ? '🔇' : '🔊';
-            label.textContent = isOn ? 'ВЫКЛ' : 'ВКЛ';
-        }
-        
-        soundBtn.addEventListener('click', handleSound);
-        soundBtn.addEventListener('touchend', handleSound);
+        });
+        challengesBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const rect = challengesBtn.getBoundingClientRect();
+            spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
+            setTimeout(() => {
+                window.location.href = 'challenges.html';
+            }, 300);
+        });
     }
 });

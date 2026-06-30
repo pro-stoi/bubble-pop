@@ -6,6 +6,10 @@
     <title>Топ 🏆</title>
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/top.css" />
+    
+    <!-- ===== VK BRIDGE ===== -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <!-- =================== -->
 </head>
 <body>
     <div class="top-container">
@@ -20,7 +24,7 @@
             </button>
         </div>
 
-        <!-- Кнопки фильтрации -->
+        <!-- Фильтры -->
         <div class="top-filters">
             <button class="filter-btn active" data-sort="score">По очкам</button>
             <button class="filter-btn" data-sort="combo">По комбо</button>
@@ -42,29 +46,9 @@
         <button id="clearTopBtn">Очистить топ</button>
     </div>
 
-    <!-- ===== СКРИПТЫ ===== -->
     <script src="js/nav.js"></script>
     <script src="js/pop.js"></script>
+    <script src="js/vk.js"></script>
     <script src="js/top.js"></script>
-    
-    <!-- VK Bridge -->
-    <script src="https://vk.com/js/api/openapi.js?169"></script>
-    <script>
-        const APP_ID = 54650664; // ← ТВОЙ ID
-        
-        if (typeof VK !== 'undefined') {
-            VK.init({ apiId: APP_ID });
-            
-            VK.bridge.send('VKWebAppInit', {})
-                .then(() => {
-                    console.log('✅ VK Mini App инициализировано');
-                })
-                .catch((error) => {
-                    console.warn('⚠️ Ошибка инициализации:', error);
-                });
-        } else {
-            console.warn('⚠️ VK Bridge не загружен');
-        }
-    </script>
 </body>
 </html>

@@ -5,35 +5,64 @@ class VKManager {
         this.isReady = false;
         this.userId = null;
         this.userName = 'Игрок';
-        this.appId = 54650664; // ← ТВОЙ ID
+        this.appId = 54650664;
+        this.bridge = null;
     }
 
-    // ===== ИНИЦИАЛИЗАЦИЯ =====
     init() {
-        if (typeof VK !== 'undefined') {
+        if (typeof vkBridge !== 'undefined') {
+            this.bridge = vkBridge;
             this.isReady = true;
-            this.getUserInfo();
+            
+            this.bridge.send('VKWebAppInit')
+                .then(() => {
+                    console.log('✅ VK Bridge инициализирован');
+                    this.getUserInfo();
+                })
+                .catch((error) => {
+                    console.warn('⚠️ Ошибка инициализации VK:', error);
+                });
         } else {
-            console.warn('VK Bridge не загружен');
+            console.warn('⚠️ VK Bridge не загружен');
+            this.loadBridge();
         }
     }
 
-    // ===== ПОЛУЧИТЬ ИНФОРМАЦИЮ О ПОЛЬЗОВАТЕЛЕ =====
-    getUserInfo() {
-        if (!this.isReady) return;
-        
-        VK.api('users.get', { fields: 'photo_50' }, (response) => {
-            if (response.response && response.response.length > 0) {
-                const user = response.response[0];
-                this.userId = user.id;
-                this.userName = user.first_name + ' ' + user.last_name;
-                console.log('👤 Пользователь:', this.userName);
+    loadBridge() {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
+        script.onload = () => {
+            if (typeof vkBridge !== 'undefined') {
+                this.bridge = vkBridge;
+                this.isReady = true;
+                this.bridge.send('VKWebAppInit')
+                    .then(() => {
+                        console.log('✅ VK Bridge загружен и инициализирован');
+                        this.getUserInfo();
+                    })
+                    .catch(console.warn);
             }
-        });
+        };
+        script.onerror = () => {
+            console.warn('⚠️ Не удалось загрузить VK Bridge');
+        };
+        document.head.appendChild(script);
     }
 
-    // ===== ПОКАЗАТЬ КНОПКУ "ПОДЕЛИТЬСЯ" =====
-    shareResult(score, combo) {
+    async getUserInfo() {
+        if (!this.isReady) return;
+        
+        try {
+            const data = await this.bridge.send('VKWebAppGetUserInfo');
+            this.userId = data.id;
+            this.userName = data.first_name + ' ' + data.last_name;
+            console.log('👤 Пользователь:', this.userName);
+        } catch (error) {
+            console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+        }
+    }
+
+    async shareResult(score, combo) {
         if (!this.isReady) {
             this.fallbackShare(score, combo);
             return;
@@ -41,34 +70,30 @@ class VKManager {
 
         const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧`;
 
-        VK.api('wall.post', {
-            message: message,
-            attachments: 'https://vk.com/app' + this.appId
-        }, (response) => {
-            if (response.error) {
-                console.error('Ошибка публикации:', response.error);
-                this.fallbackShare(score, combo);
-            } else {
-                console.log('✅ Опубликовано!');
-                this.showNotification('🎉 Результат опубликован!');
-            }
-        });
-    }
-
-    // ===== ЗАПАСНОЙ ВАРИАНТ (если VK не работает) =====
-    fallbackShare(score, combo) {
-        const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;
-        const url = encodeURIComponent('https://pro-stoi.github.io/bubble-pop/');
-        
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text + ' ' + decodeURIComponent(url));
-            this.showNotification('📋 Текст скопирован! Вставь в соцсети.');
-        } else {
-            alert(text + '\n' + decodeURIComponent(url));
+        try {
+            await this.bridge.send('VKWebAppShare', {
+                message: message
+            });
+            console.log('✅ Опубликовано!');
+            this.showNotification('🎉 Результат опубликован!');
+        } catch (error) {
+            console.error('Ошибка публикации:', error);
+            this.fallbackShare(score, combo);
         }
     }
 
-    // ===== ПОКАЗАТЬ УВЕДОМЛЕНИЕ =====
+    fallbackShare(score, combo) {
+        const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;
+        const url = 'https://pro-stoi.github.io/bubble-pop/';
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text + ' ' + url);
+            this.showNotification('📋 Текст скопирован! Вставь в соцсети.');
+        } else {
+            alert(text + '\n' + url);
+        }
+    }
+
     showNotification(text) {
         const popup = document.createElement('div');
         popup.className = 'vk-notification';
@@ -97,7 +122,6 @@ class VKManager {
     }
 }
 
-// ===== СОЗДАЁМ ГЛОБАЛЬНЫЙ ЭКЗЕМПЛЯР =====
 const vk = new VKManager();
 
 document.addEventListener('DOMContentLoaded', () => {

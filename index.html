@@ -6,32 +6,21 @@
     <title>Пузырьки 🫧</title>
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/menu.css" />
-
-    <!-- ===== ИНИЦИАЛИЗАЦИЯ VK BRIDGE (ПЕРЕНЕСЕНО СЮДА) ===== -->
-    <script src="https://vk.com/js/api/openapi.js?169"></script>
-    <script>
-        const APP_ID = 54650664; // Ваш ID приложения
-
-        if (typeof VK !== 'undefined') {
-            VK.init({ apiId: APP_ID });
-            VK.bridge.send('VKWebAppInit', {})
-                .then(() => console.log('✅ VK Mini App инициализировано'))
-                .catch((error) => console.warn('⚠️ Ошибка инициализации VK:', error));
-        } else {
-            console.warn('⚠️ VK Bridge не загружен');
-        }
-    </script>
-    <!-- ====================================================== -->
+    
+    <!-- ===== VK BRIDGE ===== -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <!-- =================== -->
 </head>
 <body>
-    <!-- Вся остальная разметка без изменений -->
     <canvas id="menuCanvas"></canvas>
 
+    <!-- Заголовок -->
     <div class="menu-title">
         <h1>🫧</h1>
         <h2>ПУЗЫРЬКИ</h2>
     </div>
 
+    <!-- Кнопка "ИГРАТЬ" -->
     <div class="menu-btn play-btn" id="playBtn">
         <div class="bubble-btn" style="--hue: 200;">
             <span>▶</span>
@@ -39,6 +28,7 @@
         </div>
     </div>
 
+    <!-- Кнопка "ИСПЫТАНИЯ" -->
     <div class="menu-btn challenges-btn" id="challengesBtn">
         <div class="bubble-btn" style="--hue: 280;">
             <span>🏆</span>
@@ -46,6 +36,7 @@
         </div>
     </div>
 
+    <!-- Кнопка "ТОП" -->
     <div class="menu-btn top-btn" id="topBtn">
         <div class="bubble-btn" style="--hue: 45;">
             <span>🏆</span>
@@ -53,6 +44,7 @@
         </div>
     </div>
 
+    <!-- Кнопка "ЗВУК" -->
     <div class="menu-btn sound-btn" id="soundBtn">
         <div class="bubble-btn" style="--hue: 320;">
             <span id="soundIcon">🔊</span>
@@ -62,6 +54,7 @@
 
     <script src="js/bubble.js"></script>
     <script src="js/particle.js"></script>
+    <script src="js/vk.js"></script>
     <script src="js/menu.js"></script>
 </body>
 </html>

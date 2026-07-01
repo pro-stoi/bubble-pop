@@ -32,10 +32,80 @@ function goToWithAd(page) {
     }
 }
 
-// ===== ВЫХОД ИЗ ИГРЫ (ПРОСТОЙ СПОСОБ) =====
+// ===== ВЫХОД ИЗ ИГРЫ (ПРАВИЛЬНЫЙ) =====
 function exitToVK() {
-    // Просто переходим на главную VK
-    window.location.href = 'https://vk.com/feed';
+    // Способ 1: Закрыть через VK Bridge (если есть)
+    if (typeof vkBridge !== 'undefined') {
+        try {
+            vkBridge.send('VKWebAppClose', {})
+                .then(() => {
+                    console.log('✅ Приложение закрыто через VK Bridge');
+                })
+                .catch((error) => {
+                    console.warn('⚠️ Ошибка закрытия через VK Bridge:', error);
+                    // Если не получилось — пробуем другие способы
+                    closeByOtherMethods();
+                });
+            return;
+        } catch (e) {
+            console.warn('⚠️ Исключение при закрытии через VK Bridge:', e);
+            closeByOtherMethods();
+        }
+    } else {
+        closeByOtherMethods();
+    }
+}
+
+// ===== ЗАПАСНЫЕ СПОСОБЫ ЗАКРЫТИЯ =====
+function closeByOtherMethods() {
+    // Способ 2: Передать команду родительскому окну (если это iframe)
+    try {
+        if (window.parent && window.parent !== window) {
+            // Отправляем сообщение родительскому окну
+            window.parent.postMessage({ type: 'VKWebAppClose' }, '*');
+            console.log('📤 Отправлена команда закрытия родительскому окну');
+            
+            // Запасной вариант через 2 секунды
+            setTimeout(() => {
+                try {
+                    // Пытаемся закрыть через window.top
+                    if (window.top && window.top !== window) {
+                        window.top.postMessage({ type: 'VKWebAppClose' }, '*');
+                    }
+                } catch (e) {}
+            }, 2000);
+        }
+    } catch (e) {
+        console.warn('⚠️ Не удалось отправить сообщение родительскому окну:', e);
+    }
+    
+    // Способ 3: Переход на пустую страницу (иногда помогает)
+    try {
+        // Пытаемся закрыть окно
+        window.close();
+    } catch (e) {}
+    
+    // Способ 4: Переход на VK (НО на всю страницу, не внутри iframe)
+    try {
+        // Это должно заменить ВСЮ страницу, а не только iframe
+        window.top.location.href = 'https://vk.com/feed';
+    } catch (e) {
+        // Если window.top недоступен, пробуем через window.parent
+        try {
+            window.parent.location.href = 'https://vk.com/feed';
+        } catch (e2) {
+            window.location.href = 'https://vk.com/feed';
+        }
+    }
+    
+    // Если ничего не помогло — последний шанс через 2 секунды
+    setTimeout(() => {
+        try {
+            window.top.location.href = 'https://vk.com/feed';
+        } catch (e) {
+            window.location.href = 'https://vk.com/feed';
+        }
+    }, 3000);
 }
 
 // ===== ЗВУК =====

@@ -60,9 +60,28 @@
         </div>
     </div>
 
+    <!-- ===== НОВАЯ КНОПКА ВЫХОДА (ВНИЗУ) ===== -->
+    <div class="menu-btn exit-btn" id="exitBtn" style="
+        position: fixed;
+        bottom: 5%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        pointer-events: auto;
+        cursor: pointer;
+        touch-action: manipulation;
+    ">
+        <div class="bubble-btn" style="--hue: 0; width: 60px; height: 60px; background: radial-gradient(circle at 35% 35%, rgba(255,100,100,0.6), rgba(200,50,50,0.3));">
+            <span>🚪</span>
+            <span class="btn-label">ВЫХОД</span>
+        </div>
+    </div>
+    <!-- ================================= -->
+
     <script src="js/bubble.js"></script>
     <script src="js/particle.js"></script>
     <script src="js/vk.js"></script>
+    <script src="js/nav.js"></script>
     <script src="js/menu.js"></script>
 </body>
 </html>

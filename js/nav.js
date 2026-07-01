@@ -6,15 +6,17 @@ function goTo(page) {
 
 // ===== ПЕРЕХОД С РЕКЛАМОЙ =====
 function goToWithAd(page) {
-    if (typeof VK !== 'undefined' && VK.bridge) {
+    if (typeof vkBridge !== 'undefined') {
         try {
-            VK.bridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
                 .then(() => {
                     goTo(page);
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.warn('⚠️ Реклама не показана:', error);
                     goTo(page);
                 });
+            
             setTimeout(() => {
                 const currentPath = window.location.pathname;
                 const targetPath = '/' + page;
@@ -30,36 +32,54 @@ function goToWithAd(page) {
     }
 }
 
-// ===== НОВОЕ: ВЫХОД ИЗ VK MINI APP =====
+// ===== ВЫХОД ИЗ VK MINI APP (ИСПРАВЛЕННЫЙ) =====
 function exitToVK() {
-    if (typeof VK !== 'undefined' && VK.bridge) {
+    // Проверяем, открыто ли приложение в VK
+    const isVK = window.location.href.includes('vk.com') || 
+                 window.location.href.includes('vk.ru') ||
+                 typeof vkBridge !== 'undefined';
+    
+    if (isVK && typeof vkBridge !== 'undefined') {
         try {
-            VK.bridge.send('VKWebAppClose', {})
+            // Способ 1: Закрыть приложение
+            vkBridge.send('VKWebAppClose', {})
                 .then(() => {
                     console.log('✅ Приложение закрыто');
                 })
                 .catch((error) => {
                     console.warn('⚠️ Ошибка закрытия:', error);
-                    // Запасной вариант
                     fallbackExit();
                 });
+            
+            // Таймаут на случай, если закрытие не сработало
+            setTimeout(() => {
+                // Способ 2: Перейти на страницу VK (запасной)
+                window.location.href = 'https://vk.com/feed';
+            }, 3000);
+            
         } catch (e) {
             fallbackExit();
         }
     } else {
+        // Если не в VK — просто закрываем окно
         fallbackExit();
     }
 }
 
 // ===== ЗАПАСНОЙ ВАРИАНТ ВЫХОДА =====
 function fallbackExit() {
-    // Если не в VK — просто показываем сообщение
-    if (confirm('Выйти из приложения?')) {
-        // Пытаемся закрыть окно
+    // Попытка закрыть окно
+    try {
         window.close();
-        // Если не получилось — переходим на главную VK
-        window.location.href = 'https://vk.com';
+    } catch (e) {
+        // Если не получается — переходим на VK
+        window.location.href = 'https://vk.com/feed';
     }
+    
+    // Если окно не закрылось через 1 секунду — переходим на VK
+    setTimeout(() => {
+        window.location.href = 'https://vk.com/feed';
+    }, 1000);
 }
 
 // ===== ЗВУК =====

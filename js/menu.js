@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== ЧАСТИЦЫ =====
     let particles = [];
 
-    // ===== ФУНКЦИЯ ДЛЯ ЧАСТИЦ ПРИ НАЖАТИИ НА КНОПКИ =====
     window.spawnParticles = function(x, y, hue) {
         for (let i = 0; i < 20 + Math.random() * 20; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -149,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ===== ОБРАБОТКА ТАПА ПО КАНВАСУ (ЛОПАНИЕ ШАРИКОВ) =====
+    // ===== ОБРАБОТКА ТАПА ПО КАНВАСУ =====
     function handleCanvasTap(e) {
         const rect = canvas.getBoundingClientRect();
         let clientX, clientY;
@@ -173,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function animate() {
         ctx.clearRect(0, 0, width, height);
 
-        // Фон
         const grad = ctx.createLinearGradient(0, 0, 0, height);
         grad.addColorStop(0, '#0a0a2a');
         grad.addColorStop(0.5, '#1a0a3a');
@@ -181,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, width, height);
 
-        // Звёзды
         if (!animate._stars) {
             animate._stars = [];
             for (let i = 0; i < 60; i++) {
@@ -202,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctx.globalAlpha = 1;
 
-        // Шарики
         for (const b of bgBubbles) {
             b.update();
             if (!b.alive) {
@@ -216,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
             b.draw(ctx);
         }
 
-        // Частицы
         popManager.updateParticles();
         popManager.drawParticles();
 
@@ -224,13 +219,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     animate();
 
-    // ===== КНОПКИ МЕНЮ =====
+    // ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
     document.getElementById('playBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = document.getElementById('playBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
         setTimeout(() => {
-            window.location.href = 'game.html';
+            goToWithAd('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
         }, 300);
     });
 
@@ -239,16 +234,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = document.getElementById('playBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
         setTimeout(() => {
-            window.location.href = 'game.html';
+            goToWithAd('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
         }, 300);
     });
 
+    // ===== КНОПКА "ТОП" БЕЗ РЕКЛАМЫ =====
     document.getElementById('topBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = document.getElementById('topBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 45);
         setTimeout(() => {
-            window.location.href = 'top.html';
+            goTo('top.html');  // ← БЕЗ РЕКЛАМЫ
         }, 300);
     });
 
@@ -257,10 +253,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = document.getElementById('topBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 45);
         setTimeout(() => {
-            window.location.href = 'top.html';
+            goTo('top.html');  // ← БЕЗ РЕКЛАМЫ
         }, 300);
     });
 
+    // ===== КНОПКА "ИСПЫТАНИЯ" БЕЗ РЕКЛАМЫ =====
+    document.getElementById('challengesBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = document.getElementById('challengesBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
+        setTimeout(() => {
+            goTo('challenges.html');  // ← БЕЗ РЕКЛАМЫ
+        }, 300);
+    });
+
+    document.getElementById('challengesBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const rect = document.getElementById('challengesBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
+        setTimeout(() => {
+            goTo('challenges.html');  // ← БЕЗ РЕКЛАМЫ
+        }, 300);
+    });
+
+    // ===== КНОПКА ЗВУКА =====
     document.getElementById('soundBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = document.getElementById('soundBtn').getBoundingClientRect();
@@ -285,42 +301,22 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSound();
     });
 
-    // ===== КНОПКА ИСПЫТАНИЙ =====
-    const challengesBtn = document.getElementById('challengesBtn');
-    if (challengesBtn) {
-        challengesBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const rect = challengesBtn.getBoundingClientRect();
-            spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
-            setTimeout(() => {
-                window.location.href = 'challenges.html';
-            }, 300);
-        });
-        challengesBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const rect = challengesBtn.getBoundingClientRect();
-            spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
-            setTimeout(() => {
-                window.location.href = 'challenges.html';
-            }, 300);
-        });
-    }
-});
-// ===== КНОПКА ВЫХОДА В МЕНЮ =====
-document.getElementById('exitBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const rect = document.getElementById('exitBtn').getBoundingClientRect();
-    spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 0);
-    setTimeout(() => {
-        exitToVK();
-    }, 300);
-});
+    // ===== КНОПКА ВЫХОДА =====
+    document.getElementById('exitBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rect = document.getElementById('exitBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 0);
+        setTimeout(() => {
+            exitToVK();
+        }, 300);
+    });
 
-document.getElementById('exitBtn').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    const rect = document.getElementById('exitBtn').getBoundingClientRect();
-    spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 0);
-    setTimeout(() => {
-        exitToVK();
-    }, 300);
+    document.getElementById('exitBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const rect = document.getElementById('exitBtn').getBoundingClientRect();
+        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 0);
+        setTimeout(() => {
+            exitToVK();
+        }, 300);
+    });
 });

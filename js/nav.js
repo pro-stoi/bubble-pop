@@ -32,54 +32,10 @@ function goToWithAd(page) {
     }
 }
 
-// ===== ВЫХОД ИЗ VK MINI APP (ИСПРАВЛЕННЫЙ) =====
+// ===== ВЫХОД ИЗ ИГРЫ (ПРОСТОЙ СПОСОБ) =====
 function exitToVK() {
-    // Проверяем, открыто ли приложение в VK
-    const isVK = window.location.href.includes('vk.com') || 
-                 window.location.href.includes('vk.ru') ||
-                 typeof vkBridge !== 'undefined';
-    
-    if (isVK && typeof vkBridge !== 'undefined') {
-        try {
-            // Способ 1: Закрыть приложение
-            vkBridge.send('VKWebAppClose', {})
-                .then(() => {
-                    console.log('✅ Приложение закрыто');
-                })
-                .catch((error) => {
-                    console.warn('⚠️ Ошибка закрытия:', error);
-                    fallbackExit();
-                });
-            
-            // Таймаут на случай, если закрытие не сработало
-            setTimeout(() => {
-                // Способ 2: Перейти на страницу VK (запасной)
-                window.location.href = 'https://vk.com/feed';
-            }, 3000);
-            
-        } catch (e) {
-            fallbackExit();
-        }
-    } else {
-        // Если не в VK — просто закрываем окно
-        fallbackExit();
-    }
-}
-
-// ===== ЗАПАСНОЙ ВАРИАНТ ВЫХОДА =====
-function fallbackExit() {
-    // Попытка закрыть окно
-    try {
-        window.close();
-    } catch (e) {
-        // Если не получается — переходим на VK
-        window.location.href = 'https://vk.com/feed';
-    }
-    
-    // Если окно не закрылось через 1 секунду — переходим на VK
-    setTimeout(() => {
-        window.location.href = 'https://vk.com/feed';
-    }, 1000);
+    // Просто переходим на главную VK
+    window.location.href = 'https://vk.com/feed';
 }
 
 // ===== ЗВУК =====

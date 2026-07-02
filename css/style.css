@@ -33,42 +33,60 @@ canvas {
     z-index: 10;
 }
 
-/* ===== СЧЁТ И КОМБО (СВЕРХУ) ===== */
-#score {
+/* ===== ВЕРХНЯЯ ПАНЕЛЬ С ПОДЛОЖКОЙ ===== */
+#topBar {
     position: absolute;
-    top: 12px;
-    left: 12px;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px;
+    background: rgba(10, 10, 42, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 5;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.score-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.combo-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: flex-end;
+}
+
+#score {
     color: white;
     font-size: 20px;
     font-weight: bold;
-    text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 40px rgba(0,0,0,0.5);
+    text-shadow: 0 0 20px rgba(0,0,0,0.8);
     letter-spacing: 1px;
-    z-index: 5;
 }
 
 #pendingScore {
-    position: absolute;
-    top: 36px;
-    left: 12px;
     color: #ffcc00;
     font-size: 14px;
     font-weight: bold;
     text-shadow: 0 0 20px rgba(255,204,0,0.3);
     opacity: 0.8;
-    z-index: 5;
 }
 
 #combo {
-    position: absolute;
-    top: 12px;
-    right: 12px;
     color: #ffcc00;
     font-size: 18px;
     font-weight: bold;
     text-shadow: 0 0 20px rgba(255,204,0,0.3);
     opacity: 0;
     transition: opacity 0.2s ease;
-    z-index: 5;
 }
 
 #combo.show {
@@ -76,20 +94,16 @@ canvas {
 }
 
 #multiplier {
-    position: absolute;
-    top: 36px;
-    right: 12px;
     color: #66ccff;
     font-size: 14px;
     font-weight: bold;
     text-shadow: 0 0 20px rgba(100,200,255,0.3);
-    z-index: 5;
 }
 
-/* ===== КНОПКИ УПРАВЛЕНИЯ (СВЕРХУ СПРАВА) ===== */
+/* ===== КНОПКИ УПРАВЛЕНИЯ ===== */
 #gameControls {
     position: fixed;
-    top: 70px;
+    top: 80px;
     right: 12px;
     display: flex;
     flex-direction: column;
@@ -144,7 +158,12 @@ canvas {
     border-color: rgba(100, 200, 255, 0.2);
 }
 
-/* ===== БОНУСЫ + ШКАЛЫ ПРОГРЕССА (СЛЕВА, ВЕРТИКАЛЬНО) ===== */
+.game-btn.exit-btn {
+    background: rgba(255, 80, 80, 0.15);
+    border-color: rgba(255, 80, 80, 0.2);
+}
+
+/* ===== БОНУСЫ С ПОДЛОЖКОЙ ===== */
 .bonus-container {
     position: fixed;
     left: 8px;
@@ -155,6 +174,12 @@ canvas {
     gap: 6px;
     z-index: 15;
     pointer-events: none;
+    background: rgba(10, 10, 42, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 8px 6px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
 .bonus-item {
@@ -216,7 +241,6 @@ canvas {
     border: 1px solid rgba(255,255,255,0.15);
 }
 
-/* ===== ШКАЛА ПРОГРЕССА ПОД БОНУСОМ ===== */
 .bonus-progress {
     width: 40px;
     height: 4px;
@@ -240,7 +264,7 @@ canvas {
     margin-top: 1px;
 }
 
-/* ===== ПОДСКАЗКА ДЛЯ БОНУСА "ВЫБРАТЬ ЦВЕТ" ===== */
+/* ===== ПОДСКАЗКА ДЛЯ БОНУСА ===== */
 #bonusHint {
     position: fixed;
     top: 50%;
@@ -266,29 +290,25 @@ canvas {
 
 /* ===== АДАПТАЦИЯ ДЛЯ ТЕЛЕФОНОВ ===== */
 @media (max-width: 480px) {
+    #topBar {
+        padding: 8px 12px;
+    }
+    
     #score {
         font-size: 16px;
-        top: 8px;
-        left: 8px;
     }
     #pendingScore {
         font-size: 11px;
-        top: 30px;
-        left: 8px;
     }
     #combo {
         font-size: 14px;
-        top: 8px;
-        right: 8px;
     }
     #multiplier {
         font-size: 11px;
-        top: 30px;
-        right: 8px;
     }
     
     #gameControls {
-        top: 55px;
+        top: 70px;
         right: 6px;
         gap: 6px;
     }
@@ -301,6 +321,7 @@ canvas {
     .bonus-container {
         left: 4px;
         gap: 4px;
+        padding: 6px 4px;
     }
     .bonus-btn {
         width: 36px;
@@ -327,13 +348,4 @@ canvas {
         font-size: 16px;
         padding: 12px 18px;
     }
-}
-/* ===== КНОПКА ВЫХОДА ===== */
-.game-btn.exit-btn {
-    background: rgba(255, 80, 80, 0.15);
-    border-color: rgba(255, 80, 80, 0.2);
-}
-
-.game-btn.exit-btn:active {
-    background: rgba(255, 80, 80, 0.3);
 }

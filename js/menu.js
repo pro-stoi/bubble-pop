@@ -219,13 +219,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     animate();
 
-    // ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
+    // ===== КНОПКА "ИГРАТЬ" БЕЗ РЕКЛАМЫ =====
     document.getElementById('playBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = document.getElementById('playBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
         setTimeout(() => {
-            goToWithAd('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
+            goTo('game.html');  // ← БЕЗ РЕКЛАМЫ
         }, 300);
     });
 
@@ -234,17 +234,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = document.getElementById('playBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
         setTimeout(() => {
-            goToWithAd('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
+            goTo('game.html');  // ← БЕЗ РЕКЛАМЫ
         }, 300);
     });
 
-    // ===== КНОПКА "ТОП" БЕЗ РЕКЛАМЫ =====
+    // ===== КНОПКА "ТОП" =====
     document.getElementById('topBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = document.getElementById('topBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 45);
         setTimeout(() => {
-            goTo('top.html');  // ← БЕЗ РЕКЛАМЫ
+            goTo('top.html');
         }, 300);
     });
 
@@ -253,17 +253,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = document.getElementById('topBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 45);
         setTimeout(() => {
-            goTo('top.html');  // ← БЕЗ РЕКЛАМЫ
+            goTo('top.html');
         }, 300);
     });
 
-    // ===== КНОПКА "ИСПЫТАНИЯ" БЕЗ РЕКЛАМЫ =====
+    // ===== КНОПКА "ИСПЫТАНИЯ" =====
     document.getElementById('challengesBtn').addEventListener('click', (e) => {
         e.stopPropagation();
         const rect = document.getElementById('challengesBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
         setTimeout(() => {
-            goTo('challenges.html');  // ← БЕЗ РЕКЛАМЫ
+            goTo('challenges.html');
         }, 300);
     });
 
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = document.getElementById('challengesBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 280);
         setTimeout(() => {
-            goTo('challenges.html');  // ← БЕЗ РЕКЛАМЫ
+            goTo('challenges.html');
         }, 300);
     });
 

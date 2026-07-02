@@ -14,13 +14,19 @@
     <canvas id="gameCanvas"></canvas>
     
     <div id="ui">
-        <!-- Счёт и комбо -->
-        <div id="score">💎 0</div>
-        <div id="pendingScore">+0</div>
-        <div id="combo">🔥 x0</div>
-        <div id="multiplier">×1</div>
+        <!-- ===== ВЕРХНЯЯ ПАНЕЛЬ (СЧЁТ + КНОПКИ) ===== -->
+        <div id="topBar">
+            <div class="score-group">
+                <div id="score">💎 0</div>
+                <div id="pendingScore">+0</div>
+            </div>
+            <div class="combo-group">
+                <div id="combo">🔥 x0</div>
+                <div id="multiplier">×1</div>
+            </div>
+        </div>
 
-        <!-- Кнопки управления -->
+        <!-- ===== КНОПКИ УПРАВЛЕНИЯ ===== -->
         <div id="gameControls">
             <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
                 <span>🏠</span>
@@ -34,14 +40,12 @@
             <button class="game-btn share-btn" id="shareBtn" aria-label="Поделиться">
                 <span>📤</span>
             </button>
-            <!-- ===== НОВАЯ КНОПКА ВЫХОДА ===== -->
             <button class="game-btn exit-btn" id="exitBtn" aria-label="Выйти">
                 <span>🚪</span>
             </button>
-            <!-- ============================== -->
         </div>
 
-        <!-- Бонусы -->
+        <!-- ===== БОНУСЫ ===== -->
         <div id="bonusContainer" class="bonus-container"></div>
     </div>
 

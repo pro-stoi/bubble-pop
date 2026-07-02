@@ -67,24 +67,6 @@ spawnBubble() {
     b.hue = chosen.hue + (Math.random() - 0.5) * 20;
     b.type = chosen;
     
-    // ===== НОВОЕ: ПРОВЕРКА НА БЕЗОПАСНУЮ ЗОНУ =====
-    // Если пузырёк появился в запрещённой зоне — спавним заново
-    if (!b.isInSafeZone()) {
-        // Пробуем спавнить в другом месте
-        let attempts = 0;
-        while (!b.isInSafeZone() && attempts < 30) {
-            b.x = Math.random() * (this.width - b.radius * 2) + b.radius;
-            b.y = this.height + b.radius + Math.random() * 100;
-            attempts++;
-        }
-        // Если всё равно в запрещённой зоне — ставим в центр
-        if (!b.isInSafeZone()) {
-            b.x = this.width / 2 + (Math.random() - 0.5) * 100;
-            b.y = this.height * 0.7 + Math.random() * 100;
-        }
-    }
-    // =========================================
-    
     this.bonusManager.applyEffects(b);
     return b;
 }

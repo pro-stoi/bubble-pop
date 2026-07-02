@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = document.getElementById('playBtn').getBoundingClientRect();
         spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
         setTimeout(() => {
-            goToWithAd('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
+            goTo('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
         }, 300);
     });
 

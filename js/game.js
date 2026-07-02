@@ -41,36 +41,53 @@ class Game {
         this.height = this.canvas.height;
     }
 
-    spawnBubble() {
-        const types = [
-            { radius: 12, points: 10, hue: 320, weight: 15 },
-            { radius: 18, points: 7, hue: 200, weight: 20 },
-            { radius: 26, points: 4, hue: 120, weight: 25 },
-            { radius: 36, points: 2, hue: 45, weight: 25 },
-            { radius: 50, points: 1, hue: 0, weight: 15 }
-        ];
-        
-        let totalWeight = types.reduce((s, t) => s + t.weight, 0);
-        let rand = Math.random() * totalWeight;
-        let chosen = types[0];
-        for (const t of types) {
-            rand -= t.weight;
-            if (rand <= 0) {
-                chosen = t;
-                break;
-            }
+spawnBubble() {
+    const types = [
+        { radius: 12, points: 10, hue: 320, weight: 15 },
+        { radius: 18, points: 7, hue: 200, weight: 20 },
+        { radius: 26, points: 4, hue: 120, weight: 25 },
+        { radius: 36, points: 2, hue: 45, weight: 25 },
+        { radius: 50, points: 1, hue: 0, weight: 15 }
+    ];
+    
+    let totalWeight = types.reduce((s, t) => s + t.weight, 0);
+    let rand = Math.random() * totalWeight;
+    let chosen = types[0];
+    for (const t of types) {
+        rand -= t.weight;
+        if (rand <= 0) {
+            chosen = t;
+            break;
         }
-        
-        const b = new Bubble(this.width, this.height);
-        b.radius = chosen.radius + (Math.random() - 0.5) * 6;
-        b.points = chosen.points;
-        b.hue = chosen.hue + (Math.random() - 0.5) * 20;
-        b.type = chosen;
-        
-        this.bonusManager.applyEffects(b);
-        
-        return b;
     }
+    
+    const b = new Bubble(this.width, this.height);
+    b.radius = chosen.radius + (Math.random() - 0.5) * 6;
+    b.points = chosen.points;
+    b.hue = chosen.hue + (Math.random() - 0.5) * 20;
+    b.type = chosen;
+    
+    // ===== НОВОЕ: ПРОВЕРКА НА БЕЗОПАСНУЮ ЗОНУ =====
+    // Если пузырёк появился в запрещённой зоне — спавним заново
+    if (!b.isInSafeZone()) {
+        // Пробуем спавнить в другом месте
+        let attempts = 0;
+        while (!b.isInSafeZone() && attempts < 30) {
+            b.x = Math.random() * (this.width - b.radius * 2) + b.radius;
+            b.y = this.height + b.radius + Math.random() * 100;
+            attempts++;
+        }
+        // Если всё равно в запрещённой зоне — ставим в центр
+        if (!b.isInSafeZone()) {
+            b.x = this.width / 2 + (Math.random() - 0.5) * 100;
+            b.y = this.height * 0.7 + Math.random() * 100;
+        }
+    }
+    // =========================================
+    
+    this.bonusManager.applyEffects(b);
+    return b;
+}
 
     popBubble(x, y) {
         let popped = false;

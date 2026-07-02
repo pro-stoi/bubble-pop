@@ -11,41 +11,43 @@
     <!-- =================== -->
 </head>
 <body>
+    <!-- ===== ИГРОВОЙ КАНВАС (ПУЗЫРЬКИ) ===== -->
     <canvas id="gameCanvas"></canvas>
     
+    <!-- ===== UI ПАНЕЛЬ (ПОВЕРХ КАНВАСА) ===== -->
     <div id="ui">
-        <!-- ===== ВЕРХНЯЯ ПАНЕЛЬ (СЧЁТ + КНОПКИ) ===== -->
+        <!-- Верхняя панель (счёт + кнопки) -->
         <div id="topBar">
             <div class="score-group">
                 <div id="score">💎 0</div>
                 <div id="pendingScore">+0</div>
             </div>
+            
+            <div class="controls-group">
+                <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
+                    <span>🏠</span>
+                </button>
+                <button class="game-btn restart-btn" id="restartBtn" aria-label="Рестарт">
+                    <span>🔄</span>
+                </button>
+                <button class="game-btn sound-btn" id="soundToggleBtn" aria-label="Звук">
+                    <span class="sound-icon">🔊</span>
+                </button>
+                <button class="game-btn share-btn" id="shareBtn" aria-label="Поделиться">
+                    <span>📤</span>
+                </button>
+                <button class="game-btn exit-btn" id="exitBtn" aria-label="Выйти">
+                    <span>🚪</span>
+                </button>
+            </div>
+            
             <div class="combo-group">
                 <div id="combo">🔥 x0</div>
                 <div id="multiplier">×1</div>
             </div>
         </div>
 
-        <!-- ===== КНОПКИ УПРАВЛЕНИЯ ===== -->
-        <div id="gameControls">
-            <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
-                <span>🏠</span>
-            </button>
-            <button class="game-btn restart-btn" id="restartBtn" aria-label="Рестарт">
-                <span>🔄</span>
-            </button>
-            <button class="game-btn sound-btn" id="soundToggleBtn" aria-label="Звук">
-                <span class="sound-icon">🔊</span>
-            </button>
-            <button class="game-btn share-btn" id="shareBtn" aria-label="Поделиться">
-                <span>📤</span>
-            </button>
-            <button class="game-btn exit-btn" id="exitBtn" aria-label="Выйти">
-                <span>🚪</span>
-            </button>
-        </div>
-
-        <!-- ===== БОНУСЫ ===== -->
+        <!-- Левая панель (бонусы) -->
         <div id="bonusContainer" class="bonus-container"></div>
     </div>
 

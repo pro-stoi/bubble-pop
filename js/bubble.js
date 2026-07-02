@@ -3,9 +3,42 @@ class Bubble {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
         
+        // ===== ЗОНЫ-ОГРАНИЧИТЕЛИ =====
+        // Левая зона (бонусы) — запрещённая зона
+        this.forbiddenLeft = 80;   // Ширина левой запрещённой зоны
+        this.forbiddenTop = 100;   // Верхняя зона (счёт + кнопки)
+        this.forbiddenRight = 70;  // Правая зона (кнопки управления)
+        // ==============================
+        
         this.radius = 20 + Math.random() * 45;
-        this.x = Math.random() * (canvasWidth - this.radius * 2) + this.radius;
-        this.y = canvasHeight + this.radius + Math.random() * 100;
+        
+        // ===== СПАВН С УЧЁТОМ ОГРАНИЧЕНИЙ =====
+        let attempts = 0;
+        let maxAttempts = 50;
+        let validPosition = false;
+        
+        while (!validPosition && attempts < maxAttempts) {
+            this.x = Math.random() * (canvasWidth - this.radius * 2) + this.radius;
+            this.y = canvasHeight + this.radius + Math.random() * 100;
+            
+            // Проверяем, не попадает ли пузырёк в запрещённые зоны
+            const isInLeftZone = this.x < this.forbiddenLeft + this.radius;
+            const isInRightZone = this.x > canvasWidth - this.forbiddenRight - this.radius;
+            const isInTopZone = this.y < this.forbiddenTop + this.radius;
+            
+            if (!isInLeftZone && !isInRightZone && !isInTopZone) {
+                validPosition = true;
+            }
+            attempts++;
+        }
+        
+        // Если не нашли место — ставим в безопасное место
+        if (!validPosition) {
+            this.x = canvasWidth / 2 + (Math.random() - 0.5) * 100;
+            this.y = canvasHeight + this.radius + Math.random() * 100;
+        }
+        // =====================================
+        
         this.speed = 0.6 + Math.random() * 1.8;
         this.hue = Math.random() * 360;
         this.saturation = 80 + Math.random() * 20;
@@ -18,16 +51,30 @@ class Bubble {
         this.points = 1;
     }
 
+    // ===== ПРОВЕРКА, В БЕЗОПАСНОЙ ЛИ ЗОНЕ =====
+    isInSafeZone() {
+        const isInLeftZone = this.x < this.forbiddenLeft + this.radius;
+        const isInRightZone = this.x > this.canvasWidth - this.forbiddenRight - this.radius;
+        const isInTopZone = this.y < this.forbiddenTop + this.radius;
+        return !isInLeftZone && !isInRightZone && !isInTopZone;
+    }
+
     update() {
         this.y -= this.speed;
         this.wobble += this.wobbleSpeed;
         this.x += Math.sin(this.wobble) * this.wobbleAmount;
+
+        // Если пузырёк залетел в запрещённую зону — убираем его
+        if (!this.isInSafeZone() && this.y < this.canvasHeight * 0.6) {
+            this.alive = false;
+        }
 
         if (this.y < -this.radius * 3) {
             this.alive = false;
         }
     }
 
+    // ===== ОСТАЛЬНЫЕ МЕТОДЫ БЕЗ ИЗМЕНЕНИЙ =====
     draw(ctx) {
         if (!this.alive) return;
 

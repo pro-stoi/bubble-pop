@@ -18,6 +18,21 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const x = clientX - rect.left;
         const y = clientY - rect.top;
+        
+        // Проверяем, не на UI ли клик
+        const uiElements = document.querySelectorAll('.game-btn, .bonus-btn, #topBar, #bonusContainer');
+        let isOnUI = false;
+        
+        uiElements.forEach(el => {
+            const elRect = el.getBoundingClientRect();
+            if (clientX >= elRect.left && clientX <= elRect.right &&
+                clientY >= elRect.top && clientY <= elRect.bottom) {
+                isOnUI = true;
+            }
+        });
+        
+        if (isOnUI) return;
+        
         game.handleTap(x, y);
     }
 
@@ -30,39 +45,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const pendingEl = document.getElementById('pendingScore');
     const multiplierEl = document.getElementById('multiplier');
 
-   // Кнопка "Назад" в игре
-document.getElementById('backMenuBtn').addEventListener('click', () => {
-    game.saveGameResult();
-    goToWithAd('index.html'); // ← ЗАМЕНИЛИ на goToWithAd
-});
-  document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    game.saveGameResult();
-    goToWithAd('index.html'); // ← ЗАМЕНИЛИ
-});
+    // ===== ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ И ВЫХОДА =====
+    function saveAndExit(destination) {
+        game.saveGameResult();
+        if (destination === 'menu') {
+            goTo('index.html');
+        } else if (destination === 'vk') {
+            exitToVK();
+        }
+    }
+
+    // ===== КНОПКА "НАЗАД" (В МЕНЮ) =====
+    document.getElementById('backMenuBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Выйти в меню? Прогресс будет сохранён.')) {
+            saveAndExit('menu');
+        }
+    });
+    
+    document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (confirm('Выйти в меню? Прогресс будет сохранён.')) {
+            saveAndExit('menu');
+        }
+    });
 
     // ===== КНОПКА РЕСТАРТ =====
- document.getElementById('restartBtn').addEventListener('click', () => {
-    if (confirm('Начать заново?')) {
-        game.saveGameResult();
-        window.location.reload();
-    }
-});
+    document.getElementById('restartBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('Начать заново? Прогресс будет потерян.')) {
+            game.saveGameResult();
+            window.location.reload();
+        }
+    });
+    
     document.getElementById('restartBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
-        if (confirm('Начать заново?')) {
+        e.stopPropagation();
+        if (confirm('Начать заново? Прогресс будет потерян.')) {
             game.saveGameResult();
             window.location.reload();
         }
     });
 
     // ===== КНОПКА ЗВУКА =====
-    document.getElementById('soundToggleBtn').addEventListener('click', () => {
+    document.getElementById('soundToggleBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
         toggleSound();
     });
     document.getElementById('soundToggleBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         toggleSound();
+    });
+
+    // ===== КНОПКА ПОДЕЛИТЬСЯ =====
+    document.getElementById('shareBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const stats = game.getStats();
+        vk.shareResult(stats.score, stats.combo);
+    });
+    document.getElementById('shareBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const stats = game.getStats();
+        vk.shareResult(stats.score, stats.combo);
+    });
+
+    // ===== КНОПКА ВЫХОДА (В VK) =====
+    document.getElementById('exitBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Сохраняем результат перед выходом
+        game.saveGameResult();
+        exitToVK();
+    });
+    document.getElementById('exitBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        game.saveGameResult();
+        exitToVK();
     });
 
     // ===== ИГРОВОЙ ЦИКЛ =====
@@ -70,7 +132,6 @@ document.getElementById('backMenuBtn').addEventListener('click', () => {
         game.update();
         game.draw();
         
-        // Обновляем UI
         if (pendingEl) {
             pendingEl.textContent = `+${game.pendingScore}`;
         }
@@ -91,15 +152,12 @@ document.getElementById('backMenuBtn').addEventListener('click', () => {
 
     gameLoop();
 
-    // ===== АДАПТАЦИЯ =====
     window.addEventListener('resize', () => {
         game.resize();
     });
 
-    // ===== СОХРАНЕНИЕ ЛУЧШЕГО РЕЗУЛЬТАТА =====
     let bestScore = parseInt(localStorage.getItem('bubbleBest') || '0');
     
-    // Проверяем рекорд каждые 5 секунд
     setInterval(() => {
         if (game.score > bestScore) {
             bestScore = game.score;
@@ -109,23 +167,4 @@ document.getElementById('backMenuBtn').addEventListener('click', () => {
 
     console.log('🫧 Пузырьки запущены!');
     console.log(`🏆 Рекорд: ${bestScore}`);
-});
-// Кнопка "Поделиться"
-document.getElementById('shareBtn').addEventListener('click', () => {
-    const stats = game.getStats();
-    vk.shareResult(stats.score, stats.combo);
-});
-
-document.getElementById('shareBtn').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    const stats = game.getStats();
-    vk.shareResult(stats.score, stats.combo);
-});
-// ===== КНОПКА ВЫХОДА =====
-document.getElementById('exitBtn').addEventListener('click', () => {
-    exitToVK();
-});
-document.getElementById('exitBtn').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    exitToVK();
 });

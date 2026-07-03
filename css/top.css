@@ -261,3 +261,24 @@ body {
     cursor: pointer;
     touch-action: manipulation;
 }
+/* ===== ПОДСВЕТКА ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ===== */
+.top-row.current-user {
+    background: rgba(100, 200, 255, 0.15);
+    border-left: 3px solid #66ccff;
+    border-radius: 4px;
+    animation: glowPulse 2s ease-in-out infinite;
+}
+
+.top-row.current-user .name {
+    color: #66ccff;
+    font-weight: bold;
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        box-shadow: inset 0 0 20px rgba(100, 200, 255, 0.05);
+    }
+    50% {
+        box-shadow: inset 0 0 30px rgba(100, 200, 255, 0.15);
+    }
+}

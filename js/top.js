@@ -1,52 +1,99 @@
 document.addEventListener('DOMContentLoaded', () => {
-    let topData = JSON.parse(localStorage.getItem('bubbleTop') || '[]');
+    let topData = [];
     let currentSort = 'score';
+    let isLoading = true;
 
-    // ===== ФУНКЦИЯ ФОРМАТИРОВАНИЯ =====
-    function formatDate(dateStr) {
-        const parts = dateStr.split(' ');
-        if (parts.length === 2) {
-            return parts[0] + ' ' + parts[1];
-        }
-        return dateStr;
+    function getMedal(place) {
+        if (place === 1) return '🥇';
+        if (place === 2) return '🥈';
+        if (place === 3) return '🥉';
+        return place;
     }
 
-    // ===== РЕНДЕРИНГ ТОПА =====
+    function getPlaceClass(place) {
+        if (place === 1) return 'place gold';
+        if (place === 2) return 'place silver';
+        if (place === 3) return 'place bronze';
+        return 'place';
+    }
+
+    async function loadGlobalTop() {
+        isLoading = true;
+        document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
+        
+        try {
+            topData = await vk.getGlobalTop();
+            
+            if (topData.length === 0) {
+                const localTop = JSON.parse(localStorage.getItem('bubbleTop') || '[]');
+                if (localTop.length > 0) {
+                    topData = localTop.map(item => ({
+                        userId: 'local_' + Math.random().toString(36).substring(2, 10),
+                        userName: 'Игрок',
+                        score: item.score || 0,
+                        maxCombo: item.maxCombo || 0,
+                        challengePoints: 0,
+                        date: item.date || new Date().toISOString()
+                    }));
+                } else {
+                    document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+                    isLoading = false;
+                    return;
+                }
+            }
+            
+            sortTopData();
+            renderTop();
+            
+        } catch (error) {
+            console.warn('⚠️ Ошибка загрузки топа:', error);
+            const localTop = JSON.parse(localStorage.getItem('bubbleTop') || '[]');
+            topData = localTop.map(item => ({
+                userId: 'local_' + Math.random().toString(36).substring(2, 10),
+                userName: 'Игрок',
+                score: item.score || 0,
+                maxCombo: item.maxCombo || 0,
+                challengePoints: 0,
+                date: item.date || new Date().toISOString()
+            }));
+            if (topData.length === 0) {
+                document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+                isLoading = false;
+                return;
+            }
+            sortTopData();
+            renderTop();
+        }
+        
+        isLoading = false;
+    }
+
+    function sortTopData() {
+        if (currentSort === 'score') {
+            topData.sort((a, b) => (b.score || 0) - (a.score || 0));
+        } else if (currentSort === 'combo') {
+            topData.sort((a, b) => (b.maxCombo || 0) - (a.maxCombo || 0));
+        } else if (currentSort === 'bonus') {
+            topData.sort((a, b) => (b.challengePoints || 0) - (a.challengePoints || 0));
+        }
+    }
+
     function renderTop() {
         const container = document.getElementById('topList');
+        const top10 = topData.slice(0, 10);
         
-        if (topData.length === 0) {
-            container.innerHTML = `<div class="top-empty">🎯 Сыграйте первую игру!</div>`;
-            return;
-        }
-
-        let sorted = [...topData];
-        if (currentSort === 'score') {
-            sorted.sort((a, b) => (b.score || 0) - (a.score || 0));
-        } else if (currentSort === 'combo') {
-            sorted.sort((a, b) => (b.maxCombo || 0) - (a.maxCombo || 0));
-        } else if (currentSort === 'bonus') {
-            sorted.sort((a, b) => (b.bestBonus || 0) - (a.bestBonus || 0));
-        }
-
-        sorted = sorted.slice(0, 10);
-
-        container.innerHTML = sorted.map((item, index) => {
+        container.innerHTML = top10.map((item, index) => {
             const place = index + 1;
-            let placeClass = 'place';
-            if (place === 1) placeClass += ' gold';
-            else if (place === 2) placeClass += ' silver';
-            else if (place === 3) placeClass += ' bronze';
-
-            const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : place;
-
+            const medal = getMedal(place);
+            const placeClass = getPlaceClass(place);
+            
             return `
                 <div class="top-row">
                     <span class="${placeClass}">${medal}</span>
-                    <span class="date">${formatDate(item.date || '—')}</span>
+                    <span class="name">${item.userName || 'Игрок'}</span>
                     <span class="score">${item.score || 0}</span>
                     <span class="combo">${item.maxCombo || 0}</span>
-                    <span class="bonus">${item.bestBonus || 0}</span>
+                    <span class="bonus">${item.challengePoints || 0}</span>
                 </div>
             `;
         }).join('');
@@ -58,25 +105,31 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentSort = btn.dataset.sort;
-            renderTop();
+            if (!isLoading && topData.length > 0) {
+                sortTopData();
+                renderTop();
+            }
         });
         btn.addEventListener('touchend', (e) => {
             e.preventDefault();
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentSort = btn.dataset.sort;
-            renderTop();
+            if (!isLoading && topData.length > 0) {
+                sortTopData();
+                renderTop();
+            }
         });
     });
 
-    // ===== НАЗАД =====
- document.getElementById('backMenuBtn').addEventListener('click', () => {
-    goTo('index.html');
-});
-document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    goTo('index.html');
-});
+    // ===== КНОПКА "НАЗАД" =====
+    document.getElementById('backMenuBtn').addEventListener('click', () => {
+        goTo('index.html');
+    });
+    document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        goTo('index.html');
+    });
 
     // ===== ЗВУК =====
     document.getElementById('soundToggleTop').addEventListener('click', () => {
@@ -87,22 +140,29 @@ document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
         toggleSound();
     });
 
+    // ===== КНОПКА ВЫХОДА =====
+    document.getElementById('exitBtn').addEventListener('click', () => {
+        exitToVK();
+    });
+    document.getElementById('exitBtn').addEventListener('touchend', (e) => {
+        e.preventDefault();
+        exitToVK();
+    });
+
     // ===== ОЧИСТКА =====
     document.getElementById('clearTopBtn').addEventListener('click', () => {
         if (confirm('Удалить все рекорды?')) {
             localStorage.removeItem('bubbleTop');
+            localStorage.removeItem('globalTop');
             topData = [];
             renderTop();
         }
     });
 
-    // ===== ПЕРВЫЙ РЕНДЕР =====
-    renderTop();
+    // ===== ЗАГРУЗКА =====
+    loadGlobalTop();
 
-    // ============================================================
-    // ===== ФОНОВЫЕ ШАРИКИ ДЛЯ ЛОПАНИЯ =====
-    // ============================================================
-
+    // ===== ФОНОВЫЕ ШАРИКИ =====
     const canvas = document.createElement('canvas');
     canvas.id = 'topBgCanvas';
     canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:0;pointer-events:none;';
@@ -208,7 +268,6 @@ document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
         }
     };
 
-    // Обработчик тапа по топу
     document.querySelector('.top-container').addEventListener('click', (e) => {
         const rect = canvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -228,7 +287,6 @@ document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
     function animateBg() {
         ctx.clearRect(0, 0, width, height);
         
-        // Прозрачный фон (чтобы был виден основной контент)
         ctx.fillStyle = 'rgba(0,0,0,0)';
         ctx.fillRect(0, 0, width, height);
 
@@ -251,12 +309,4 @@ document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
         requestAnimationFrame(animateBg);
     }
     animateBg();
-});
-// ===== КНОПКА ВЫХОДА В ТОПЕ =====
-document.getElementById('exitBtn').addEventListener('click', () => {
-    exitToVK();
-});
-document.getElementById('exitBtn').addEventListener('touchend', (e) => {
-    e.preventDefault();
-    exitToVK();
 });

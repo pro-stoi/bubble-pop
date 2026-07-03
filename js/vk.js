@@ -11,9 +11,9 @@ class VKManager {
         this.topCache = null;
         this.topCacheTime = 0;
         
-        // ===== АДРЕС СЕРВЕРА =====
+        // ===== АДРЕС СЕРВЕРА (ДОМЕН) =====
         this.serverUrl = 'https://neurodrone-arena.ru/api';
-        // =========================
+        // =================================
     }
 
     init() {
@@ -78,8 +78,7 @@ class VKManager {
     // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
     async loginToServer() {
         try {
-            console.log('📤 Авторизация на сервере...');
-            const response = await fetch(`${this.serverUrl}/user/bubble/login`, {
+            const response = await fetch(`${this.serverUrl}/user/vk/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -90,34 +89,28 @@ class VKManager {
                 })
             });
             
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
             const user = await response.json();
             this.dbUserId = user.id;
-            console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
+            console.log('✅ Авторизован на сервере, ID:', this.dbUserId);
             
         } catch (error) {
-            console.error('❌ Ошибка авторизации:', error);
-            // Продолжаем работу без авторизации (сохранение будет локальным)
+            console.error('❌ Ошибка авторизации на сервере:', error);
         }
     }
 
     // ===== СОХРАНИТЬ РЕЗУЛЬТАТ НА СЕРВЕР =====
     async saveToGlobalTop(score, maxCombo, challengePoints) {
-        console.log('💾 Сохранение на сервер:', { score, maxCombo, challengePoints });
-        
-        // Если нет ID пользователя — пробуем авторизоваться
         if (!this.dbUserId) {
             console.warn('⚠️ Нет ID пользователя, пробуем авторизоваться...');
             await this.loginToServer();
             if (!this.dbUserId) {
                 console.warn('⚠️ Не удалось авторизоваться, сохранение локально');
                 this.saveToLocalTop(score, maxCombo, challengePoints);
-                return false;
+                return;
             }
         }
+        
+        console.log('💾 Сохранение на сервер:', { score, maxCombo, challengePoints });
         
         try {
             const response = await fetch(`${this.serverUrl}/top/save`, {
@@ -132,10 +125,6 @@ class VKManager {
                     challengePoints: challengePoints || 0
                 })
             });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
             
             const data = await response.json();
             
@@ -168,11 +157,6 @@ class VKManager {
         
         try {
             const response = await fetch(`${this.serverUrl}/top`);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
             const top = await response.json();
             
             if (Array.isArray(top)) {
@@ -192,7 +176,6 @@ class VKManager {
 
     // ===== ЛОКАЛЬНЫЙ ТОП (ЗАПАСНОЙ ВАРИАНТ) =====
     saveToLocalTop(score, maxCombo, challengePoints) {
-        console.log('💾 Сохранение в локальный топ...');
         let top = JSON.parse(localStorage.getItem('globalTop') || '[]');
         
         const userEntry = {

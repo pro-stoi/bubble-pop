@@ -44,14 +44,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const pendingEl = document.getElementById('pendingScore');
     const multiplierEl = document.getElementById('multiplier');
 
-    // ===== КНОПКА "НАЗАД" С РЕКЛАМОЙ =====
+    // ===== КНОПКА "НАЗАД" С РЕКЛАМОЙ (ОДНА) =====
     document.getElementById('backMenuBtn').addEventListener('click', () => {
         game.saveGameResult();
         // Показываем рекламу при выходе
         if (typeof vkBridge !== 'undefined') {
             vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
                 .finally(() => {
-                    goToWithAd('index.html');
+                    goTo('index.html');  // ← goTo, НЕ goToWithAd!
                 });
         } else {
             goTo('index.html');
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof vkBridge !== 'undefined') {
             vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
                 .finally(() => {
-                    goTo('index.html');
+                    goTo('index.html');  // ← goTo, НЕ goToWithAd!
                 });
         } else {
             goTo('index.html');

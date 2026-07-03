@@ -51,7 +51,7 @@ async function loadGlobalTop() {
     isLoading = false;
 }
 
-  function sortTopData() {
+function sortTopData() {
     if (currentSort === 'score') {
         topData.sort((a, b) => (b.score || 0) - (a.score || 0));
     } else if (currentSort === 'combo') {
@@ -61,7 +61,7 @@ async function loadGlobalTop() {
     }
 }
 
- function renderTop() {
+function renderTop() {
     const container = document.getElementById('topList');
     const top10 = topData.slice(0, 10);
     

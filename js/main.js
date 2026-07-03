@@ -51,10 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof vkBridge !== 'undefined') {
             vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
                 .finally(() => {
-                    goTo('index.html');
+                    goToWithAd('index.html');
                 });
         } else {
-            goTo('index.html');
+            goToWithAd('index.html');
         }
     });
     

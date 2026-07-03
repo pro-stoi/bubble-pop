@@ -1,170 +1,249 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.getElementById('gameCanvas');
-    const game = new Game(canvas);
+// js/vk.js
 
-    // ===== ОБРАБОТКА ТАПА =====
-    function handleTap(e) {
-        const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
+class VKManager {
+    constructor() {
+        this.isReady = false;
+        this.userId = null;
+        this.userName = 'Игрок';
+        this.appId = 54650664;
+        this.bridge = null;
+        this.dbUserId = null;
+        this.topCache = null;
+        this.topCacheTime = 0;
         
-        if (e.touches) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-            e.preventDefault();
+        // ===== АДРЕС СЕРВЕРА ДЛЯ ПУЗЫРЬКОВ =====
+        this.serverUrl = 'https://neurodrone-arena.ru/api/bubble';
+        // =========================================
+    }
+
+    init() {
+        if (typeof vkBridge !== 'undefined') {
+            this.bridge = vkBridge;
+            this.isReady = true;
+            
+            this.bridge.send('VKWebAppInit')
+                .then(() => {
+                    console.log('✅ VK Bridge инициализирован');
+                    this.getUserInfo();
+                })
+                .catch((error) => {
+                    console.warn('⚠️ Ошибка инициализации VK:', error);
+                    this.getUserInfo();
+                });
         } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
+            console.warn('⚠️ VK Bridge не загружен');
+            this.loadBridge();
         }
-        
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        
-        // Проверяем, не на UI ли клик
-        const uiElements = document.querySelectorAll('.game-btn, .bonus-btn, #topBar, #bonusContainer');
-        let isOnUI = false;
-        
-        uiElements.forEach(el => {
-            const elRect = el.getBoundingClientRect();
-            if (clientX >= elRect.left && clientX <= elRect.right &&
-                clientY >= elRect.top && clientY <= elRect.bottom) {
-                isOnUI = true;
+    }
+
+    loadBridge() {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
+        script.onload = () => {
+            if (typeof vkBridge !== 'undefined') {
+                this.bridge = vkBridge;
+                this.isReady = true;
+                this.bridge.send('VKWebAppInit')
+                    .then(() => {
+                        console.log('✅ VK Bridge загружен и инициализирован');
+                        this.getUserInfo();
+                    })
+                    .catch(console.warn);
             }
-        });
-        
-        if (isOnUI) return;
-        
-        game.handleTap(x, y);
+        };
+        script.onerror = () => {
+            console.warn('⚠️ Не удалось загрузить VK Bridge');
+        };
+        document.head.appendChild(script);
     }
 
-    canvas.addEventListener('click', handleTap);
-    canvas.addEventListener('touchstart', handleTap, { passive: false });
-
-    // ===== UI ЭЛЕМЕНТЫ =====
-    const scoreEl = document.getElementById('score');
-    const comboEl = document.getElementById('combo');
-    const pendingEl = document.getElementById('pendingScore');
-    const multiplierEl = document.getElementById('multiplier');
-
-    // ===== ФУНКЦИЯ ДЛЯ СОХРАНЕНИЯ И ВЫХОДА =====
-    function saveAndExit(destination) {
-        game.saveGameResult();
-        if (destination === 'menu') {
-            goTo('index.html');
-        } else if (destination === 'vk') {
-            exitToVK();
+    async getUserInfo() {
+        if (!this.isReady) return;
+        
+        try {
+            const data = await this.bridge.send('VKWebAppGetUserInfo');
+            this.userId = String(data.id);
+            this.userName = data.first_name + ' ' + data.last_name;
+            console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
+            
+            await this.loginToServer();
+            
+        } catch (error) {
+            console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
         }
     }
 
-    // ===== КНОПКА "НАЗАД" (В МЕНЮ) =====
-    document.getElementById('backMenuBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm('Выйти в меню? Прогресс будет сохранён.')) {
-            saveAndExit('menu');
+    async loginToServer() {
+        try {
+            const response = await fetch(`${this.serverUrl}/user/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vkId: this.userId,
+                    userName: this.userName
+                })
+            });
+            
+            const user = await response.json();
+            this.dbUserId = user.id;
+            console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
+            
+        } catch (error) {
+            console.error('❌ Ошибка авторизации:', error);
+            this.dbUserId = null;
         }
-    });
-    
-    document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (confirm('Выйти в меню? Прогресс будет сохранён.')) {
-            saveAndExit('menu');
+    }
+
+    async saveToGlobalTop(score, maxCombo, challengePoints) {
+        if (!this.dbUserId) {
+            await this.loginToServer();
+            if (!this.dbUserId) {
+                this.saveToLocalTop(score, maxCombo, challengePoints);
+                return false;
+            }
         }
-    });
-
-    // ===== КНОПКА РЕСТАРТ =====
-    document.getElementById('restartBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (confirm('Начать заново? Прогресс будет потерян.')) {
-            game.saveGameResult();
-            window.location.reload();
-        }
-    });
-    
-    document.getElementById('restartBtn').addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (confirm('Начать заново? Прогресс будет потерян.')) {
-            game.saveGameResult();
-            window.location.reload();
-        }
-    });
-
-    // ===== КНОПКА ЗВУКА =====
-    document.getElementById('soundToggleBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleSound();
-    });
-    document.getElementById('soundToggleBtn').addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleSound();
-    });
-
-    // ===== КНОПКА ПОДЕЛИТЬСЯ =====
-    document.getElementById('shareBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        const stats = game.getStats();
-        vk.shareResult(stats.score, stats.combo);
-    });
-    document.getElementById('shareBtn').addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const stats = game.getStats();
-        vk.shareResult(stats.score, stats.combo);
-    });
-
-    // ===== КНОПКА ВЫХОДА (В VK) =====
-    document.getElementById('exitBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        // Сохраняем результат перед выходом
-        game.saveGameResult();
-        exitToVK();
-    });
-    document.getElementById('exitBtn').addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        game.saveGameResult();
-        exitToVK();
-    });
-
-    // ===== ИГРОВОЙ ЦИКЛ =====
-    function gameLoop() {
-        game.update();
-        game.draw();
         
-        if (pendingEl) {
-            pendingEl.textContent = `+${game.pendingScore}`;
+        try {
+            const response = await fetch(`${this.serverUrl}/top/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: this.dbUserId,
+                    score: score || 0,
+                    maxCombo: maxCombo || 0,
+                    challengePoints: challengePoints || 0
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log('✅ Результат сохранён на сервере');
+                this.topCache = null;
+                return true;
+            } else {
+                console.warn('⚠️ Ошибка сохранения:', data.message);
+                this.saveToLocalTop(score, maxCombo, challengePoints);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Ошибка соединения с сервером:', error);
+            this.saveToLocalTop(score, maxCombo, challengePoints);
+            return false;
         }
-        if (multiplierEl) {
-            multiplierEl.textContent = `×${game.multiplier}`;
+    }
+
+    async getGlobalTop() {
+        try {
+            const response = await fetch(`${this.serverUrl}/top`);
+            const top = await response.json();
+            
+            if (Array.isArray(top)) {
+                console.log('📊 Загружено записей с сервера:', top.length);
+                this.topCache = top;
+                this.topCacheTime = Date.now();
+                return top;
+            } else {
+                return this.getLocalTop();
+            }
+        } catch (error) {
+            console.error('❌ Ошибка соединения с сервером:', error);
+            return this.getLocalTop();
         }
-        scoreEl.textContent = `💎 ${game.score}`;
+    }
+
+    saveToLocalTop(score, maxCombo, challengePoints) {
+        let top = JSON.parse(localStorage.getItem('globalTop') || '[]');
         
-        if (game.combo > 1) {
-            comboEl.textContent = `🔥 x${game.combo}`;
-            comboEl.classList.add('show');
+        const userEntry = {
+            userId: this.dbUserId || 'local',
+            userName: this.userName || 'Игрок',
+            score: score || 0,
+            maxCombo: maxCombo || 0,
+            challengePoints: challengePoints || 0
+        };
+        
+        const existingIndex = top.findIndex(item => item.userId === userEntry.userId);
+        if (existingIndex >= 0) {
+            if (userEntry.score > top[existingIndex].score) {
+                top[existingIndex] = userEntry;
+            }
         } else {
-            comboEl.classList.remove('show');
+            top.push(userEntry);
         }
-
-        requestAnimationFrame(gameLoop);
+        
+        top.sort((a, b) => (b.score || 0) - (a.score || 0));
+        if (top.length > 100) top = top.slice(0, 100);
+        
+        localStorage.setItem('globalTop', JSON.stringify(top));
+        console.log('✅ Результат сохранён локально');
     }
 
-    gameLoop();
+    getLocalTop() {
+        return JSON.parse(localStorage.getItem('globalTop') || '[]');
+    }
 
-    window.addEventListener('resize', () => {
-        game.resize();
-    });
-
-    let bestScore = parseInt(localStorage.getItem('bubbleBest') || '0');
-    
-    setInterval(() => {
-        if (game.score > bestScore) {
-            bestScore = game.score;
-            localStorage.setItem('bubbleBest', String(bestScore));
+    async shareResult(score, combo) {
+        if (!this.isReady) {
+            this.fallbackShare(score, combo);
+            return;
         }
-    }, 5000);
 
-    console.log('🫧 Пузырьки запущены!');
-    console.log(`🏆 Рекорд: ${bestScore}`);
+        const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧`;
+
+        try {
+            await this.bridge.send('VKWebAppShare', { message: message });
+            this.showNotification('🎉 Результат опубликован!');
+        } catch (error) {
+            this.fallbackShare(score, combo);
+        }
+    }
+
+    fallbackShare(score, combo) {
+        const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;
+        const url = 'https://pro-stoi.github.io/bubble-pop/';
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text + ' ' + url);
+            this.showNotification('📋 Текст скопирован!');
+        } else {
+            alert(text + '\n' + url);
+        }
+    }
+
+    showNotification(text) {
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 16px;
+            font-size: 16px;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            max-width: 90%;
+            text-align: center;
+        `;
+        popup.textContent = text;
+        document.body.appendChild(popup);
+        
+        setTimeout(() => { popup.style.opacity = '1'; }, 50);
+        setTimeout(() => {
+            popup.style.opacity = '0';
+            setTimeout(() => popup.remove(), 400);
+        }, 3000);
+    }
+}
+
+const vk = new VKManager();
+
+document.addEventListener('DOMContentLoaded', () => {
+    vk.init();
 });

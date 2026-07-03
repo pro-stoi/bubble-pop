@@ -17,56 +17,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'place';
     }
 
-    async function loadGlobalTop() {
-        isLoading = true;
-        document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
+// В loadGlobalTop() используем vk.getGlobalTop()
+async function loadGlobalTop() {
+    isLoading = true;
+    document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
+    
+    try {
+        // Получаем глобальный топ из VK Storage
+        topData = await vk.getGlobalTop();
         
-        try {
-            topData = await vk.getGlobalTop();
-            
-            if (topData.length === 0) {
-                const localTop = JSON.parse(localStorage.getItem('bubbleTop') || '[]');
-                if (localTop.length > 0) {
-                    topData = localTop.map(item => ({
-                        userId: 'local_' + Math.random().toString(36).substring(2, 10),
-                        userName: 'Игрок',
-                        score: item.score || 0,
-                        maxCombo: item.maxCombo || 0,
-                        challengePoints: 0,
-                        date: item.date || new Date().toISOString()
-                    }));
-                } else {
-                    document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
-                    isLoading = false;
-                    return;
-                }
-            }
-            
-            sortTopData();
-            renderTop();
-            
-        } catch (error) {
-            console.warn('⚠️ Ошибка загрузки топа:', error);
-            const localTop = JSON.parse(localStorage.getItem('bubbleTop') || '[]');
-            topData = localTop.map(item => ({
-                userId: 'local_' + Math.random().toString(36).substring(2, 10),
-                userName: 'Игрок',
-                score: item.score || 0,
-                maxCombo: item.maxCombo || 0,
-                challengePoints: 0,
-                date: item.date || new Date().toISOString()
-            }));
-            if (topData.length === 0) {
-                document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
-                isLoading = false;
-                return;
-            }
-            sortTopData();
-            renderTop();
+        if (topData.length === 0) {
+            document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+            isLoading = false;
+            return;
         }
         
-        isLoading = false;
+        sortTopData();
+        renderTop();
+        
+    } catch (error) {
+        console.warn('⚠️ Ошибка загрузки топа:', error);
+        // Пробуем локальный топ
+        const localTop = JSON.parse(localStorage.getItem('globalTop') || '[]');
+        if (localTop.length > 0) {
+            topData = localTop;
+            sortTopData();
+            renderTop();
+        } else {
+            document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+        }
     }
+    
+    isLoading = false;
+}
 
     function sortTopData() {
         if (currentSort === 'score') {

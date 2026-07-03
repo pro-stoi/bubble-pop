@@ -44,16 +44,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const pendingEl = document.getElementById('pendingScore');
     const multiplierEl = document.getElementById('multiplier');
 
-    // ===== КНОПКА "НАЗАД" =====
+    // ===== КНОПКА "НАЗАД" С РЕКЛАМОЙ =====
     document.getElementById('backMenuBtn').addEventListener('click', () => {
         game.saveGameResult();
-        goTo('index.html');
+        // Показываем рекламу при выходе
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                .finally(() => {
+                    goTo('index.html');
+                });
+        } else {
+            goTo('index.html');
+        }
     });
     
     document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
         game.saveGameResult();
-        goTo('index.html');
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                .finally(() => {
+                    goTo('index.html');
+                });
+        } else {
+            goTo('index.html');
+        }
     });
 
     // ===== КНОПКА РЕСТАРТ =====

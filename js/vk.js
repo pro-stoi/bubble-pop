@@ -12,7 +12,7 @@ class VKManager {
         this.topCacheTime = 0;
         
         // ===== АДРЕС ВАШЕГО СЕРВЕРА =====
-        this.serverUrl = 'https://ваш-сервер.ru/api';
+        this.serverUrl = 'https://170.168.10.167:8080/api'; 
         // =================================
     }
 

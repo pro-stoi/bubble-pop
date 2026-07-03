@@ -7,8 +7,13 @@ class VKManager {
         this.userName = 'Игрок';
         this.appId = 54650664;
         this.bridge = null;
+        this.dbUserId = null; // ID в вашей БД
         this.topCache = null;
         this.topCacheTime = 0;
+        
+        // ===== АДРЕС ВАШЕГО СЕРВЕРА =====
+        this.serverUrl = 'https://ваш-сервер.ru/api';
+        // =================================
     }
 
     init() {
@@ -23,6 +28,7 @@ class VKManager {
                 })
                 .catch((error) => {
                     console.warn('⚠️ Ошибка инициализации VK:', error);
+                    this.getUserInfo();
                 });
         } else {
             console.warn('⚠️ VK Bridge не загружен');
@@ -56,151 +62,116 @@ class VKManager {
         
         try {
             const data = await this.bridge.send('VKWebAppGetUserInfo');
-            this.userId = data.id;
+            this.userId = String(data.id);
             this.userName = data.first_name + ' ' + data.last_name;
-            console.log('👤 Пользователь:', this.userName);
+            console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
+            
+            // ===== АВТОРИЗАЦИЯ НА ВАШЕМ СЕРВЕРЕ =====
+            await this.loginToServer();
+            // ========================================
+            
         } catch (error) {
             console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
         }
     }
 
-    // ===== СОХРАНИТЬ РЕЗУЛЬТАТ В ГЛОБАЛЬНЫЙ ТОП (VK STORAGE) =====
+    // ===== АВТОРИЗАЦИЯ НА ВАШЕМ СЕРВЕРЕ =====
+    async loginToServer() {
+        try {
+            const response = await fetch(`${this.serverUrl}/user/vk/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    vkId: this.userId,
+                    userName: this.userName
+                })
+            });
+            
+            const user = await response.json();
+            this.dbUserId = user.id;
+            console.log('✅ Авторизован на сервере, ID:', this.dbUserId);
+            
+        } catch (error) {
+            console.error('❌ Ошибка авторизации на сервере:', error);
+        }
+    }
+    // ========================================
+
+    // ===== СОХРАНИТЬ РЕЗУЛЬТАТ НА СЕРВЕР =====
     async saveToGlobalTop(score, maxCombo, challengePoints) {
-        if (!this.isReady || !this.userId) {
-            console.warn('⚠️ VK не готов, результат сохранён локально');
-            this.saveToLocalTop(score, maxCombo, challengePoints);
-            return;
+        if (!this.dbUserId) {
+            console.warn('⚠️ Нет ID пользователя, пробуем авторизоваться...');
+            await this.loginToServer();
+            if (!this.dbUserId) {
+                console.warn('⚠️ Не удалось авторизоваться, сохранение локально');
+                this.saveToLocalTop(score, maxCombo, challengePoints);
+                return;
+            }
         }
-
+        
+        console.log('💾 Сохранение на сервер:', { score, maxCombo, challengePoints });
+        
         try {
-            // 1. Получаем текущий топ из VK Storage
-            let top = await this.getTopFromStorage();
+            const response = await fetch(`${this.serverUrl}/top/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    userId: this.dbUserId,
+                    score: score || 0,
+                    maxCombo: maxCombo || 0,
+                    challengePoints: challengePoints || 0
+                })
+            });
             
-            // 2. Добавляем/обновляем текущего пользователя
-            const userEntry = {
-                userId: this.userId,
-                userName: this.userName || 'Игрок',
-                score: score || 0,
-                maxCombo: maxCombo || 0,
-                challengePoints: challengePoints || 0,
-                date: new Date().toISOString()
-            };
+            const data = await response.json();
             
-            const existingIndex = top.findIndex(item => item.userId === this.userId);
-            if (existingIndex >= 0) {
-                // Обновляем только если результат лучше
-                if (userEntry.score > top[existingIndex].score) {
-                    top[existingIndex] = userEntry;
-                    console.log('🔄 Обновлён результат пользователя:', this.userName);
-                } else {
-                    console.log('ℹ️ Результат не лучше текущего, пропускаем');
-                    return;
-                }
+            if (data.success) {
+                console.log('✅ Результат сохранён на сервере');
+                // Обновляем кэш
+                this.topCache = null;
+                return true;
             } else {
-                top.push(userEntry);
-                console.log('➕ Добавлен новый пользователь:', this.userName);
+                console.warn('⚠️ Ошибка сохранения:', data.message);
+                this.saveToLocalTop(score, maxCombo, challengePoints);
+                return false;
             }
-            
-            // 3. Сортируем по очкам (убывание)
-            top.sort((a, b) => (b.score || 0) - (a.score || 0));
-            
-            // 4. Оставляем топ-100
-            if (top.length > 100) {
-                top = top.slice(0, 100);
-            }
-            
-            // 5. Сохраняем в VK Storage
-            await this.saveTopToStorage(top);
-            console.log('✅ Глобальный топ обновлён, записей:', top.length);
-            
-            // 6. Обновляем кэш
-            this.topCache = top;
-            this.topCacheTime = Date.now();
-            
         } catch (error) {
-            console.warn('⚠️ Ошибка сохранения в глобальный топ:', error);
+            console.error('❌ Ошибка соединения с сервером:', error);
             this.saveToLocalTop(score, maxCombo, challengePoints);
+            return false;
         }
     }
 
-    // ===== ПОЛУЧИТЬ ТОП ИЗ VK STORAGE =====
-    async getTopFromStorage() {
-        try {
-            const data = await this.bridge.send('VKWebAppStorageGet', {
-                keys: ['globalTop']
-            });
-            
-            if (data.keys && data.keys.length > 0 && data.keys[0].value) {
-                try {
-                    const parsed = JSON.parse(data.keys[0].value);
-                    if (Array.isArray(parsed)) {
-                        return parsed;
-                    }
-                } catch (e) {
-                    console.warn('⚠️ Ошибка парсинга топа:', e);
-                }
-            }
-            return [];
-        } catch (error) {
-            console.warn('⚠️ Ошибка получения топа из VK Storage:', error);
-            return [];
-        }
-    }
-
-    // ===== СОХРАНИТЬ ТОП В VK STORAGE =====
-    async saveTopToStorage(top) {
-        try {
-            await this.bridge.send('VKWebAppStorageSet', {
-                key: 'globalTop',
-                value: JSON.stringify(top)
-            });
-        } catch (error) {
-            console.warn('⚠️ Ошибка сохранения топа в VK Storage:', error);
-            throw error;
-        }
-    }
-
-    // ===== ПОЛУЧИТЬ ГЛОБАЛЬНЫЙ ТОП (С КЭШИРОВАНИЕМ) =====
-    async getGlobalTop(forceRefresh = false) {
-        // Проверяем кэш (обновляем раз в 30 секунд)
+    // ===== ПОЛУЧИТЬ ТОП С СЕРВЕРА =====
+    async getGlobalTop() {
+        console.log('📊 Запрос топа с сервера...');
+        
+        // Проверяем кэш
         const cacheAge = Date.now() - this.topCacheTime;
-        if (!forceRefresh && this.topCache && cacheAge < 30000) {
+        if (this.topCache && cacheAge < 30000) {
             console.log('📦 Возвращаем топ из кэша');
             return this.topCache;
         }
-
+        
         try {
-            let top = await this.getTopFromStorage();
+            const response = await fetch(`${this.serverUrl}/top`);
+            const top = await response.json();
             
-            // Если в VK Storage пусто — пробуем локальный топ
-            if (top.length === 0) {
-                const localTop = this.getLocalTop();
-                if (localTop.length > 0) {
-                    // Конвертируем локальный топ в формат глобального
-                    top = localTop.map(item => ({
-                        userId: 'local_' + Math.random().toString(36).substring(2, 10),
-                        userName: 'Игрок',
-                        score: item.score || 0,
-                        maxCombo: item.maxCombo || 0,
-                        challengePoints: item.challengePoints || 0,
-                        date: item.date || new Date().toISOString()
-                    }));
-                }
+            if (Array.isArray(top)) {
+                console.log('📊 Загружено записей с сервера:', top.length);
+                this.topCache = top;
+                this.topCacheTime = Date.now();
+                return top;
+            } else {
+                console.warn('⚠️ Сервер вернул некорректные данные');
+                return this.getLocalTop();
             }
-            
-            // Сортируем и обрезаем
-            top.sort((a, b) => (b.score || 0) - (a.score || 0));
-            if (top.length > 100) top = top.slice(0, 100);
-            
-            // Сохраняем кэш
-            this.topCache = top;
-            this.topCacheTime = Date.now();
-            
-            console.log('📊 Загружено записей в топе:', top.length);
-            return top;
-            
         } catch (error) {
-            console.warn('⚠️ Ошибка получения глобального топа:', error);
+            console.error('❌ Ошибка соединения с сервером:', error);
             return this.getLocalTop();
         }
     }
@@ -210,12 +181,11 @@ class VKManager {
         let top = JSON.parse(localStorage.getItem('globalTop') || '[]');
         
         const userEntry = {
-            userId: this.userId || 'local_' + Math.random().toString(36).substring(2, 10),
+            userId: this.dbUserId || 'local',
             userName: this.userName || 'Игрок',
             score: score || 0,
             maxCombo: maxCombo || 0,
-            challengePoints: challengePoints || 0,
-            date: new Date().toISOString()
+            challengePoints: challengePoints || 0
         };
         
         const existingIndex = top.findIndex(item => item.userId === userEntry.userId);
@@ -251,7 +221,6 @@ class VKManager {
             await this.bridge.send('VKWebAppShare', {
                 message: message
             });
-            console.log('✅ Опубликовано!');
             this.showNotification('🎉 Результат опубликован!');
         } catch (error) {
             console.error('Ошибка публикации:', error);
@@ -265,7 +234,7 @@ class VKManager {
         
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text + ' ' + url);
-            this.showNotification('📋 Текст скопирован! Вставь в соцсети.');
+            this.showNotification('📋 Текст скопирован!');
         } else {
             alert(text + '\n' + url);
         }
@@ -273,14 +242,12 @@ class VKManager {
 
     showNotification(text) {
         const popup = document.createElement('div');
-        popup.className = 'vk-notification';
-        popup.textContent = text;
         popup.style.cssText = `
             position: fixed;
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             color: white;
             padding: 12px 24px;
             border-radius: 16px;
@@ -289,12 +256,17 @@ class VKManager {
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255,255,255,0.1);
             transition: opacity 0.3s ease;
+            opacity: 0;
+            max-width: 90%;
+            text-align: center;
         `;
+        popup.textContent = text;
         document.body.appendChild(popup);
         
+        setTimeout(() => { popup.style.opacity = '1'; }, 50);
         setTimeout(() => {
             popup.style.opacity = '0';
-            setTimeout(() => popup.remove(), 300);
+            setTimeout(() => popup.remove(), 400);
         }, 3000);
     }
 }

@@ -1,74 +1,263 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Топ 🏆</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/top.css" />
+/* ===== СТРАНИЦА ТОПА ===== */
+body {
+    background: #0a0a2a;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    color: white;
+}
+
+.top-container {
+    text-align: center;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(20px);
+    padding: 30px 20px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+}
+
+.top-header {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.top-header h1 {
+    font-size: 28px;
+    letter-spacing: 4px;
+    font-weight: 300;
+}
+
+/* ===== ФИЛЬТРЫ ===== */
+.top-filters {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 12px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.3s ease;
+}
+
+.filter-btn.active {
+    background: rgba(255,215,0,0.15);
+    border-color: gold;
+    color: gold;
+}
+
+.filter-btn:active {
+    transform: scale(0.95);
+}
+
+/* ===== ТАБЛИЦА ===== */
+.top-table {
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.top-table-header {
+    display: grid;
+    grid-template-columns: 40px 100px 80px 70px 100px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.05);
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.col-place { text-align: center; }
+.col-name { text-align: left; }
+.col-score { text-align: right; }
+.col-combo { text-align: center; }
+.col-bonus { text-align: right; }
+
+#topList {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+#topList::-webkit-scrollbar {
+    width: 4px;
+}
+
+#topList::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+}
+
+#topList::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+}
+
+/* ===== СТРОКА ТОПА ===== */
+.top-row {
+    display: grid;
+    grid-template-columns: 40px 100px 80px 70px 100px;
+    padding: 8px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    align-items: center;
+    transition: background 0.2s ease;
+}
+
+.top-row:last-child {
+    border-bottom: none;
+}
+
+.top-row .place {
+    text-align: center;
+    font-weight: bold;
+}
+
+.top-row .place.gold { color: gold; }
+.top-row .place.silver { color: silver; }
+.top-row .place.bronze { color: #cd7f32; }
+
+.top-row .name {
+    text-align: left;
+    font-weight: 600;
+    color: #fff;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.top-row .score {
+    text-align: right;
+    font-weight: bold;
+    color: #ffcc00;
+}
+
+.top-row .combo {
+    text-align: center;
+    color: #ff6b6b;
+    font-size: 12px;
+}
+
+.top-row .bonus {
+    text-align: right;
+    color: #c96bff;
+    font-size: 12px;
+}
+
+.top-row:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.top-empty {
+    padding: 40px 20px;
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+    text-align: center;
+}
+
+/* ===== КНОПКА ОЧИСТКИ ===== */
+#clearTopBtn {
+    padding: 10px 30px;
+    border: none;
+    border-radius: 30px;
+    background: rgba(255,80,80,0.1);
+    color: rgba(255,80,80,0.6);
+    font-size: 13px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255,80,80,0.1);
+}
+
+#clearTopBtn:active {
+    transform: scale(0.95);
+}
+
+/* ===== АДАПТАЦИЯ ===== */
+@media (max-width: 480px) {
+    .top-container {
+        padding: 20px 12px;
+        border-radius: 24px;
+    }
     
-    <!-- ===== VK BRIDGE ===== -->
-    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-    <!-- =================== -->
-</head>
-<body>
-    <div class="top-container">
-        <div class="top-header">
-            <h1>🏆 ТОП</h1>
-            <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
-                <span>🏠</span>
-            </button>
-            <button id="shareTopBtn" class="share-top-btn">📤</button>
-            <button class="game-btn sound-btn" id="soundToggleTop">
-                <span class="sound-icon">🔊</span>
-            </button>
-            <!-- ===== НОВАЯ КНОПКА ВЫХОДА ===== -->
-            <button class="game-btn exit-btn" id="exitBtn" aria-label="Выйти" style="
-                position: absolute;
-                right: 100px;
-                top: 50%;
-                transform: translateY(-50%);
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                border: none;
-                background: rgba(255,100,100,0.15);
-                backdrop-filter: blur(12px);
-                color: white;
-                font-size: 18px;
-                cursor: pointer;
-                touch-action: manipulation;
-            ">
-                <span>🚪</span>
-            </button>
-            <!-- ============================== -->
-        </div>
+    .top-table-header {
+        grid-template-columns: 30px 60px 50px 45px 50px;
+        font-size: 9px;
+        padding: 8px 8px;
+    }
+    
+    .top-row {
+        grid-template-columns: 30px 60px 50px 45px 50px;
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+    
+    .top-row .name {
+        font-size: 10px;
+    }
+    
+    .top-header h1 {
+        font-size: 22px;
+    }
+    
+    .filter-btn {
+        font-size: 10px;
+        padding: 4px 12px;
+    }
+    
+    .top-row .combo,
+    .top-row .bonus {
+        font-size: 10px;
+    }
+}
 
-        <!-- Фильтры -->
-        <div class="top-filters">
-            <button class="filter-btn active" data-sort="score">По очкам</button>
-            <button class="filter-btn" data-sort="combo">По комбо</button>
-            <button class="filter-btn" data-sort="bonus">По бонусу</button>
-        </div>
+@media (max-width: 380px) {
+    .top-table-header {
+        grid-template-columns: 24px 45px 40px 35px 40px;
+        font-size: 8px;
+        padding: 6px 6px;
+    }
+    
+    .top-row {
+        grid-template-columns: 24px 45px 40px 35px 40px;
+        font-size: 10px;
+        padding: 5px 6px;
+    }
+    .top-row .name {
+        font-size: 9px;
+    }
+}
 
-        <!-- Таблица -->
-        <div class="top-table">
-            <div class="top-table-header">
-                <span class="col-place">#</span>
-                <span class="col-date">Дата</span>
-                <span class="col-score">Очки</span>
-                <span class="col-combo">Комбо</span>
-                <span class="col-bonus">Бонус</span>
-            </div>
-            <div id="topList"></div>
-        </div>
-
-        <button id="clearTopBtn">Очистить топ</button>
-    </div>
-
-    <script src="js/nav.js"></script>
-    <script src="js/pop.js"></script>
-    <script src="js/vk.js"></script>
-    <script src="js/top.js"></script>
-</body>
-</html>
+/* ===== КНОПКА ПОДЕЛИТЬСЯ ===== */
+.share-top-btn {
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(100, 200, 255, 0.15);
+    backdrop-filter: blur(12px);
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    touch-action: manipulation;
+}

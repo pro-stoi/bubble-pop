@@ -13,12 +13,11 @@ class VKManager {
         
         // ===== АДРЕС СЕРВЕРА =====
         this.serverUrl = 'https://neurodrone-arena.ru/api';
-        // =========================
     }
 
     // ... остальные методы ...
 
-    // ===== АВТОРИЗАЦИЯ ДЛЯ ПУЗЫРЬКОВ =====
+    // ===== АВТОРИЗАЦИЯ =====
     async loginToServer() {
         try {
             const response = await fetch(`${this.serverUrl}/user/bubble/login`, {
@@ -56,7 +55,7 @@ class VKManager {
         console.log('💾 Сохранение на сервер:', { score, maxCombo, challengePoints });
         
         try {
-            const response = await fetch(`${this.serverUrl}/bubble/top/save`, {
+            const response = await fetch(`${this.serverUrl}/top/save`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -98,7 +97,7 @@ class VKManager {
         }
         
         try {
-            const response = await fetch(`${this.serverUrl}/bubble/top`);
+            const response = await fetch(`${this.serverUrl}/top`);
             const top = await response.json();
             
             if (Array.isArray(top)) {

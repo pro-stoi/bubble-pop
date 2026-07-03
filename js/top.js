@@ -17,70 +17,89 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'place';
     }
 
-// В loadGlobalTop() используем vk.getGlobalTop()
-async function loadGlobalTop() {
-    isLoading = true;
-    document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
-    
-    try {
-        // Получаем глобальный топ из VK Storage
-        topData = await vk.getGlobalTop();
+    async function loadGlobalTop() {
+        isLoading = true;
+        document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
         
-        if (topData.length === 0) {
-            document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
-            isLoading = false;
+        try {
+            topData = await vk.getGlobalTop();
+            
+            // ===== НОВОЕ: ПРЕОБРАЗУЕМ ДАННЫЕ =====
+            // Если у пользователя нет очков (null) — ставим 0
+            topData = topData.map(item => ({
+                ...item,
+                score: item.score || 0,
+                maxCombo: item.maxCombo || 0,
+                challengePoints: item.challengePoints || 0
+            }));
+            // ========================================
+            
+            if (topData.length === 0) {
+                document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+                isLoading = false;
+                return;
+            }
+            
+            sortTopData();
+            renderTop();
+            
+        } catch (error) {
+            console.warn('⚠️ Ошибка загрузки топа:', error);
+            const localTop = JSON.parse(localStorage.getItem('globalTop') || '[]');
+            if (localTop.length > 0) {
+                topData = localTop;
+                sortTopData();
+                renderTop();
+            } else {
+                document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+            }
+        }
+        
+        isLoading = false;
+    }
+
+    function sortTopData() {
+        if (currentSort === 'score') {
+            topData.sort((a, b) => (b.score || 0) - (a.score || 0));
+        } else if (currentSort === 'combo') {
+            topData.sort((a, b) => (b.max_combo || b.maxCombo || 0) - (a.max_combo || a.maxCombo || 0));
+        } else if (currentSort === 'bonus') {
+            topData.sort((a, b) => (b.challenge_points || b.challengePoints || 0) - (a.challenge_points || a.challengePoints || 0));
+        }
+    }
+
+    function renderTop() {
+        const container = document.getElementById('topList');
+        const top10 = topData.slice(0, 10);
+        
+        if (top10.length === 0) {
+            container.innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
             return;
         }
         
-        sortTopData();
-        renderTop();
-        
-    } catch (error) {
-        console.warn('⚠️ Ошибка загрузки топа:', error);
-        // Пробуем локальный топ
-        const localTop = JSON.parse(localStorage.getItem('globalTop') || '[]');
-        if (localTop.length > 0) {
-            topData = localTop;
-            sortTopData();
-            renderTop();
-        } else {
-            document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
-        }
+        container.innerHTML = top10.map((item, index) => {
+            const place = index + 1;
+            const medal = getMedal(place);
+            const placeClass = getPlaceClass(place);
+            
+            // ===== НОВОЕ: ПОДДЕРЖИВАЕМ ОБА ФОРМАТА =====
+            const userName = item.user_name || item.userName || 'Игрок';
+            const score = item.score || 0;
+            const maxCombo = item.max_combo || item.maxCombo || 0;
+            const challengePoints = item.challenge_points || item.challengePoints || 0;
+            // ==============================================
+            
+            return `
+                <div class="top-row">
+                    <span class="${placeClass}">${medal}</span>
+                    <span class="name">${userName}</span>
+                    <span class="score">${score}</span>
+                    <span class="combo">${maxCombo}</span>
+                    <span class="bonus">${challengePoints}</span>
+                </div>
+            `;
+        }).join('');
     }
-    
-    isLoading = false;
-}
-
-function sortTopData() {
-    if (currentSort === 'score') {
-        topData.sort((a, b) => (b.score || 0) - (a.score || 0));
-    } else if (currentSort === 'combo') {
-        topData.sort((a, b) => (b.max_combo || b.maxCombo || 0) - (a.max_combo || a.maxCombo || 0));
-    } else if (currentSort === 'bonus') {
-        topData.sort((a, b) => (b.challenge_points || b.challengePoints || 0) - (a.challenge_points || a.challengePoints || 0));
-    }
-}
-
-function renderTop() {
-    const container = document.getElementById('topList');
-    const top10 = topData.slice(0, 10);
-    
-    container.innerHTML = top10.map((item, index) => {
-        const place = index + 1;
-        const medal = getMedal(place);
-        const placeClass = getPlaceClass(place);
-        
-        return `
-            <div class="top-row">
-                <span class="${placeClass}">${medal}</span>
-                <span class="name">${item.user_name || item.userName || 'Игрок'}</span>
-                <span class="score">${item.score || 0}</span>
-                <span class="combo">${item.max_combo || item.maxCombo || 0}</span>
-                <span class="bonus">${item.challenge_points || item.challengePoints || 0}</span>
-            </div>
-        `;
-    }).join('');
-}
 
     // ===== ФИЛЬТРЫ =====
     document.querySelectorAll('.filter-btn').forEach(btn => {

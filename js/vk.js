@@ -62,6 +62,133 @@ class VKManager {
         }
     }
 
+    // ===== СОХРАНИТЬ РЕЗУЛЬТАТ В ГЛОБАЛЬНЫЙ ТОП =====
+    async saveToGlobalTop(score, maxCombo, challengePoints) {
+        if (!this.isReady) {
+            console.warn('⚠️ VK не готов, результат сохранён локально');
+            this.saveToLocalTop(score, maxCombo, challengePoints);
+            return;
+        }
+
+        try {
+            // Получаем текущий топ
+            const data = await this.bridge.send('VKWebAppStorageGet', {
+                keys: ['globalTop']
+            });
+            
+            let top = [];
+            if (data.keys && data.keys.length > 0) {
+                try {
+                    top = JSON.parse(data.keys[0].value) || [];
+                } catch (e) {
+                    top = [];
+                }
+            }
+            
+            // Добавляем текущего пользователя
+            const userEntry = {
+                userId: this.userId,
+                userName: this.userName,
+                score: score,
+                maxCombo: maxCombo,
+                challengePoints: challengePoints,
+                totalPoints: score + challengePoints,
+                date: new Date().toISOString()
+            };
+            
+            // Проверяем, есть ли уже этот пользователь
+            const existingIndex = top.findIndex(item => item.userId === this.userId);
+            if (existingIndex >= 0) {
+                // Обновляем, если результат лучше
+                if (userEntry.totalPoints > top[existingIndex].totalPoints) {
+                    top[existingIndex] = userEntry;
+                }
+            } else {
+                top.push(userEntry);
+            }
+            
+            // Сортируем по totalPoints (убывание)
+            top.sort((a, b) => b.totalPoints - a.totalPoints);
+            
+            // Оставляем топ-100
+            if (top.length > 100) {
+                top = top.slice(0, 100);
+            }
+            
+            // Сохраняем обратно
+            await this.bridge.send('VKWebAppStorageSet', {
+                key: 'globalTop',
+                value: JSON.stringify(top)
+            });
+            
+            console.log('✅ Результат сохранён в глобальный топ');
+            
+        } catch (error) {
+            console.warn('⚠️ Ошибка сохранения в глобальный топ:', error);
+            this.saveToLocalTop(score, maxCombo, challengePoints);
+        }
+    }
+
+    // ===== ЛОКАЛЬНЫЙ ТОП (ЗАПАСНОЙ ВАРИАНТ) =====
+    saveToLocalTop(score, maxCombo, challengePoints) {
+        let top = JSON.parse(localStorage.getItem('globalTop') || '[]');
+        
+        const userEntry = {
+            userId: this.userId || 'local',
+            userName: this.userName || 'Игрок',
+            score: score,
+            maxCombo: maxCombo,
+            challengePoints: challengePoints,
+            totalPoints: score + challengePoints,
+            date: new Date().toISOString()
+        };
+        
+        const existingIndex = top.findIndex(item => item.userId === userEntry.userId);
+        if (existingIndex >= 0) {
+            if (userEntry.totalPoints > top[existingIndex].totalPoints) {
+                top[existingIndex] = userEntry;
+            }
+        } else {
+            top.push(userEntry);
+        }
+        
+        top.sort((a, b) => b.totalPoints - a.totalPoints);
+        if (top.length > 100) top = top.slice(0, 100);
+        
+        localStorage.setItem('globalTop', JSON.stringify(top));
+        console.log('✅ Результат сохранён локально');
+    }
+
+    // ===== ПОЛУЧИТЬ ГЛОБАЛЬНЫЙ ТОП =====
+    async getGlobalTop() {
+        if (!this.isReady) {
+            return this.getLocalTop();
+        }
+
+        try {
+            const data = await this.bridge.send('VKWebAppStorageGet', {
+                keys: ['globalTop']
+            });
+            
+            if (data.keys && data.keys.length > 0) {
+                try {
+                    return JSON.parse(data.keys[0].value) || [];
+                } catch (e) {
+                    return [];
+                }
+            }
+            return [];
+        } catch (error) {
+            console.warn('⚠️ Ошибка получения глобального топа:', error);
+            return this.getLocalTop();
+        }
+    }
+
+    getLocalTop() {
+        return JSON.parse(localStorage.getItem('globalTop') || '[]');
+    }
+
+    // ===== ПОДЕЛИТЬСЯ РЕЗУЛЬТАТОМ =====
     async shareResult(score, combo) {
         if (!this.isReady) {
             this.fallbackShare(score, combo);

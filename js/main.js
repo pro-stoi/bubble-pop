@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     goToWithAd('index.html');
                 });
         } else {
-            goToWithAd('index.html');
+            goTo('index.html');
         }
     });
     

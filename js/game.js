@@ -425,9 +425,9 @@ saveGameResult() {
     localStorage.setItem('bubbleTop', JSON.stringify(top));
     // =============================================
     
-    // =====  ОТПРАВКА В ГЛОБАЛЬНЫЙ ТОП VK =====
+    // ===== ОТПРАВКА В ГЛОБАЛЬНЫЙ ТОП =====
     const challengePoints = challengeTracker.getTotalRewards();
     vk.saveToGlobalTop(this.score, this.maxCombo, challengePoints);
-    // ================================================
+    // ============================================
 }
 }

@@ -7,12 +7,12 @@ class VKManager {
         this.userName = 'Игрок';
         this.appId = 54650664;
         this.bridge = null;
-        this.dbUserId = null; // ID в вашей БД
+        this.dbUserId = null;
         this.topCache = null;
         this.topCacheTime = 0;
         
-        // ===== АДРЕС ВАШЕГО СЕРВЕРА =====
-        this.serverUrl = 'https://170.168.10.167:8080/api'; 
+        // ===== АДРЕС СЕРВЕРА (ДОМЕН) =====
+        this.serverUrl = 'https://neurodrone-arena.ru/api';
         // =================================
     }
 
@@ -66,16 +66,16 @@ class VKManager {
             this.userName = data.first_name + ' ' + data.last_name;
             console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
             
-            // ===== АВТОРИЗАЦИЯ НА ВАШЕМ СЕРВЕРЕ =====
+            // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
             await this.loginToServer();
-            // ========================================
+            // =================================
             
         } catch (error) {
             console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
         }
     }
 
-    // ===== АВТОРИЗАЦИЯ НА ВАШЕМ СЕРВЕРЕ =====
+    // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
     async loginToServer() {
         try {
             const response = await fetch(`${this.serverUrl}/user/vk/login`, {
@@ -97,7 +97,6 @@ class VKManager {
             console.error('❌ Ошибка авторизации на сервере:', error);
         }
     }
-    // ========================================
 
     // ===== СОХРАНИТЬ РЕЗУЛЬТАТ НА СЕРВЕР =====
     async saveToGlobalTop(score, maxCombo, challengePoints) {
@@ -131,7 +130,6 @@ class VKManager {
             
             if (data.success) {
                 console.log('✅ Результат сохранён на сервере');
-                // Обновляем кэш
                 this.topCache = null;
                 return true;
             } else {

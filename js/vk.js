@@ -73,7 +73,6 @@ class VKManager {
         }
     }
 
-    // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
     async loginToServer() {
         try {
             const response = await fetch(`${this.serverUrl}/user/login`, {
@@ -89,38 +88,11 @@ class VKManager {
             this.dbUserId = user.id;
             console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
             
-            // ===== НОВОЕ: СОЗДАЁМ ЗАПИСЬ В ТОПЕ (ЕСЛИ ЕЁ НЕТ) =====
-            await this.ensureTopRecord();
-            // ========================================================
-            
         } catch (error) {
             console.error('❌ Ошибка авторизации:', error);
             this.dbUserId = null;
         }
     }
-
-    // ===== НОВОЕ: ПРОВЕРКА И СОЗДАНИЕ ЗАПИСИ В ТОПЕ =====
-    async ensureTopRecord() {
-        try {
-            const response = await fetch(`${this.serverUrl}/top/ensure`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: this.dbUserId
-                })
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                console.log('✅ Запись в топе создана (или уже существует)');
-            } else {
-                console.warn('⚠️ Ошибка создания записи в топе:', data.message);
-            }
-        } catch (error) {
-            console.error('❌ Ошибка при создании записи в топе:', error);
-        }
-    }
-    // ======================================================
 
     async saveToGlobalTop(score, maxCombo, challengePoints) {
         if (!this.dbUserId) {

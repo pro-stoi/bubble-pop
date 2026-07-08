@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Пузырьки 🫧</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/menu.css" />
+    
+    <!-- ===== ПОДКЛЮЧАЕМ ЖИРНЫЙ ШРИФТ ===== -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@700;800;900&display=swap" rel="stylesheet">
+    <!-- ================================= -->
+    
+    <!-- ===== VK BRIDGE ===== -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <!-- =================== -->
+</head>
+<body>
+    <canvas id="menuCanvas"></canvas>
+
+    <!-- Заголовок -->
+    <div class="menu-title">
+        <h1>
+            <span class="bubble-icon"></span>
+            <span class="bubble-icon"></span>
+            <span class="bubble-icon"></span>
+        </h1>
+        <h2>ПУЗЫРЬКИ</h2>
+    </div>
+
+    <!-- Кнопка "ИГРАТЬ" -->
+    <div class="menu-btn play-btn" id="playBtn">
+        <div class="bubble-btn" style="--hue: 200;">
+            <span>▶</span>
+            <span class="btn-label">ИГРАТЬ</span>
+        </div>
+    </div>
+
+    <!-- Кнопка "ИСПЫТАНИЯ" -->
+    <div class="menu-btn challenges-btn" id="challengesBtn">
+        <div class="bubble-btn" style="--hue: 280;">
+            <span>🏆</span>
+            <span class="btn-label">ИСПЫТАНИЯ</span>
+        </div>
+    </div>
+
+    <!-- Кнопка "ТОП" -->
+    <div class="menu-btn top-btn" id="topBtn">
+        <div class="bubble-btn" style="--hue: 45;">
+            <span>🏆</span>
+            <span class="btn-label">ТОП</span>
+        </div>
+    </div>
+
+    <!-- Кнопка "ЗВУК" -->
+    <div class="menu-btn sound-btn" id="soundBtn">
+        <div class="bubble-btn" style="--hue: 320;">
+            <span id="soundIcon">🔊</span>
+            <span class="btn-label" id="soundLabel">ЗВУК</span>
+        </div>
+    </div>
+
+    <!-- ===== НОВАЯ КНОПКА ВЫХОДА (ВНИЗУ) ===== -->
+    <div class="menu-btn exit-btn" id="exitBtn" style="
+        position: fixed;
+        bottom: 5%;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        pointer-events: auto;
+        cursor: pointer;
+        touch-action: manipulation;
+    ">
+        <div class="bubble-btn" style="--hue: 0; width: 60px; height: 60px; background: radial-gradient(circle at 35% 35%, rgba(255,100,100,0.6), rgba(200,50,50,0.3));">
+            <span>🚪</span>
+            <span class="btn-label">ВЫХОД</span>
+        </div>
+    </div>
+    <!-- ================================= -->
+
+    <script src="js/bubble.js"></script>
+    <script src="js/particle.js"></script>
+    <script src="js/vk.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/menu.js"></script>
+</body>
+</html>

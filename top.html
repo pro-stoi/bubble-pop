@@ -13,6 +13,7 @@
 </head>
 <body>
     <div class="top-container">
+        <!-- Шапка -->
         <div class="top-header">
             <h1>🏆 ТОП</h1>
             <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
@@ -23,23 +24,27 @@
             </button>
         </div>
 
-        <!-- Фильтры -->
-        <div class="top-filters">
-            <button class="filter-btn active" data-sort="score">По очкам</button>
-            <button class="filter-btn" data-sort="combo">По комбо</button>
-            <button class="filter-btn" data-sort="bonus">По достижениям</button>
+        <!-- Строка пользователя (всегда видна) -->
+        <div id="userInfoRow" class="user-info-row">
+            <div class="user-info-placeholder">⏳ Загрузка...</div>
         </div>
 
         <!-- Таблица -->
-        <div class="top-table">
-            <div class="top-table-header">
-                <span class="col-place">#</span>
-                <span class="col-name">Игрок</span>
-                <span class="col-score">Очки</span>
-                <span class="col-combo">Комбо</span>
-                <span class="col-bonus">Достижения</span>
-            </div>
-            <div id="topList"></div>
+        <div class="top-table-wrapper">
+            <table class="top-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="rank" id="sortRank">#</th>
+                        <th class="sortable" data-sort="name" id="sortName">Игрок</th>
+                        <th class="sortable active" data-sort="score" id="sortScore">Очки</th>
+                        <th class="sortable" data-sort="combo" id="sortCombo">Комбо</th>
+                        <th class="sortable" data-sort="bonus" id="sortBonus">Достижения</th>
+                    </tr>
+                </thead>
+                <tbody id="topTableBody">
+                    <tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 

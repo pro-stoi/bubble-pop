@@ -74,30 +74,33 @@ class VKManager {
     }
 
     // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
-    async loginToServer() {
-        try {
-            const response = await fetch(`${this.serverUrl}/user/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    vkId: this.userId,
-                    userName: this.userName
-                })
-            });
-            
-            const user = await response.json();
-            this.dbUserId = user.id;
-            console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
-            
-            // ===== НОВОЕ: СОЗДАЁМ ЗАПИСЬ В ТОПЕ (ЕСЛИ ЕЁ НЕТ) =====
-            await this.ensureTopRecord();
-            // ========================================================
-            
-        } catch (error) {
-            console.error('❌ Ошибка авторизации:', error);
-            this.dbUserId = null;
-        }
+async loginToServer() {
+    try {
+        const response = await fetch(`${this.serverUrl}/user/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                vkId: this.userId,
+                userName: this.userName
+            })
+        });
+        
+        const user = await response.json();
+        this.dbUserId = user.id;
+        console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
+        
+        // ===== СОХРАНЯЕМ ID В LOCALSTORAGE =====
+        localStorage.setItem('bubbleUserId', String(this.dbUserId));
+        console.log('💾 Сохранено в localStorage:', localStorage.getItem('bubbleUserId'));
+        // ========================================
+        
+        await this.ensureTopRecord();
+        
+    } catch (error) {
+        console.error('❌ Ошибка авторизации:', error);
+        this.dbUserId = null;
     }
+}
 
     // ===== НОВОЕ: ПРОВЕРКА И СОЗДАНИЕ ЗАПИСИ В ТОПЕ =====
     async ensureTopRecord() {

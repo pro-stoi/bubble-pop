@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let topData = [];
+    let currentSort = 'score';
+    let isLoading = true;
     let currentUserId = null;
 
     function getMedal(place) {
@@ -27,13 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    // ===== ЗАГРУЗКА С СЕРВЕРА (РАБОЧАЯ ВЕРСИЯ) =====
+    // ===== ЗАГРУЗКА (РАБОЧАЯ ВЕРСИЯ) =====
     async function loadGlobalTop() {
+        isLoading = true;
         document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
         document.getElementById('myRankRow').innerHTML = '<div class="my-rank-loading">⏳ Загрузка...</div>';
         
         try {
-            // Прямой запрос к серверу
+            // ПРЯМОЙ ЗАПРОС К СЕРВЕРУ
             const response = await fetch('https://neurodrone-arena.ru/api/bubble/top');
             const data = await response.json();
             
@@ -45,23 +48,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 challengePoints: item.challenge_points || item.challengePoints || 0
             }));
             
-            // Сортируем по очкам (по умолчанию)
-            topData.sort((a, b) => (b.score || 0) - (a.score || 0));
-            
             currentUserId = getCurrentUserId();
             console.log('👤 ID текущего пользователя:', currentUserId);
             
             if (topData.length === 0) {
                 document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
                 document.getElementById('myRankRow').innerHTML = '<div class="my-not-in-top">🎯 Сыграйте первую игру!</div>';
+                isLoading = false;
                 return;
             }
+            
+            // СОРТИРУЕМ ПО ОЧКАМ
+            topData.sort((a, b) => (b.score || 0) - (a.score || 0));
             
             renderTop();
             
         } catch (error) {
             console.warn('⚠️ Ошибка загрузки топа:', error);
-            // Пробуем из localStorage
             const localTop = JSON.parse(localStorage.getItem('globalTop') || '[]');
             if (localTop.length > 0) {
                 topData = localTop;
@@ -72,6 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('myRankRow').innerHTML = '<div class="my-not-in-top">🎯 Сыграйте первую игру!</div>';
             }
         }
+        
+        isLoading = false;
     }
 
     // ===== ПОЛУЧИТЬ МЕСТО ПОЛЬЗОВАТЕЛЯ =====
@@ -85,14 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // ===== РЕНДЕРИНГ ТОПА =====
+    // ===== РЕНДЕРИНГ =====
     function renderTop() {
         const container = document.getElementById('topList');
         const top20 = topData.slice(0, 20);
         const userInfo = getUserPlace();
         
-        // ===== ОБНОВЛЯЕМ СТРОКУ ПОЛЬЗОВАТЕЛЯ =====
-        renderMyRank(userInfo);
+        // ОБНОВЛЯЕМ СТРОКУ ПОЛЬЗОВАТЕЛЯ
+        updateMyRank(userInfo);
         
         if (top20.length === 0) {
             container.innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
@@ -101,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let html = '';
         
-        // ===== ВЫДЕЛЕННАЯ СТРОКА ПОЛЬЗОВАТЕЛЯ (если он в топ-20) =====
+        // ВЫДЕЛЕННАЯ СТРОКА ПОЛЬЗОВАТЕЛЯ (если в топ-20)
         if (userInfo && userInfo.place <= 20) {
             const place = userInfo.place;
             const medal = getMedal(place);
@@ -128,8 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
         
-        // ===== ОСНОВНОЙ СПИСОК ТОП-20 =====
-        html += top20.map((item, index) => {
+        // ОСНОВНОЙ СПИСОК ТОП-20
+        top20.forEach((item, index) => {
             const place = index + 1;
             const medal = getMedal(place);
             const placeClass = getPlaceClass(place);
@@ -144,10 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Если это текущий пользователь и он уже показан в выделенной строке - пропускаем
             if (isCurrentUser && userInfo && userInfo.place <= 20) {
-                return '';
+                return;
             }
             
-            return `
+            html += `
                 <div class="${rowClass}">
                     <span class="${placeClass}">${medal}</span>
                     <span class="name">${userName} ${isCurrentUser ? '👈' : ''}</span>
@@ -156,9 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="bonus">${challengePoints}</span>
                 </div>
             `;
-        }).join('');
+        });
         
-        // ===== ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В ТОП-20 =====
+        // ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В ТОП-20
         if (userInfo && userInfo.place > 20) {
             html += `
                 <div class="top-divider">...</div>
@@ -172,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
         
-        // ===== ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ НАШЁЛСЯ В ТОПЕ =====
+        // ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ НАШЁЛСЯ
         if (!userInfo && currentUserId) {
             html += `
                 <div class="top-row not-in-top">
@@ -188,8 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = html;
     }
 
-    // ===== РЕНДЕРИНГ СТРОКИ ПОЛЬЗОВАТЕЛЯ =====
-    function renderMyRank(userInfo) {
+    // ===== ОБНОВЛЕНИЕ СТРОКИ ПОЛЬЗОВАТЕЛЯ =====
+    function updateMyRank(userInfo) {
         const container = document.getElementById('myRankRow');
         if (!container) return;
         

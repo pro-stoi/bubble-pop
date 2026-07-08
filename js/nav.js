@@ -34,40 +34,24 @@ function goToWithAd(page) {
 
 // ===== ВЫХОД В КАТАЛОГ ИГР ВКОНТАКТЕ =====
 function exitToVKGames() {
-    // Определяем, мобильное устройство или нет
     var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Правильные URL для ВКонтакте
-    var url = isMobile ? 'https://m.vk.com/apps' : 'https://vk.com/apps';
+    // Проверяем, в тестовом режиме или в продакшене
+    var isDev = window.location.href.indexOf('dev.vk.com') !== -1;
     
-    console.log('📱 Выход в каталог игр, URL:', url);
-    
-    try {
-        // Пробуем через VK Bridge (самый правильный способ)
-        if (typeof vkBridge !== 'undefined') {
-            vkBridge.send('VKWebAppClose', {})
-                .then(() => {
-                    console.log('✅ Приложение закрыто через VK Bridge');
-                })
-                .catch(() => {
-                    // Если не получилось — переходим по ссылке
-                    window.top.location.href = url;
-                });
-            return;
-        }
-    } catch (e) {
-        console.warn('⚠️ Ошибка VK Bridge:', e);
+    var url;
+    if (isDev) {
+        // В тестовом режиме — переходим в ленту
+        url = isMobile ? 'https://m.vk.com/feed' : 'https://vk.com/feed';
+    } else {
+        // В продакшене — в каталог игр
+        url = isMobile ? 'https://m.vk.com/apps' : 'https://vk.com/apps';
     }
     
-    // Запасной вариант — переход по ссылке
     try {
         window.top.location.href = url;
     } catch (e) {
-        try {
-            window.parent.location.href = url;
-        } catch (e2) {
-            window.location.href = url;
-        }
+        window.location.href = url;
     }
 }
 

@@ -34,8 +34,15 @@ function goToWithAd(page) {
 
 // ===== ВЫХОД В КАТАЛОГ ИГР ВКОНТАКТЕ =====
 function exitToVKGames() {
-    // Просто переходим в каталог игр
-    goToVKGames();
+    try {
+        window.top.location.href = 'https://vk.com/apps';
+    } catch (e) {
+        try {
+            window.parent.location.href = 'https://vk.com/apps';
+        } catch (e2) {
+            window.location.href = 'https://vk.com/apps';
+        }
+    }
 }
 
 // ===== ПЕРЕХОД НА КАТАЛОГ ИГР =====

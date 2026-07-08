@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Игра 🫧</title>
+    <link rel="stylesheet" href="css/style.css" />
+    
+    <!-- ===== VK BRIDGE ===== -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <!-- =================== -->
+</head>
+<body>
+    <!-- ===== ИГРОВОЙ КАНВАС (ПУЗЫРЬКИ) ===== -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- ===== UI ПАНЕЛЬ (ПОВЕРХ КАНВАСА) ===== -->
+    <div id="ui">
+        <!-- Верхняя панель (счёт + кнопки) -->
+        <div id="topBar">
+            <div class="score-group">
+                <div id="score">💎 0</div>
+                <div id="pendingScore">+0</div>
+            </div>
+            
+            <div class="controls-group">
+                <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
+                    <span>🏠</span>
+                </button>
+                <button class="game-btn sound-btn" id="soundToggleBtn" aria-label="Звук">
+                    <span class="sound-icon">🔊</span>
+                </button>
+            </div>
+            
+            <div class="combo-group">
+                <div id="combo">🔥 x0</div>
+                <div id="multiplier">×1</div>
+            </div>
+        </div>
+
+        <!-- Левая панель (бонусы) -->
+        <div id="bonusContainer" class="bonus-container"></div>
+    </div>
+
+    <!-- Подсказка для бонуса -->
+    <div id="bonusHint" style="display:none;">🎯 Нажми на пузырёк!</div>
+
+    <script src="js/sound.js"></script>
+    <script src="js/bubble.js"></script>
+    <script src="js/particle.js"></script>
+    <script src="js/bonus.js"></script>
+    <script src="js/challengeTracker.js"></script>
+    <script src="js/vk.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

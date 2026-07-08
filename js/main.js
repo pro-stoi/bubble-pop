@@ -76,18 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showExitModal();
     });
 
-    // ===== КНОПКА "ВЫЙТИ" В ИГРЕ =====
-    document.getElementById('exitGameBtn').addEventListener('click', () => {
-        game.saveGameResult();
-        showExitModal();
-    });
-    
-    document.getElementById('exitGameBtn').addEventListener('touchend', (e) => {
-        e.preventDefault();
-        game.saveGameResult();
-        showExitModal();
-    });
-
     // ===== КНОПКИ В МОДАЛЬНОМ ОКНЕ =====
     // Вернуться в игру
     document.getElementById('exitModalBack').addEventListener('click', () => {
@@ -98,15 +86,30 @@ document.addEventListener('DOMContentLoaded', () => {
         hideExitModal();
     });
 
-    // Выйти в каталог игр
+    // Выйти в главное меню (с рекламой)
     document.getElementById('exitModalExit').addEventListener('click', () => {
         hideExitModal();
-        exitToVKGames();
+        // Показываем рекламу и переходим в меню
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                .finally(() => {
+                    goTo('index.html');
+                });
+        } else {
+            goToWithAd('index.html');
+        }
     });
     document.getElementById('exitModalExit').addEventListener('touchend', (e) => {
         e.preventDefault();
         hideExitModal();
-        exitToVKGames();
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                .finally(() => {
+                    goTo('index.html');
+                });
+        } else {
+            goToWithAd('index.html');
+        }
     });
 
     // ===== КНОПКА ЗВУКА =====

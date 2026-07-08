@@ -12,15 +12,57 @@ document.addEventListener('DOMContentLoaded', () => {
         return place;
     }
 
+    // ===== ПОЛУЧИТЬ ID ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ (улучшенная версия) =====
     function getCurrentUserId() {
-        if (window.vk && window.vk.dbUserId) {
-            return window.vk.dbUserId;
+        // 1. Пробуем из глобального объекта vk
+        if (window.vk) {
+            if (window.vk.dbUserId) {
+                console.log('✅ ID из vk.dbUserId:', window.vk.dbUserId);
+                return window.vk.dbUserId;
+            }
+            if (window.vk.userId) {
+                console.log('✅ ID из vk.userId:', window.vk.userId);
+                return window.vk.userId;
+            }
         }
+        
+        // 2. Пробуем из localStorage
         const savedId = localStorage.getItem('bubbleUserId');
         if (savedId) {
+            console.log('✅ ID из localStorage:', savedId);
             return parseInt(savedId);
         }
+        
+        console.warn('⚠️ Не удалось определить ID пользователя');
         return null;
+    }
+
+    // ===== ДОЖИДАЕМСЯ ИНИЦИАЛИЗАЦИИ VK =====
+    function waitForVK(callback, attempts = 0) {
+        // Если vk уже есть и есть userId или dbUserId
+        if (window.vk && (window.vk.dbUserId || window.vk.userId)) {
+            console.log('✅ VK готов, ID:', window.vk.dbUserId || window.vk.userId);
+            callback();
+            return;
+        }
+        
+        // Если vk есть, но ещё нет ID - подписываемся на событие
+        if (window.vk && typeof window.vk.onReady === 'function') {
+            window.vk.onReady(callback);
+            return;
+        }
+        
+        // Если слишком много попыток - всё равно загружаем
+        if (attempts > 30) {
+            console.warn('⚠️ VK не инициализирован, загружаем без ID');
+            callback();
+            return;
+        }
+        
+        // Ждём 200ms и пробуем снова
+        setTimeout(() => {
+            waitForVK(callback, attempts + 1);
+        }, 200);
     }
 
     async function loadGlobalTop() {
@@ -46,8 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 challengePoints: item.challenge_points || item.challengePoints || 0
             }));
             
+            // Получаем ID пользователя
             currentUserId = getCurrentUserId();
-            console.log('👤 ID текущего пользователя:', currentUserId);
+            console.log('👤 Текущий пользователь ID:', currentUserId);
             
             if (topData.length === 0) {
                 if (tbody) {
@@ -96,7 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getUserInfo() {
         if (!currentUserId) return null;
-        const index = topData.findIndex(item => item.user_id === currentUserId);
+        const index = topData.findIndex(item => {
+            // Сравниваем как числа
+            const itemId = parseInt(item.user_id);
+            const userId = parseInt(currentUserId);
+            return itemId === userId;
+        });
         if (index === -1) return null;
         return {
             place: index + 1,
@@ -115,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             } else {
                 container.innerHTML = `
-                    <div class="user-info-placeholder">👤 Войдите в VK, чтобы увидеть своё место</div>
+                    <div class="user-info-placeholder">👤 Загрузка данных пользователя...</div>
                 `;
             }
             return;
@@ -180,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxCombo = item.maxCombo || 0;
             const challengePoints = item.challengePoints || 0;
             
-            const isCurrentUser = currentUserId && item.user_id === currentUserId;
+            const isCurrentUser = currentUserId && parseInt(item.user_id) === parseInt(currentUserId);
             const rowClass = isCurrentUser ? 'current-user' : '';
             
             html += `
@@ -220,7 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== СОРТИРОВКА ПО ЗАГОЛОВКАМ =====
     function sortBy(field) {
         if (currentSort.field === field) {
-            // Меняем направление
             currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
         } else {
             currentSort.field = field;
@@ -264,8 +311,13 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSound();
     });
 
-    // ===== ЗАГРУЗКА =====
-    loadGlobalTop();
+    // ===== ЗАГРУЗКА С ОЖИДАНИЕМ VK =====
+    waitForVK(() => {
+        // Обновляем ID пользователя после инициализации VK
+        currentUserId = getCurrentUserId();
+        console.log('👤 ID после инициализации VK:', currentUserId);
+        loadGlobalTop();
+    });
 
     // ===== ФОНОВЫЕ ШАРИКИ =====
     const canvas = document.createElement('canvas');

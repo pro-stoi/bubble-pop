@@ -25,26 +25,43 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderMyRank(players, myId) {
+        // Если ID нет - показываем загрузку
         if (!myId) {
-            myRankRow.innerHTML = '<span class="not-in-top">👤 Загрузка данных...</span>';
+            myRankRow.innerHTML = `
+                <div class="rank-data">
+                    <span class="not-in-top">👤 Загрузка данных пользователя...</span>
+                </div>
+            `;
             return;
         }
 
+        // Ищем пользователя в списке
         const index = players.findIndex(p => parseInt(p.user_id) === myId);
         
+        // Если не найден - показываем сообщение
         if (index === -1) {
-            myRankRow.innerHTML = '<span class="not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</span>';
+            myRankRow.innerHTML = `
+                <div class="rank-data">
+                    <span class="not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</span>
+                </div>
+            `;
             return;
         }
 
+        // Нашли - показываем данные
         const player = players[index];
         const place = index + 1;
         const medal = getMedal(place);
 
+        let placeClass = '';
+        if (place === 1) placeClass = 'gold';
+        else if (place === 2) placeClass = 'silver';
+        else if (place === 3) placeClass = 'bronze';
+
         myRankRow.innerHTML = `
             <div class="rank-data">
                 <span class="medal">${medal}</span>
-                <span class="place-text">#${place}</span>
+                <span class="place-text ${placeClass}">#${place}</span>
                 <span class="player-name">${player.user_name}</span>
                 <span class="stat">💎 <strong>${player.score}</strong></span>
                 <span class="stat">🔥 <strong>${player.maxCombo}</strong></span>
@@ -56,7 +73,11 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadTop() {
         try {
             tbody.innerHTML = '<tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>';
-            myRankRow.innerHTML = '<span class="my-rank-loading">⏳ Загрузка...</span>';
+            myRankRow.innerHTML = `
+                <div class="rank-data">
+                    <span class="not-in-top">⏳ Загрузка данных...</span>
+                </div>
+            `;
 
             const response = await fetch(SERVER_URL + '/top');
             
@@ -69,7 +90,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!data || data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
-                myRankRow.innerHTML = '<span class="not-in-top">🎯 Сыграйте первую игру!</span>';
+                myRankRow.innerHTML = `
+                    <div class="rank-data">
+                        <span class="not-in-top">🎯 Сыграйте первую игру!</span>
+                    </div>
+                `;
                 return;
             }
 
@@ -137,7 +162,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Ошибка загрузки топа:', error);
             tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки</td></tr>';
-            myRankRow.innerHTML = '<span class="not-in-top">❌ Ошибка загрузки</span>';
+            myRankRow.innerHTML = `
+                <div class="rank-data">
+                    <span class="not-in-top">❌ Ошибка загрузки</span>
+                </div>
+            `;
         }
     }
 

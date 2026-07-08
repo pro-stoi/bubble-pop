@@ -89,45 +89,48 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    color: rgba(255,255,255,0.5);
 }
 
-.my-rank-row .rank-data {
+.rank-data {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 20px;
     width: 100%;
     color: white;
+    flex-wrap: wrap;
 }
 
-.my-rank-row .rank-data .medal {
-    font-size: 22px;
+.rank-data .medal {
+    font-size: 24px;
 }
 
-.my-rank-row .rank-data .place-text {
+.rank-data .place-text {
+    font-weight: bold;
+    font-size: 16px;
+    color: #ffcc00;
+}
+
+.rank-data .place-text.gold { color: gold; }
+.rank-data .place-text.silver { color: silver; }
+.rank-data .place-text.bronze { color: #cd7f32; }
+
+.rank-data .player-name {
     color: #ffcc00;
     font-weight: bold;
     font-size: 16px;
 }
 
-.my-rank-row .rank-data .player-name {
-    color: #ffcc00;
-    font-weight: bold;
-    font-size: 16px;
-}
-
-.my-rank-row .rank-data .stat {
+.rank-data .stat {
     color: #aaa;
     font-size: 14px;
 }
 
-.my-rank-row .rank-data .stat strong {
+.rank-data .stat strong {
     color: white;
 }
 
-.my-rank-row .not-in-top {
+.rank-data .not-in-top {
     color: rgba(255,255,255,0.4);
     font-style: italic;
 }
@@ -202,8 +205,11 @@ body {
 .top-table .rank-2 { color: silver; }
 .top-table .rank-3 { color: #cd7f32; }
 
+/* ===== ПОДСВЕТКА ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ===== */
 .top-table tr.current-user {
-    background: rgba(255,215,0,0.08);
+    background: rgba(255, 215, 0, 0.12);
+    border-left: 3px solid #ffcc00;
+    position: relative;
 }
 
 .top-table tr.current-user td {
@@ -211,8 +217,10 @@ body {
     font-weight: 600;
 }
 
+/* ===== ПОДСВЕТКА ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В ТОП-20 ===== */
 .top-table tr.user-outside {
-    background: rgba(255,215,0,0.05);
+    background: rgba(255, 215, 0, 0.08);
+    border-left: 3px solid #ffcc00;
 }
 
 .top-table tr.user-outside td {
@@ -237,11 +245,11 @@ body {
     .top-header h1 { font-size: 22px; }
     .top-header .game-btn { width: 40px; height: 40px; font-size: 18px; }
     
-    .my-rank-row { font-size: 12px; padding: 8px 12px; }
-    .my-rank-row .rank-data { gap: 12px; flex-wrap: wrap; }
-    .my-rank-row .rank-data .place-text { font-size: 14px; }
-    .my-rank-row .rank-data .player-name { font-size: 14px; }
-    .my-rank-row .rank-data .stat { font-size: 12px; }
+    .rank-data { gap: 12px; font-size: 12px; }
+    .rank-data .medal { font-size: 20px; }
+    .rank-data .place-text { font-size: 14px; }
+    .rank-data .player-name { font-size: 14px; }
+    .rank-data .stat { font-size: 12px; }
     
     .top-table th { font-size: 9px; padding: 8px 8px; }
     .top-table td { font-size: 11px; padding: 6px 8px; }
@@ -260,11 +268,11 @@ body {
     .top-header h1 { font-size: 18px; }
     .top-header .game-btn { width: 34px; height: 34px; font-size: 14px; }
     
-    .my-rank-row { font-size: 10px; padding: 6px 10px; }
-    .my-rank-row .rank-data { gap: 8px; }
-    .my-rank-row .rank-data .place-text { font-size: 12px; }
-    .my-rank-row .rank-data .player-name { font-size: 12px; }
-    .my-rank-row .rank-data .stat { font-size: 10px; }
+    .rank-data { gap: 8px; font-size: 10px; flex-wrap: wrap; }
+    .rank-data .medal { font-size: 16px; }
+    .rank-data .place-text { font-size: 12px; }
+    .rank-data .player-name { font-size: 12px; }
+    .rank-data .stat { font-size: 10px; }
     
     .top-table th { font-size: 8px; padding: 6px 6px; }
     .top-table td { font-size: 10px; padding: 5px 6px; }

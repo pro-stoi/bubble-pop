@@ -13,9 +13,10 @@
 </head>
 <body>
     <div class="top-container">
+        <!-- Шапка -->
         <div class="top-header">
             <h1>🏆 ТОП</h1>
-            <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
+            <button class="game-btn back-btn" id="backMenuBtn">
                 <span>🏠</span>
             </button>
             <button class="game-btn sound-btn" id="soundToggleTop">
@@ -23,26 +24,31 @@
             </button>
         </div>
 
-        <!-- ===== СТРОКА С МОИМ МЕСТОМ (ДОБАВЛЕНА) ===== -->
+        <!-- Строка с моим местом -->
         <div id="myRankRow" class="my-rank-row">
-            <div class="my-rank-loading">⏳ Загрузка...</div>
+            <span class="my-rank-loading">⏳ Загрузка...</span>
         </div>
 
-        <!-- ===== ТАБЛИЦА ===== -->
-        <div class="top-table">
-            <div class="top-table-header">
-                <span class="col-place">#</span>
-                <span class="col-name">Игрок</span>
-                <span class="col-score">Очки</span>
-                <span class="col-combo">Комбо</span>
-                <span class="col-bonus">Достижения</span>
-            </div>
-            <div id="topList"></div>
+        <!-- Таблица -->
+        <div class="top-table-wrapper">
+            <table class="top-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Игрок</th>
+                        <th>Очки</th>
+                        <th>Комбо</th>
+                        <th>Достижения</th>
+                    </tr>
+                </thead>
+                <tbody id="topBody">
+                    <tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script src="js/nav.js"></script>
-    <script src="js/pop.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/top.js"></script>
 </body>

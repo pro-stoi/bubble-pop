@@ -283,3 +283,92 @@ body {
     .top-table th { font-size: 8px; padding: 6px 6px; }
     .top-table td { font-size: 10px; padding: 5px 6px; }
 }
+/* ===== СТРОКА С МОИМ МЕСТОМ ===== */
+.my-rank-row {
+    background: rgba(255, 215, 0, 0.08);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.my-rank-loading {
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+}
+
+.my-rank-content {
+    display: grid;
+    grid-template-columns: 40px 1fr 80px 70px 80px;
+    width: 100%;
+    align-items: center;
+    gap: 0;
+}
+
+.my-rank-content .place {
+    text-align: center;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.my-rank-content .place.gold { color: gold; }
+.my-rank-content .place.silver { color: silver; }
+.my-rank-content .place.bronze { color: #cd7f32; }
+
+.my-rank-content .name {
+    text-align: left;
+    font-weight: 700;
+    color: #ffcc00;
+    font-size: 15px;
+}
+
+.my-rank-content .score {
+    text-align: right;
+    font-weight: bold;
+    color: #ffcc00;
+    font-size: 16px;
+}
+
+.my-rank-content .combo {
+    text-align: center;
+    color: #ff6b6b;
+    font-size: 14px;
+}
+
+.my-rank-content .bonus {
+    text-align: right;
+    color: #c96bff;
+    font-size: 14px;
+}
+
+.my-not-in-top {
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+}
+
+@media (max-width: 480px) {
+    .my-rank-content {
+        grid-template-columns: 30px 1fr 50px 45px 50px;
+        font-size: 11px;
+    }
+    .my-rank-content .name { font-size: 12px; }
+    .my-rank-content .score { font-size: 13px; }
+    .my-rank-content .combo,
+    .my-rank-content .bonus { font-size: 11px; }
+}
+
+@media (max-width: 380px) {
+    .my-rank-content {
+        grid-template-columns: 24px 1fr 40px 35px 40px;
+        font-size: 10px;
+    }
+    .my-rank-content .name { font-size: 10px; }
+    .my-rank-content .score { font-size: 11px; }
+    .my-rank-content .combo,
+    .my-rank-content .bonus { font-size: 10px; }
+}

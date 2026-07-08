@@ -1,7 +1,21 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const tbody = document.getElementById('topBody');
-    const myRankRow = document.getElementById('myRankRow');
-    const SERVER_URL = 'https://neurodrone-arena.ru/api/bubble';
+    var tbody = document.getElementById('topBody');
+    var myRankRow = document.getElementById('myRankRow');
+    var SERVER_URL = 'https://neurodrone-arena.ru/api/bubble';
+    
+    var players = [];
+    var sortField = 'score';
+    var sortDir = 'desc';
+    var myId = null;
+
+    // ===== СООТВЕТСТВИЕ ПОЛЕЙ =====
+    var fieldMap = {
+        'rank': 'score',      // по умолчанию сортируем по очкам
+        'name': 'user_name',
+        'score': 'score',
+        'combo': 'maxCombo',
+        'bonus': 'challengePoints'
+    };
 
     function getMedal(place) {
         if (place === 1) return '🥇';
@@ -10,179 +24,234 @@ document.addEventListener('DOMContentLoaded', function() {
         return place;
     }
 
-    function getMyId() {
+    function findMyId(playersList) {
+        var savedId = localStorage.getItem('bubbleUserId');
+        if (savedId) {
+            var id = parseInt(savedId);
+            for (var i = 0; i < playersList.length; i++) {
+                if (parseInt(playersList[i].user_id) === id) {
+                    return id;
+                }
+            }
+        }
+        
         if (window.vk && window.vk.dbUserId) {
-            return parseInt(window.vk.dbUserId);
+            var id = parseInt(window.vk.dbUserId);
+            for (var i = 0; i < playersList.length; i++) {
+                if (parseInt(playersList[i].user_id) === id) {
+                    return id;
+                }
+            }
         }
-        if (window.vk && window.vk.userId) {
-            return parseInt(window.vk.userId);
+        
+        var myName = localStorage.getItem('username');
+        if (myName) {
+            for (var i = 0; i < playersList.length; i++) {
+                if (playersList[i].user_name === myName) {
+                    var id = parseInt(playersList[i].user_id);
+                    localStorage.setItem('bubbleUserId', String(id));
+                    return id;
+                }
+            }
         }
-        const saved = localStorage.getItem('bubbleUserId');
-        if (saved) {
-            return parseInt(saved);
+        
+        for (var i = 0; i < playersList.length; i++) {
+            if (playersList[i].user_name !== 'Игрок' && playersList[i].user_name !== '') {
+                var id = parseInt(playersList[i].user_id);
+                localStorage.setItem('bubbleUserId', String(id));
+                return id;
+            }
         }
+        
+        if (playersList.length > 0) {
+            var id = parseInt(playersList[0].user_id);
+            localStorage.setItem('bubbleUserId', String(id));
+            return id;
+        }
+        
         return null;
     }
 
-    function renderMyRank(players, myId) {
-        // Если ID нет - показываем загрузку
-        if (!myId) {
-            myRankRow.innerHTML = `
-                <div class="rank-data">
-                    <span class="not-in-top">👤 Загрузка данных пользователя...</span>
-                </div>
-            `;
+    function render() {
+        if (!players || players.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+            myRankRow.innerHTML = '<span class="not-in-top">🎯 Сыграйте первую игру!</span>';
             return;
         }
 
-        // Ищем пользователя в списке
-        const index = players.findIndex(p => parseInt(p.user_id) === myId);
-        
-        // Если не найден - показываем сообщение
-        if (index === -1) {
-            myRankRow.innerHTML = `
-                <div class="rank-data">
-                    <span class="not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</span>
-                </div>
-            `;
-            return;
+        // Получаем имя поля для сортировки
+        var sortFieldName = fieldMap[sortField] || 'score';
+
+        // Копируем и сортируем
+        var sorted = players.slice();
+        sorted.sort(function(a, b) {
+            var va = a[sortFieldName];
+            var vb = b[sortFieldName];
+            
+            // Для строк - приводим к нижнему регистру
+            if (typeof va === 'string') {
+                va = va.toLowerCase();
+                vb = vb.toLowerCase();
+            }
+            
+            // Для чисел
+            if (va < vb) return sortDir === 'asc' ? -1 : 1;
+            if (va > vb) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Если ID ещё не определён - определяем
+        if (myId === null) {
+            myId = findMyId(sorted);
         }
 
-        // Нашли - показываем данные
-        const player = players[index];
-        const place = index + 1;
-        const medal = getMedal(place);
+        // Находим пользователя
+        var myIndex = -1;
+        if (myId) {
+            for (var i = 0; i < sorted.length; i++) {
+                if (parseInt(sorted[i].user_id) === parseInt(myId)) {
+                    myIndex = i;
+                    break;
+                }
+            }
+        }
 
-        let placeClass = '';
-        if (place === 1) placeClass = 'gold';
-        else if (place === 2) placeClass = 'silver';
-        else if (place === 3) placeClass = 'bronze';
+        // === СТРОКА ПОЛЬЗОВАТЕЛЯ ===
+        if (!myId || myIndex === -1) {
+            myRankRow.innerHTML = '<span class="not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</span>';
+        } else {
+            var p = sorted[myIndex];
+            var place = myIndex + 1;
+            var medal = getMedal(place);
+            var placeColor = place === 1 ? 'gold' : place === 2 ? 'silver' : place === 3 ? 'bronze' : '';
+            myRankRow.innerHTML = 
+                '<div class="rank-data">' +
+                    '<span class="medal">' + medal + '</span>' +
+                    '<span class="place-text ' + placeColor + '">#' + place + '</span>' +
+                    '<span class="player-name">' + p.user_name + '</span>' +
+                    '<span class="stat">💎 <strong>' + p.score + '</strong></span>' +
+                    '<span class="stat">🔥 <strong>' + p.maxCombo + '</strong></span>' +
+                    '<span class="stat">⭐ <strong>' + p.challengePoints + '</strong></span>' +
+                '</div>';
+        }
 
-        myRankRow.innerHTML = `
-            <div class="rank-data">
-                <span class="medal">${medal}</span>
-                <span class="place-text ${placeClass}">#${place}</span>
-                <span class="player-name">${player.user_name}</span>
-                <span class="stat">💎 <strong>${player.score}</strong></span>
-                <span class="stat">🔥 <strong>${player.maxCombo}</strong></span>
-                <span class="stat">⭐ <strong>${player.challengePoints}</strong></span>
-            </div>
-        `;
+        // === ТАБЛИЦА ===
+        var top20 = sorted.slice(0, 20);
+        var html = '';
+
+        for (var j = 0; j < top20.length; j++) {
+            var p = top20[j];
+            var place = j + 1;
+            var medal = getMedal(place);
+            var rankClass = place === 1 ? 'rank-1' : place === 2 ? 'rank-2' : place === 3 ? 'rank-3' : '';
+            var isMe = myId && parseInt(p.user_id) === parseInt(myId);
+            var rowClass = isMe ? 'current-user' : '';
+
+            html += '<tr class="' + rowClass + '">' +
+                '<td><span class="' + rankClass + '">' + medal + '</span></td>' +
+                '<td>' + p.user_name + (isMe ? ' 👈' : '') + '</td>' +
+                '<td>' + p.score + '</td>' +
+                '<td>' + p.maxCombo + '</td>' +
+                '<td>' + p.challengePoints + '</td>' +
+            '</tr>';
+        }
+
+        // Если пользователь не в топ-20
+        if (myId && myIndex >= 20) {
+            var p = sorted[myIndex];
+            html += '<tr class="user-outside">' +
+                '<td>' + (myIndex + 1) + '</td>' +
+                '<td>' + p.user_name + ' 👈</td>' +
+                '<td>' + p.score + '</td>' +
+                '<td>' + p.maxCombo + '</td>' +
+                '<td>' + p.challengePoints + '</td>' +
+            '</tr>';
+        }
+
+        tbody.innerHTML = html;
+
+        // Подсветка активного заголовка
+        var ths = document.querySelectorAll('.top-table th.sortable');
+        for (var k = 0; k < ths.length; k++) {
+            ths[k].classList.remove('active');
+            if (ths[k].getAttribute('data-sort') === sortField) {
+                ths[k].classList.add('active');
+            }
+        }
     }
 
-    async function loadTop() {
-        try {
-            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>';
-            myRankRow.innerHTML = `
-                <div class="rank-data">
-                    <span class="not-in-top">⏳ Загрузка данных...</span>
-                </div>
-            `;
-
-            const response = await fetch(SERVER_URL + '/top');
-            
-            if (!response.ok) {
-                throw new Error('Ошибка сервера');
-            }
-            
-            const data = await response.json();
-            console.log('📊 Получено записей:', data ? data.length : 0);
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
-                myRankRow.innerHTML = `
-                    <div class="rank-data">
-                        <span class="not-in-top">🎯 Сыграйте первую игру!</span>
-                    </div>
-                `;
-                return;
-            }
-
-            const players = data.map(item => ({
-                user_id: parseInt(item.user_id || 0),
-                user_name: item.user_name || 'Игрок',
-                score: parseInt(item.score || 0),
-                maxCombo: parseInt(item.max_combo || 0),
-                challengePoints: parseInt(item.challenge_points || 0)
-            }));
-
-            // Сортируем по очкам
-            players.sort((a, b) => b.score - a.score);
-
-            const myId = getMyId();
-            console.log('👤 Мой ID:', myId);
-
-            // Рендерим строку с моим местом
-            renderMyRank(players, myId);
-
-            // Рендерим таблицу (топ-20)
-            const top20 = players.slice(0, 20);
-            
-            let html = '';
-            top20.forEach((p, index) => {
-                const place = index + 1;
-                const medal = getMedal(place);
-                let rankClass = '';
-                if (place === 1) rankClass = 'rank-1';
-                else if (place === 2) rankClass = 'rank-2';
-                else if (place === 3) rankClass = 'rank-3';
-
-                const isMe = myId && parseInt(p.user_id) === myId;
-                const rowClass = isMe ? 'current-user' : '';
-
-                html += `
-                    <tr class="${rowClass}">
-                        <td><span class="${rankClass}">${medal}</span></td>
-                        <td>${p.user_name} ${isMe ? '👈' : ''}</td>
-                        <td>${p.score}</td>
-                        <td>${p.maxCombo}</td>
-                        <td>${p.challengePoints}</td>
-                    </tr>
-                `;
+    function loadData() {
+        fetch(SERVER_URL + '/top')
+            .then(function(res) {
+                if (!res.ok) throw new Error('Ошибка сервера');
+                return res.json();
+            })
+            .then(function(data) {
+                if (!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+                    myRankRow.innerHTML = '<span class="not-in-top">🎯 Сыграйте первую игру!</span>';
+                    return;
+                }
+                players = data.map(function(item) {
+                    return {
+                        user_id: parseInt(item.user_id || 0),
+                        user_name: item.user_name || 'Игрок',
+                        score: parseInt(item.score || 0),
+                        maxCombo: parseInt(item.max_combo || 0),
+                        challengePoints: parseInt(item.challenge_points || 0)
+                    };
+                });
+                render();
+            })
+            .catch(function(err) {
+                tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки</td></tr>';
+                myRankRow.innerHTML = '<span class="not-in-top">❌ Ошибка загрузки</span>';
             });
+    }
 
-            // Если я не в топ-20 - добавляю отдельную строку
-            const myIndex = players.findIndex(p => parseInt(p.user_id) === myId);
-            if (myId && myIndex >= 20) {
-                const p = players[myIndex];
-                const place = myIndex + 1;
-                html += `
-                    <tr class="user-outside">
-                        <td>${place}</td>
-                        <td>${p.user_name} 👈</td>
-                        <td>${p.score}</td>
-                        <td>${p.maxCombo}</td>
-                        <td>${p.challengePoints}</td>
-                    </tr>
-                `;
+    // ===== СОРТИРОВКА =====
+    var ths = document.querySelectorAll('.top-table th.sortable');
+    for (var i = 0; i < ths.length; i++) {
+        ths[i].addEventListener('click', function() {
+            var field = this.getAttribute('data-sort');
+            if (sortField === field) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortDir = field === 'name' ? 'asc' : 'desc';
             }
-
-            tbody.innerHTML = html;
-
-        } catch (error) {
-            console.error('Ошибка загрузки топа:', error);
-            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки</td></tr>';
-            myRankRow.innerHTML = `
-                <div class="rank-data">
-                    <span class="not-in-top">❌ Ошибка загрузки</span>
-                </div>
-            `;
-        }
+            render();
+        });
+        ths[i].addEventListener('touchend', function(e) {
+            e.preventDefault();
+            var field = this.getAttribute('data-sort');
+            if (sortField === field) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortDir = field === 'name' ? 'asc' : 'desc';
+            }
+            render();
+        });
     }
 
     // ===== КНОПКИ =====
-    document.getElementById('backMenuBtn').addEventListener('click', () => goTo('index.html'));
-    document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
+    document.getElementById('backMenuBtn').addEventListener('click', function() {
+        window.location.href = 'index.html';
+    });
+    document.getElementById('backMenuBtn').addEventListener('touchend', function(e) {
         e.preventDefault();
-        goTo('index.html');
+        window.location.href = 'index.html';
     });
 
-    document.getElementById('soundToggleTop').addEventListener('click', () => toggleSound());
-    document.getElementById('soundToggleTop').addEventListener('touchend', (e) => {
+    document.getElementById('soundToggleTop').addEventListener('click', function() {
+        if (typeof toggleSound === 'function') toggleSound();
+    });
+    document.getElementById('soundToggleTop').addEventListener('touchend', function(e) {
         e.preventDefault();
-        toggleSound();
+        if (typeof toggleSound === 'function') toggleSound();
     });
 
     // ===== ЗАПУСК =====
-    loadTop();
+    loadData();
 });

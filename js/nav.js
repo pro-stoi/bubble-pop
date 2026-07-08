@@ -34,30 +34,13 @@ function goToWithAd(page) {
 
 // ===== ВЫХОД В КАТАЛОГ ИГР ВКОНТАКТЕ =====
 function exitToVKGames() {
-    // Способ 1: Закрыть через VK Bridge
-    if (typeof vkBridge !== 'undefined') {
-        try {
-            vkBridge.send('VKWebAppClose', {})
-                .then(() => {
-                    console.log('✅ Приложение закрыто через VK Bridge');
-                })
-                .catch(() => {
-                    // Если не получилось — переходим на каталог игр
-                    goToVKGames();
-                });
-            return;
-        } catch (e) {
-            goToVKGames();
-        }
-    } else {
-        goToVKGames();
-    }
+    // Просто переходим в каталог игр, без попытки закрыть через Bridge
+    goToVKGames();
 }
 
 // ===== ПЕРЕХОД НА КАТАЛОГ ИГР =====
 function goToVKGames() {
     try {
-        // Пытаемся перейти на каталог игр ВКонтакте
         window.top.location.href = 'https://vk.com/apps';
     } catch (e) {
         try {

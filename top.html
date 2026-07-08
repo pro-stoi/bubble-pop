@@ -16,7 +16,7 @@
         <!-- Шапка -->
         <div class="top-header">
             <h1>🏆 ТОП</h1>
-            <button class="game-btn back-btn" id="backMenuBtn" aria-label="Меню">
+            <button class="game-btn back-btn" id="backMenuBtn">
                 <span>🏠</span>
             </button>
             <button class="game-btn sound-btn" id="soundToggleTop">
@@ -24,24 +24,24 @@
             </button>
         </div>
 
-        <!-- Строка пользователя (всегда видна) -->
-        <div id="userInfoRow" class="user-info-row">
-            <div class="user-info-placeholder">⏳ Загрузка...</div>
+        <!-- Строка с моим местом -->
+        <div id="myRankRow" class="my-rank-row">
+            <div class="my-rank-loading">⏳ Загрузка...</div>
         </div>
 
         <!-- Таблица -->
         <div class="top-table-wrapper">
-            <table class="top-table">
+            <table class="top-table" id="topTable">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="rank" id="sortRank">#</th>
-                        <th class="sortable" data-sort="name" id="sortName">Игрок</th>
-                        <th class="sortable active" data-sort="score" id="sortScore">Очки</th>
-                        <th class="sortable" data-sort="combo" id="sortCombo">Комбо</th>
-                        <th class="sortable" data-sort="bonus" id="sortBonus">Достижения</th>
+                        <th data-sort="rank">#</th>
+                        <th data-sort="name">Игрок</th>
+                        <th data-sort="score" class="active">Очки</th>
+                        <th data-sort="combo">Комбо</th>
+                        <th data-sort="bonus">Достижения</th>
                     </tr>
                 </thead>
-                <tbody id="topTableBody">
+                <tbody id="topBody">
                     <tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>
                 </tbody>
             </table>
@@ -49,7 +49,6 @@
     </div>
 
     <script src="js/nav.js"></script>
-    <script src="js/pop.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/top.js"></script>
 </body>

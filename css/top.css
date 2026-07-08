@@ -91,6 +91,11 @@ body {
     justify-content: center;
 }
 
+.my-rank-loading {
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+}
+
 .rank-data {
     display: flex;
     align-items: center;
@@ -130,7 +135,7 @@ body {
     color: white;
 }
 
-.rank-data .not-in-top {
+.not-in-top {
     color: rgba(255,255,255,0.4);
     font-style: italic;
 }
@@ -180,6 +185,17 @@ body {
     text-transform: uppercase;
     background: #1a1a2a;
     border-bottom: 2px solid rgba(255,215,0,0.1);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.top-table th:hover {
+    color: rgba(255,255,255,0.7);
+}
+
+.top-table th.active {
+    color: #ffcc00;
 }
 
 .top-table th:nth-child(1) { text-align: center; width: 50px; }
@@ -207,25 +223,24 @@ body {
 
 /* ===== ПОДСВЕТКА ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ===== */
 .top-table tr.current-user {
-    background: rgba(255, 215, 0, 0.12);
+    background: rgba(255, 215, 0, 0.15) !important;
     border-left: 3px solid #ffcc00;
-    position: relative;
 }
 
 .top-table tr.current-user td {
-    color: #ffcc00;
-    font-weight: 600;
+    color: #ffcc00 !important;
+    font-weight: 700 !important;
 }
 
 /* ===== ПОДСВЕТКА ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В ТОП-20 ===== */
 .top-table tr.user-outside {
-    background: rgba(255, 215, 0, 0.08);
+    background: rgba(255, 215, 0, 0.10) !important;
     border-left: 3px solid #ffcc00;
 }
 
 .top-table tr.user-outside td {
-    color: #ffcc00;
-    font-weight: 600;
+    color: #ffcc00 !important;
+    font-weight: 700 !important;
 }
 
 .top-empty {
@@ -245,7 +260,7 @@ body {
     .top-header h1 { font-size: 22px; }
     .top-header .game-btn { width: 40px; height: 40px; font-size: 18px; }
     
-    .rank-data { gap: 12px; font-size: 12px; }
+    .rank-data { gap: 12px; font-size: 12px; flex-wrap: wrap; }
     .rank-data .medal { font-size: 20px; }
     .rank-data .place-text { font-size: 14px; }
     .rank-data .player-name { font-size: 14px; }

@@ -34,33 +34,39 @@ function goToWithAd(page) {
 
 // ===== ВЫХОД В КАТАЛОГ ИГР ВКОНТАКТЕ =====
 function exitToVKGames() {
-    try {
-        window.top.location.href = 'https://vk.com/apps';
-    } catch (e) {
-        try {
-            window.parent.location.href = 'https://vk.com/apps';
-        } catch (e2) {
-            window.location.href = 'https://vk.com/apps';
-        }
-    }
-}
-
-// ===== ПЕРЕХОД НА КАТАЛОГ ИГР =====
-function goToVKGames() {
     // Определяем, мобильное устройство или нет
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    // Для мобильных - используем m.vk.com, для ПК - обычный vk.com
-    const baseUrl = isMobile ? 'https://m.vk.com' : 'https://vk.com';
-    const targetUrl = baseUrl + '/apps';
+    // Правильные URL для ВКонтакте
+    var url = isMobile ? 'https://m.vk.com/apps' : 'https://vk.com/apps';
+    
+    console.log('📱 Выход в каталог игр, URL:', url);
     
     try {
-        window.top.location.href = targetUrl;
+        // Пробуем через VK Bridge (самый правильный способ)
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppClose', {})
+                .then(() => {
+                    console.log('✅ Приложение закрыто через VK Bridge');
+                })
+                .catch(() => {
+                    // Если не получилось — переходим по ссылке
+                    window.top.location.href = url;
+                });
+            return;
+        }
+    } catch (e) {
+        console.warn('⚠️ Ошибка VK Bridge:', e);
+    }
+    
+    // Запасной вариант — переход по ссылке
+    try {
+        window.top.location.href = url;
     } catch (e) {
         try {
-            window.parent.location.href = targetUrl;
+            window.parent.location.href = url;
         } catch (e2) {
-            window.location.href = targetUrl;
+            window.location.href = url;
         }
     }
 }
@@ -70,7 +76,7 @@ function toggleSound() {
     if (window.toggleSoundGlobal) {
         window.toggleSoundGlobal();
     } else {
-        const soundEnabled = localStorage.getItem('bubbleSound') !== 'false';
+        var soundEnabled = localStorage.getItem('bubbleSound') !== 'false';
         localStorage.setItem('bubbleSound', String(!soundEnabled));
         if (window.updateSoundIcon) {
             window.updateSoundIcon();
@@ -79,19 +85,19 @@ function toggleSound() {
 }
 
 function updateSoundIcon() {
-    const icons = document.querySelectorAll('.sound-icon');
-    const labels = document.querySelectorAll('.sound-label');
-    const enabled = localStorage.getItem('bubbleSound') !== 'false';
-    icons.forEach(el => {
+    var icons = document.querySelectorAll('.sound-icon');
+    var labels = document.querySelectorAll('.sound-label');
+    var enabled = localStorage.getItem('bubbleSound') !== 'false';
+    icons.forEach(function(el) {
         if (el) el.textContent = enabled ? '🔊' : '🔇';
     });
-    labels.forEach(el => {
+    labels.forEach(function(el) {
         if (el) el.textContent = enabled ? 'ВКЛ' : 'ВЫКЛ';
     });
 }
 
 window.updateSoundIcon = updateSoundIcon;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
     updateSoundIcon();
 });

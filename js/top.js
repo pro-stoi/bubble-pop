@@ -1,10 +1,16 @@
-document.addEventListener('DOMContentLoaded', () => {
-    let topData = [];
-    let currentSort = { field: 'score', direction: 'desc' };
-    let isLoading = true;
-    let currentUserId = null;
-    const TOP_LIMIT = 20;
+document.addEventListener('DOMContentLoaded', function() {
+    // ===== СОСТОЯНИЕ =====
+    let players = [];
+    let sortField = 'score';
+    let sortDirection = 'desc';
+    let myId = null;
+    const LIMIT = 20;
 
+    // ===== ЭЛЕМЕНТЫ =====
+    const tbody = document.getElementById('topBody');
+    const myRankRow = document.getElementById('myRankRow');
+
+    // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
     function getMedal(place) {
         if (place === 1) return '🥇';
         if (place === 2) return '🥈';
@@ -12,458 +18,232 @@ document.addEventListener('DOMContentLoaded', () => {
         return place;
     }
 
-    // ===== ПОЛУЧИТЬ ID ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ (улучшенная версия) =====
-    function getCurrentUserId() {
-        // 1. Пробуем из глобального объекта vk
-        if (window.vk) {
-            if (window.vk.dbUserId) {
-                console.log('✅ ID из vk.dbUserId:', window.vk.dbUserId);
-                return window.vk.dbUserId;
-            }
-            if (window.vk.userId) {
-                console.log('✅ ID из vk.userId:', window.vk.userId);
-                return window.vk.userId;
-            }
+    function getMyId() {
+        // Пробуем из VK
+        if (window.vk && window.vk.dbUserId) {
+            return parseInt(window.vk.dbUserId);
         }
-        
-        // 2. Пробуем из localStorage
-        const savedId = localStorage.getItem('bubbleUserId');
-        if (savedId) {
-            console.log('✅ ID из localStorage:', savedId);
-            return parseInt(savedId);
+        if (window.vk && window.vk.userId) {
+            return parseInt(window.vk.userId);
         }
-        
-        console.warn('⚠️ Не удалось определить ID пользователя');
+        // Пробуем из localStorage
+        const saved = localStorage.getItem('bubbleUserId');
+        if (saved) {
+            return parseInt(saved);
+        }
         return null;
     }
 
-    // ===== ДОЖИДАЕМСЯ ИНИЦИАЛИЗАЦИИ VK =====
-    function waitForVK(callback, attempts = 0) {
-        // Если vk уже есть и есть userId или dbUserId
-        if (window.vk && (window.vk.dbUserId || window.vk.userId)) {
-            console.log('✅ VK готов, ID:', window.vk.dbUserId || window.vk.userId);
-            callback();
-            return;
-        }
-        
-        // Если vk есть, но ещё нет ID - подписываемся на событие
-        if (window.vk && typeof window.vk.onReady === 'function') {
-            window.vk.onReady(callback);
-            return;
-        }
-        
-        // Если слишком много попыток - всё равно загружаем
-        if (attempts > 30) {
-            console.warn('⚠️ VK не инициализирован, загружаем без ID');
-            callback();
-            return;
-        }
-        
-        // Ждём 200ms и пробуем снова
-        setTimeout(() => {
-            waitForVK(callback, attempts + 1);
-        }, 200);
-    }
-
-    async function loadGlobalTop() {
-        isLoading = true;
-        const tbody = document.getElementById('topTableBody');
-        if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>';
-        }
-        
+    // ===== ЗАГРУЗКА ДАННЫХ =====
+    async function loadData() {
         try {
-            if (window.vk && window.vk.getGlobalTop) {
-                topData = await window.vk.getGlobalTop();
-            } else {
-                topData = JSON.parse(localStorage.getItem('globalTop') || '[]');
+            let data = [];
+
+            // Пытаемся загрузить с сервера
+            if (window.vk && typeof window.vk.getGlobalTop === 'function') {
+                try {
+                    data = await window.vk.getGlobalTop();
+                    console.log('📊 Загружено с сервера:', data ? data.length : 0);
+                } catch (e) {
+                    console.warn('Ошибка загрузки с сервера:', e);
+                }
             }
-            
-            topData = topData.map(item => ({
-                ...item,
-                user_id: item.user_id || item.userId || 0,
+
+            // Если с сервера ничего нет - берём локально
+            if (!data || data.length === 0) {
+                data = JSON.parse(localStorage.getItem('globalTop') || '[]');
+                console.log('📊 Загружено из localStorage:', data.length);
+            }
+
+            // Нормализуем данные
+            players = data.map(item => ({
+                user_id: parseInt(item.user_id || item.userId || 0),
                 user_name: item.user_name || item.userName || 'Игрок',
-                score: item.score || 0,
-                maxCombo: item.max_combo || item.maxCombo || 0,
-                challengePoints: item.challenge_points || item.challengePoints || 0
+                score: parseInt(item.score || 0),
+                maxCombo: parseInt(item.max_combo || item.maxCombo || 0),
+                challengePoints: parseInt(item.challenge_points || item.challengePoints || 0)
             }));
-            
-            // Получаем ID пользователя
-            currentUserId = getCurrentUserId();
-            console.log('👤 Текущий пользователь ID:', currentUserId);
-            
-            if (topData.length === 0) {
-                if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
-                }
-                updateUserInfo(null);
-                isLoading = false;
-                return;
-            }
-            
-            sortData();
+
+            // Сортируем
+            sortPlayers();
+
+            // Рендерим
             renderTop();
-            
+
         } catch (error) {
-            console.warn('⚠️ Ошибка загрузки топа:', error);
-            const localTop = JSON.parse(localStorage.getItem('globalTop') || '[]');
-            if (localTop.length > 0) {
-                topData = localTop;
-                sortData();
-                renderTop();
-            } else {
-                if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
-                }
-                updateUserInfo(null);
-            }
+            console.error('Ошибка загрузки топа:', error);
+            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки</td></tr>';
         }
-        
-        isLoading = false;
     }
 
-    function sortData() {
-        const { field, direction } = currentSort;
-        topData.sort((a, b) => {
-            let valA = a[field];
-            let valB = b[field];
-            if (field === 'name') {
+    // ===== СОРТИРОВКА =====
+    function sortPlayers() {
+        players.sort((a, b) => {
+            let valA = a[sortField];
+            let valB = b[sortField];
+            if (typeof valA === 'string') {
                 valA = valA.toLowerCase();
                 valB = valB.toLowerCase();
             }
-            if (valA < valB) return direction === 'asc' ? -1 : 1;
-            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
     }
 
-    function getUserInfo() {
-        if (!currentUserId) return null;
-        const index = topData.findIndex(item => {
-            // Сравниваем как числа
-            const itemId = parseInt(item.user_id);
-            const userId = parseInt(currentUserId);
-            return itemId === userId;
-        });
+    // ===== ПОИСК МЕНЯ =====
+    function findMe() {
+        myId = getMyId();
+        if (!myId) return null;
+        
+        const index = players.findIndex(p => p.user_id === myId);
         if (index === -1) return null;
+        
         return {
             place: index + 1,
-            ...topData[index]
+            ...players[index]
         };
     }
 
-    function updateUserInfo(userInfo) {
-        const container = document.getElementById('userInfoRow');
-        if (!container) return;
-        
-        if (!userInfo) {
-            if (currentUserId) {
-                container.innerHTML = `
-                    <div class="user-not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <div class="user-info-placeholder">👤 Загрузка данных пользователя...</div>
-                `;
-            }
-            return;
-        }
-        
-        const place = userInfo.place;
-        const medal = getMedal(place);
-        let placeClass = '';
-        if (place === 1) placeClass = 'gold';
-        else if (place === 2) placeClass = 'silver';
-        else if (place === 3) placeClass = 'bronze';
-        
-        container.innerHTML = `
-            <div class="user-info-content">
-                <span class="place ${placeClass}">${medal}</span>
-                <span class="name">${userInfo.user_name || 'Игрок'} 👈</span>
-                <span class="score">${userInfo.score || 0}</span>
-                <span class="combo">${userInfo.maxCombo || 0}</span>
-                <span class="bonus">${userInfo.challengePoints || 0}</span>
-            </div>
-        `;
-    }
-
+    // ===== РЕНДЕРИНГ =====
     function renderTop() {
-        const tbody = document.getElementById('topTableBody');
-        if (!tbody) return;
+        // 1. Моя строка
+        renderMyRank();
+
+        // 2. Таблица (первые 20)
+        const top = players.slice(0, LIMIT);
         
-        const topList = topData.slice(0, TOP_LIMIT);
-        const userInfo = getUserInfo();
-        
-        // Обновляем строку пользователя
-        updateUserInfo(userInfo);
-        
-        if (topList.length === 0) {
+        if (top.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
             return;
         }
-        
-        // Обновляем активный заголовок
-        document.querySelectorAll('.top-table th.sortable').forEach(th => {
-            th.classList.remove('active', 'asc');
-            const sortField = th.dataset.sort;
-            if (sortField === currentSort.field) {
-                th.classList.add('active');
-                if (currentSort.direction === 'asc') {
-                    th.classList.add('asc');
-                }
-            }
-        });
-        
+
         let html = '';
-        topList.forEach((item, index) => {
+        top.forEach((p, index) => {
             const place = index + 1;
             const medal = getMedal(place);
             let rankClass = '';
             if (place === 1) rankClass = 'rank-1';
             else if (place === 2) rankClass = 'rank-2';
             else if (place === 3) rankClass = 'rank-3';
-            
-            const userName = item.user_name || item.userName || 'Игрок';
-            const score = item.score || 0;
-            const maxCombo = item.maxCombo || 0;
-            const challengePoints = item.challengePoints || 0;
-            
-            const isCurrentUser = currentUserId && parseInt(item.user_id) === parseInt(currentUserId);
-            const rowClass = isCurrentUser ? 'current-user' : '';
-            
+
+            const isMe = myId && p.user_id === myId;
+            const rowClass = isMe ? 'current-user' : '';
+
             html += `
                 <tr class="${rowClass}">
                     <td><span class="${rankClass}">${medal}</span></td>
-                    <td>${userName} ${isCurrentUser ? '👈' : ''}</td>
-                    <td>${score}</td>
-                    <td>${maxCombo}</td>
-                    <td>${challengePoints}</td>
+                    <td>${p.user_name} ${isMe ? '👈' : ''}</td>
+                    <td>${p.score}</td>
+                    <td>${p.maxCombo}</td>
+                    <td>${p.challengePoints}</td>
                 </tr>
             `;
         });
-        
-        // Если пользователь не в топ-20, показываем его отдельно внизу
-        if (userInfo && userInfo.place > TOP_LIMIT) {
-            const place = userInfo.place;
-            const medal = getMedal(place);
-            let rankClass = '';
-            if (place === 1) rankClass = 'rank-1';
-            else if (place === 2) rankClass = 'rank-2';
-            else if (place === 3) rankClass = 'rank-3';
-            
+
+        // Если я не в топе - добавляю отдельную строку
+        const me = findMe();
+        if (me && me.place > LIMIT) {
             html += `
-                <tr class="current-user user-outside">
-                    <td><span class="${rankClass}">${medal}</span></td>
-                    <td>${userInfo.user_name || 'Игрок'} 👈</td>
-                    <td>${userInfo.score || 0}</td>
-                    <td>${userInfo.maxCombo || 0}</td>
-                    <td>${userInfo.challengePoints || 0}</td>
+                <tr class="current-user user-outside-top">
+                    <td><span>${me.place}</span></td>
+                    <td>${me.user_name} 👈</td>
+                    <td>${me.score}</td>
+                    <td>${me.maxCombo}</td>
+                    <td>${me.challengePoints}</td>
                 </tr>
             `;
         }
-        
+
         tbody.innerHTML = html;
+
+        // 3. Обновляем активный заголовок
+        document.querySelectorAll('.top-table th').forEach(th => {
+            th.classList.remove('active');
+            const field = th.dataset.sort;
+            if (field === sortField) {
+                th.classList.add('active');
+            }
+        });
+    }
+
+    // ===== МОЯ СТРОКА =====
+    function renderMyRank() {
+        const me = findMe();
+
+        if (!me) {
+            if (myId) {
+                myRankRow.innerHTML = `
+                    <div class="my-not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</div>
+                `;
+            } else {
+                myRankRow.innerHTML = `
+                    <div class="my-rank-loading">👤 Загрузка данных...</div>
+                `;
+            }
+            return;
+        }
+
+        const medal = getMedal(me.place);
+        let placeClass = '';
+        if (me.place === 1) placeClass = 'gold';
+        else if (me.place === 2) placeClass = 'silver';
+        else if (me.place === 3) placeClass = 'bronze';
+
+        myRankRow.innerHTML = `
+            <div class="my-rank-content">
+                <span class="place ${placeClass}">${medal}</span>
+                <span class="name">${me.user_name} 👈</span>
+                <span class="score">${me.score}</span>
+                <span class="combo">${me.maxCombo}</span>
+                <span class="bonus">${me.challengePoints}</span>
+            </div>
+        `;
     }
 
     // ===== СОРТИРОВКА ПО ЗАГОЛОВКАМ =====
-    function sortBy(field) {
-        if (currentSort.field === field) {
-            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    function handleSort(field) {
+        if (sortField === field) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
         } else {
-            currentSort.field = field;
-            currentSort.direction = field === 'name' ? 'asc' : 'desc';
+            sortField = field;
+            sortDirection = field === 'name' ? 'asc' : 'desc';
         }
-        
-        if (!isLoading && topData.length > 0) {
-            sortData();
-            renderTop();
-        }
+        sortPlayers();
+        renderTop();
     }
 
-    // ===== ОБРАБОТЧИКИ КЛИКОВ ПО ЗАГОЛОВКАМ =====
-    document.querySelectorAll('.top-table th.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-            const field = th.dataset.sort;
-            if (field) sortBy(field);
+    // ===== ОБРАБОТЧИКИ =====
+    document.querySelectorAll('.top-table th').forEach(th => {
+        th.addEventListener('click', function() {
+            const field = this.dataset.sort;
+            if (field) handleSort(field);
         });
-        th.addEventListener('touchend', (e) => {
+        th.addEventListener('touchend', function(e) {
             e.preventDefault();
-            const field = th.dataset.sort;
-            if (field) sortBy(field);
+            const field = this.dataset.sort;
+            if (field) handleSort(field);
         });
     });
 
     // ===== НАВИГАЦИЯ =====
-    document.getElementById('backMenuBtn').addEventListener('click', () => {
-        goTo('index.html');
-    });
+    document.getElementById('backMenuBtn').addEventListener('click', () => goTo('index.html'));
     document.getElementById('backMenuBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
         goTo('index.html');
     });
 
-    // ===== ЗВУК =====
-    document.getElementById('soundToggleTop').addEventListener('click', () => {
-        toggleSound();
-    });
+    document.getElementById('soundToggleTop').addEventListener('click', () => toggleSound());
     document.getElementById('soundToggleTop').addEventListener('touchend', (e) => {
         e.preventDefault();
         toggleSound();
     });
 
-    // ===== ЗАГРУЗКА С ОЖИДАНИЕМ VK =====
-    waitForVK(() => {
-        // Обновляем ID пользователя после инициализации VK
-        currentUserId = getCurrentUserId();
-        console.log('👤 ID после инициализации VK:', currentUserId);
-        loadGlobalTop();
-    });
-
-    // ===== ФОНОВЫЕ ШАРИКИ =====
-    const canvas = document.createElement('canvas');
-    canvas.id = 'topBgCanvas';
-    canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:0;pointer-events:none;';
-    document.body.prepend(canvas);
-
-    const ctx = canvas.getContext('2d');
-    let width, height;
-
-    function resize() {
-        width = window.innerWidth;
-        height = window.innerHeight;
-        canvas.width = width;
-        canvas.height = height;
-    }
-    resize();
-    window.addEventListener('resize', resize);
-
-    const bgBubbles = [];
-    for (let i = 0; i < 10; i++) {
-        const b = new Bubble(width, height);
-        b.y = Math.random() * height;
-        b.speed = 0.1 + Math.random() * 0.3;
-        b.radius = 20 + Math.random() * 40;
-        b.hue = Math.random() * 360;
-        bgBubbles.push(b);
-    }
-
-    let particles = [];
-
-    const popManager = {
-        particles: particles,
-        bubbles: bgBubbles,
-
-        handleTap(x, y) {
-            for (let i = this.bubbles.length - 1; i >= 0; i--) {
-                const b = this.bubbles[i];
-                if (b.contains(x, y)) {
-                    this.spawnParticles(b.x, b.y, b.hue);
-                    this.bubbles.splice(i, 1);
-                    this.respawnBubble();
-                    if (window.sound) {
-                        sound.pop(500 + Math.random() * 300, 0.1, 0.15);
-                    }
-                    return true;
-                }
-            }
-            return false;
-        },
-
-        spawnParticles(x, y, hue) {
-            for (let i = 0; i < 15 + Math.random() * 15; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = 1 + Math.random() * 4;
-                this.particles.push({
-                    x, y,
-                    vx: Math.cos(angle) * speed,
-                    vy: Math.sin(angle) * speed - 1,
-                    radius: 1.5 + Math.random() * 4,
-                    hue: hue + (Math.random() - 0.5) * 30,
-                    life: 30 + Math.random() * 30,
-                    maxLife: 50,
-                    gravity: 0.06
-                });
-            }
-        },
-
-        respawnBubble() {
-            const b = new Bubble(width, height);
-            b.y = Math.random() * height;
-            b.x = Math.random() * width;
-            b.radius = 20 + Math.random() * 40;
-            b.speed = 0.1 + Math.random() * 0.3;
-            b.hue = Math.random() * 360;
-            this.bubbles.push(b);
-        },
-
-        updateParticles() {
-            for (let i = this.particles.length - 1; i >= 0; i--) {
-                const p = this.particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += p.gravity;
-                p.vx *= 0.99;
-                p.vy *= 0.99;
-                p.life--;
-                p.radius *= 0.995;
-                if (p.life <= 0 || p.radius < 0.3) {
-                    this.particles.splice(i, 1);
-                }
-            }
-        },
-
-        drawParticles() {
-            for (const p of this.particles) {
-                const alpha = p.life / p.maxLife;
-                ctx.globalAlpha = alpha;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius * alpha, 0, Math.PI * 2);
-                ctx.fillStyle = `hsl(${p.hue}, 100%, 60%)`;
-                ctx.fill();
-            }
-            ctx.globalAlpha = 1;
-        }
-    };
-
-    document.querySelector('.top-container').addEventListener('click', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        popManager.handleTap(x, y);
-    });
-
-    document.querySelector('.top-container').addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        if (!touch) return;
-        const rect = canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        popManager.handleTap(x, y);
-    }, { passive: true });
-
-    function animateBg() {
-        ctx.clearRect(0, 0, width, height);
-        
-        ctx.fillStyle = 'rgba(0,0,0,0)';
-        ctx.fillRect(0, 0, width, height);
-
-        for (const b of bgBubbles) {
-            b.update();
-            if (!b.alive) {
-                b.y = height + b.radius;
-                b.x = Math.random() * width;
-                b.alive = true;
-                b.radius = 20 + Math.random() * 40;
-                b.speed = 0.1 + Math.random() * 0.3;
-                b.hue = Math.random() * 360;
-            }
-            b.draw(ctx);
-        }
-
-        popManager.updateParticles();
-        popManager.drawParticles();
-
-        requestAnimationFrame(animateBg);
-    }
-    animateBg();
+    // ===== ЗАПУСК =====
+    // Ждём немного, чтобы VK успел инициализироваться
+    setTimeout(() => {
+        myId = getMyId();
+        console.log('👤 Мой ID:', myId);
+        loadData();
+    }, 500);
 });

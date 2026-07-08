@@ -307,7 +307,7 @@ document.getElementById('exitBtn').addEventListener('click', (e) => {
     const rect = document.getElementById('exitBtn').getBoundingClientRect();
     spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 0);
     setTimeout(() => {
-        exitToVKGames();  // ← было exitToVK()
+        exitToVKGames();
     }, 300);
 });
 
@@ -316,7 +316,7 @@ document.getElementById('exitBtn').addEventListener('touchend', (e) => {
     const rect = document.getElementById('exitBtn').getBoundingClientRect();
     spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 0);
     setTimeout(() => {
-        exitToVKGames();  // ← было exitToVK()
+        exitToVKGames();
     }, 300);
 });
 });

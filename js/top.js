@@ -1,8 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
     let topData = [];
-    let currentSort = 'score';
+    let currentSort = { field: 'score', direction: 'desc' };
     let isLoading = true;
     let currentUserId = null;
+    const TOP_LIMIT = 20;
 
     function getMedal(place) {
         if (place === 1) return '🥇';
@@ -11,16 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return place;
     }
 
-    function getPlaceClass(place) {
-        if (place === 1) return 'place gold';
-        if (place === 2) return 'place silver';
-        if (place === 3) return 'place bronze';
-        return 'place';
-    }
-
     function getCurrentUserId() {
-        if (vk && vk.dbUserId) {
-            return vk.dbUserId;
+        if (window.vk && window.vk.dbUserId) {
+            return window.vk.dbUserId;
         }
         const savedId = localStorage.getItem('bubbleUserId');
         if (savedId) {
@@ -31,10 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadGlobalTop() {
         isLoading = true;
-        document.getElementById('topList').innerHTML = '<div class="top-empty">⏳ Загрузка...</div>';
+        const tbody = document.getElementById('topTableBody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>';
+        }
         
         try {
-            topData = await vk.getGlobalTop();
+            if (window.vk && window.vk.getGlobalTop) {
+                topData = await window.vk.getGlobalTop();
+            } else {
+                topData = JSON.parse(localStorage.getItem('globalTop') || '[]');
+            }
             
             topData = topData.map(item => ({
                 ...item,
@@ -49,12 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('👤 ID текущего пользователя:', currentUserId);
             
             if (topData.length === 0) {
-                document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+                }
+                updateUserInfo(null);
                 isLoading = false;
                 return;
             }
             
-            sortTopData();
+            sortData();
             renderTop();
             
         } catch (error) {
@@ -62,28 +66,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const localTop = JSON.parse(localStorage.getItem('globalTop') || '[]');
             if (localTop.length > 0) {
                 topData = localTop;
-                sortTopData();
+                sortData();
                 renderTop();
             } else {
-                document.getElementById('topList').innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+                }
+                updateUserInfo(null);
             }
         }
         
         isLoading = false;
     }
 
-    function sortTopData() {
-        if (currentSort === 'score') {
-            topData.sort((a, b) => (b.score || 0) - (a.score || 0));
-        } else if (currentSort === 'combo') {
-            topData.sort((a, b) => (b.maxCombo || 0) - (a.maxCombo || 0));
-        } else if (currentSort === 'bonus') {
-            topData.sort((a, b) => (b.challengePoints || 0) - (a.challengePoints || 0));
-        }
+    function sortData() {
+        const { field, direction } = currentSort;
+        topData.sort((a, b) => {
+            let valA = a[field];
+            let valB = b[field];
+            if (field === 'name') {
+                valA = valA.toLowerCase();
+                valB = valB.toLowerCase();
+            }
+            if (valA < valB) return direction === 'asc' ? -1 : 1;
+            if (valA > valB) return direction === 'asc' ? 1 : -1;
+            return 0;
+        });
     }
 
-    // ===== ПОЛУЧИТЬ МЕСТО ПОЛЬЗОВАТЕЛЯ =====
-    function getUserPlace() {
+    function getUserInfo() {
         if (!currentUserId) return null;
         const index = topData.findIndex(item => item.user_id === currentUserId);
         if (index === -1) return null;
@@ -93,71 +104,76 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // ===== РЕНДЕРИНГ ТОПА =====
-    function renderTop() {
-        const container = document.getElementById('topList');
-        const top10 = topData.slice(0, 10);
-        const userInfo = getUserPlace();
+    function updateUserInfo(userInfo) {
+        const container = document.getElementById('userInfoRow');
+        if (!container) return;
         
-        if (top10.length === 0) {
-            container.innerHTML = '<div class="top-empty">🎯 Сыграйте первую игру!</div>';
+        if (!userInfo) {
+            if (currentUserId) {
+                container.innerHTML = `
+                    <div class="user-not-in-top">🎯 Вы пока не в топе. Сыграйте несколько игр!</div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="user-info-placeholder">👤 Войдите в VK, чтобы увидеть своё место</div>
+                `;
+            }
             return;
         }
         
+        const place = userInfo.place;
+        const medal = getMedal(place);
+        let placeClass = '';
+        if (place === 1) placeClass = 'gold';
+        else if (place === 2) placeClass = 'silver';
+        else if (place === 3) placeClass = 'bronze';
+        
+        container.innerHTML = `
+            <div class="user-info-content">
+                <span class="place ${placeClass}">${medal}</span>
+                <span class="name">${userInfo.user_name || 'Игрок'} 👈</span>
+                <span class="score">${userInfo.score || 0}</span>
+                <span class="combo">${userInfo.maxCombo || 0}</span>
+                <span class="bonus">${userInfo.challengePoints || 0}</span>
+            </div>
+        `;
+    }
+
+    function renderTop() {
+        const tbody = document.getElementById('topTableBody');
+        if (!tbody) return;
+        
+        const topList = topData.slice(0, TOP_LIMIT);
+        const userInfo = getUserInfo();
+        
+        // Обновляем строку пользователя
+        updateUserInfo(userInfo);
+        
+        if (topList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+            return;
+        }
+        
+        // Обновляем активный заголовок
+        document.querySelectorAll('.top-table th.sortable').forEach(th => {
+            th.classList.remove('active', 'asc');
+            const sortField = th.dataset.sort;
+            if (sortField === currentSort.field) {
+                th.classList.add('active');
+                if (currentSort.direction === 'asc') {
+                    th.classList.add('asc');
+                }
+            }
+        });
+        
         let html = '';
-        
-        // ===== ВЫДЕЛЕННАЯ СТРОКА ПОЛЬЗОВАТЕЛЯ (если он есть в топ-10 или вообще в списке) =====
-        if (userInfo && userInfo.place <= 10) {
-            // Пользователь в топ-10 — он уже есть в списке, но мы покажем его в выделенной строке
-            // и заменим его строку в основном списке на "выделенную"
-            // Для этого мы не будем дублировать, а просто добавим отдельную строку сверху
-            // и уберем его из основного списка (или выделим отдельно)
-            // Но проще — оставить как есть, просто добавить отдельную строку-баннер
-            // + подсветить его в списке
-        }
-        
-        // Сначала рисуем выделенную строку пользователя (если он есть в топе)
-        if (userInfo) {
-            const place = userInfo.place;
-            const medal = getMedal(place);
-            const placeClass = getPlaceClass(place);
-            const userName = userInfo.user_name || 'Игрок';
-            const score = userInfo.score || 0;
-            const maxCombo = userInfo.maxCombo || 0;
-            const challengePoints = userInfo.challengePoints || 0;
-            
-            html += `
-                <div class="top-row current-user-highlight">
-                    <div class="user-badge">
-                        <span class="highlight-star">⭐</span>
-                        <span>МОЁ МЕСТО</span>
-                    </div>
-                </div>
-                <div class="top-row current-user user-highlight-row">
-                    <span class="${placeClass}">${medal}</span>
-                    <span class="name">${userName} 👈</span>
-                    <span class="score">${score}</span>
-                    <span class="combo">${maxCombo}</span>
-                    <span class="bonus">${challengePoints}</span>
-                </div>
-            `;
-        }
-        
-        // ===== ОСНОВНОЙ СПИСОК ТОП-10 =====
-        // Если пользователь в топ-10, мы его уже показали в выделенной строке,
-        // но в основном списке он тоже есть — его можно подсветить, но не дублировать
-        // Чтобы избежать дублирования, мы просто пропускаем его в основном списке
-        // и показываем остальных (или оставляем его с подсветкой)
-        
-        // Вариант: показываем топ-10 с подсветкой пользователя, но без дублирования выделенной строки
-        // Если мы уже показали выделенную строку, то в основном списке пользователь будет подсвечен
-        // но мы его не убираем, чтобы был виден полный список
-        
-        // Просто рендерим топ-10 с подсветкой пользователя
-        html += top10.map((item, index) => {
+        topList.forEach((item, index) => {
             const place = index + 1;
             const medal = getMedal(place);
-            const placeClass = getPlaceClass(place);
+            let rankClass = '';
+            if (place === 1) rankClass = 'rank-1';
+            else if (place === 2) rankClass = 'rank-2';
+            else if (place === 3) rankClass = 'rank-3';
             
             const userName = item.user_name || item.userName || 'Игрок';
             const score = item.score || 0;
@@ -165,75 +181,72 @@ document.addEventListener('DOMContentLoaded', () => {
             const challengePoints = item.challengePoints || 0;
             
             const isCurrentUser = currentUserId && item.user_id === currentUserId;
-            const rowClass = isCurrentUser ? 'top-row current-user' : 'top-row';
+            const rowClass = isCurrentUser ? 'current-user' : '';
             
-            return `
-                <div class="${rowClass}">
-                    <span class="${placeClass}">${medal}</span>
-                    <span class="name">${userName} ${isCurrentUser ? '👈' : ''}</span>
-                    <span class="score">${score}</span>
-                    <span class="combo">${maxCombo}</span>
-                    <span class="bonus">${challengePoints}</span>
-                </div>
-            `;
-        }).join('');
-        
-        // ===== ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В ТОП-10, НО В ОБЩЕМ СПИСКЕ =====
-        if (userInfo && userInfo.place > 10) {
-            // Убираем строку "МОЁ МЕСТО" если она уже есть, и пересоздаём
-            // Но проще добавить её в конце с номером места
             html += `
-                <div class="top-divider">...</div>
-                <div class="top-row current-user user-highlight-row user-outside-top">
-                    <span class="place">${userInfo.place}</span>
-                    <span class="name">${userInfo.user_name || 'Игрок'} 👈</span>
-                    <span class="score">${userInfo.score || 0}</span>
-                    <span class="combo">${userInfo.maxCombo || 0}</span>
-                    <span class="bonus">${userInfo.challengePoints || 0}</span>
-                </div>
+                <tr class="${rowClass}">
+                    <td><span class="${rankClass}">${medal}</span></td>
+                    <td>${userName} ${isCurrentUser ? '👈' : ''}</td>
+                    <td>${score}</td>
+                    <td>${maxCombo}</td>
+                    <td>${challengePoints}</td>
+                </tr>
+            `;
+        });
+        
+        // Если пользователь не в топ-20, показываем его отдельно внизу
+        if (userInfo && userInfo.place > TOP_LIMIT) {
+            const place = userInfo.place;
+            const medal = getMedal(place);
+            let rankClass = '';
+            if (place === 1) rankClass = 'rank-1';
+            else if (place === 2) rankClass = 'rank-2';
+            else if (place === 3) rankClass = 'rank-3';
+            
+            html += `
+                <tr class="current-user user-outside">
+                    <td><span class="${rankClass}">${medal}</span></td>
+                    <td>${userInfo.user_name || 'Игрок'} 👈</td>
+                    <td>${userInfo.score || 0}</td>
+                    <td>${userInfo.maxCombo || 0}</td>
+                    <td>${userInfo.challengePoints || 0}</td>
+                </tr>
             `;
         }
         
-        // ===== ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ НАШЁЛСЯ В ТОПЕ =====
-        if (!userInfo && currentUserId) {
-            html += `
-                <div class="top-row not-in-top">
-                    <span class="place">—</span>
-                    <span class="name">Вы пока не в топе 🎯</span>
-                    <span class="score">0</span>
-                    <span class="combo">0</span>
-                    <span class="bonus">0</span>
-                </div>
-            `;
-        }
-        
-        container.innerHTML = html;
+        tbody.innerHTML = html;
     }
 
-    // ===== ФИЛЬТРЫ =====
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentSort = btn.dataset.sort;
-            if (!isLoading && topData.length > 0) {
-                sortTopData();
-                renderTop();
-            }
+    // ===== СОРТИРОВКА ПО ЗАГОЛОВКАМ =====
+    function sortBy(field) {
+        if (currentSort.field === field) {
+            // Меняем направление
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.field = field;
+            currentSort.direction = field === 'name' ? 'asc' : 'desc';
+        }
+        
+        if (!isLoading && topData.length > 0) {
+            sortData();
+            renderTop();
+        }
+    }
+
+    // ===== ОБРАБОТЧИКИ КЛИКОВ ПО ЗАГОЛОВКАМ =====
+    document.querySelectorAll('.top-table th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const field = th.dataset.sort;
+            if (field) sortBy(field);
         });
-        btn.addEventListener('touchend', (e) => {
+        th.addEventListener('touchend', (e) => {
             e.preventDefault();
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentSort = btn.dataset.sort;
-            if (!isLoading && topData.length > 0) {
-                sortTopData();
-                renderTop();
-            }
+            const field = th.dataset.sort;
+            if (field) sortBy(field);
         });
     });
 
-    // ===== КНОПКА "НАЗАД" =====
+    // ===== НАВИГАЦИЯ =====
     document.getElementById('backMenuBtn').addEventListener('click', () => {
         goTo('index.html');
     });
@@ -251,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSound();
     });
 
-   
     // ===== ЗАГРУЗКА =====
     loadGlobalTop();
 

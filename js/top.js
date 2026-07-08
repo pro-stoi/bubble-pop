@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let sortDirection = 'desc';
     let myId = null;
     const LIMIT = 20;
+    const SERVER_URL = 'https://neurodrone-arena.ru/api/bubble';
 
     // ===== ЭЛЕМЕНТЫ =====
     const tbody = document.getElementById('topBody');
@@ -19,60 +20,65 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function getMyId() {
-        // Пробуем из VK
+        // Пробуем из localStorage (сохраняется при логине)
+        const saved = localStorage.getItem('bubbleUserId');
+        if (saved) {
+            return parseInt(saved);
+        }
+        // Пробуем из vk
         if (window.vk && window.vk.dbUserId) {
             return parseInt(window.vk.dbUserId);
         }
         if (window.vk && window.vk.userId) {
             return parseInt(window.vk.userId);
         }
-        // Пробуем из localStorage
-        const saved = localStorage.getItem('bubbleUserId');
-        if (saved) {
-            return parseInt(saved);
-        }
         return null;
     }
 
-    // ===== ЗАГРУЗКА ДАННЫХ =====
-    async function loadData() {
+    // ===== ЗАГРУЗКА С СЕРВЕРА =====
+    async function loadTop() {
         try {
-            let data = [];
+            // Показываем загрузку
+            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>';
+            myRankRow.innerHTML = '<div class="my-rank-loading">⏳ Загрузка...</div>';
 
-            // Пытаемся загрузить с сервера
-            if (window.vk && typeof window.vk.getGlobalTop === 'function') {
-                try {
-                    data = await window.vk.getGlobalTop();
-                    console.log('📊 Загружено с сервера:', data ? data.length : 0);
-                } catch (e) {
-                    console.warn('Ошибка загрузки с сервера:', e);
-                }
+            // Прямой запрос к серверу
+            const response = await fetch(SERVER_URL + '/top');
+            
+            if (!response.ok) {
+                throw new Error('Ошибка сервера: ' + response.status);
             }
+            
+            const data = await response.json();
+            console.log('📊 Получено записей:', data ? data.length : 0);
 
-            // Если с сервера ничего нет - берём локально
             if (!data || data.length === 0) {
-                data = JSON.parse(localStorage.getItem('globalTop') || '[]');
-                console.log('📊 Загружено из localStorage:', data.length);
+                tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+                myRankRow.innerHTML = '<div class="my-not-in-top">🎯 Сыграйте первую игру!</div>';
+                return;
             }
 
             // Нормализуем данные
             players = data.map(item => ({
-                user_id: parseInt(item.user_id || item.userId || 0),
-                user_name: item.user_name || item.userName || 'Игрок',
+                user_id: parseInt(item.user_id || 0),
+                user_name: item.user_name || 'Игрок',
                 score: parseInt(item.score || 0),
-                maxCombo: parseInt(item.max_combo || item.maxCombo || 0),
-                challengePoints: parseInt(item.challenge_points || item.challengePoints || 0)
+                maxCombo: parseInt(item.max_combo || 0),
+                challengePoints: parseInt(item.challenge_points || 0)
             }));
 
-            // Сортируем
-            sortPlayers();
+            // Получаем ID текущего пользователя
+            myId = getMyId();
+            console.log('👤 Мой ID:', myId);
 
-            // Рендерим
+            // Сортируем и рисуем
+            sortPlayers();
             renderTop();
 
         } catch (error) {
             console.error('Ошибка загрузки топа:', error);
-            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки. Попробуйте позже.</td></tr>';
+            myRankRow.innerHTML = '<div class="my-not-in-top">❌ Ошибка загрузки</div>';
         }
     }
 
@@ -93,12 +99,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== ПОИСК МЕНЯ =====
     function findMe() {
-        myId = getMyId();
         if (!myId) return null;
-        
         const index = players.findIndex(p => p.user_id === myId);
         if (index === -1) return null;
-        
         return {
             place: index + 1,
             ...players[index]
@@ -110,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 1. Моя строка
         renderMyRank();
 
-        // 2. Таблица (первые 20)
+        // 2. Таблица
         const top = players.slice(0, LIMIT);
         
         if (top.length === 0) {
@@ -141,11 +144,11 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
         });
 
-        // Если я не в топе - добавляю отдельную строку
+        // Если я не в топ-20 - добавляю отдельную строку
         const me = findMe();
         if (me && me.place > LIMIT) {
             html += `
-                <tr class="current-user user-outside-top">
+                <tr class="current-user">
                     <td><span>${me.place}</span></td>
                     <td>${me.user_name} 👈</td>
                     <td>${me.score}</td>
@@ -178,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             } else {
                 myRankRow.innerHTML = `
-                    <div class="my-rank-loading">👤 Загрузка данных...</div>
+                    <div class="my-rank-loading">👤 Войдите в VK, чтобы увидеть своё место</div>
                 `;
             }
             return;
@@ -240,10 +243,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ===== ЗАПУСК =====
-    // Ждём немного, чтобы VK успел инициализироваться
-    setTimeout(() => {
-        myId = getMyId();
-        console.log('👤 Мой ID:', myId);
-        loadData();
-    }, 500);
+    loadTop();
 });

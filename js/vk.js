@@ -272,6 +272,58 @@ async loginToServer() {
             setTimeout(() => popup.remove(), 400);
         }, 3000);
     }
+    
+// ===== РАБОТА С ИСПЫТАНИЯМИ =====
+
+// Получить все испытания
+async getChallenges() {
+    try {
+        const response = await fetch(`${this.serverUrl}/challenges`);
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка загрузки испытаний:', error);
+        return [];
+    }
+}
+
+// Получить прогресс пользователя
+async getUserChallengeProgress(userId) {
+    try {
+        const response = await fetch(`${this.serverUrl}/challenges/progress/${userId}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка загрузки прогресса:', error);
+        return [];
+    }
+}
+
+// Обновить прогресс испытания
+async updateChallenge(userId, challengeId, progressDelta) {
+    try {
+        const response = await fetch(`${this.serverUrl}/challenges/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, challengeId, progressDelta })
+        });
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка обновления прогресса:', error);
+        return { success: false };
+    }
+}
+
+// Получить общую сумму наград пользователя
+async getUserTotalRewards(userId) {
+    try {
+        const response = await fetch(`${this.serverUrl}/challenges/total/${userId}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Ошибка получения наград:', error);
+        return { totalReward: 0 };
+    }
+}  
+    
+    
 }
 
 const vk = new VKManager();

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Топ 🏆</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/top.css" />
+    
+    <!-- ===== VK BRIDGE ===== -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <!-- =================== -->
+</head>
+<body>
+    <div class="top-container">
+        <!-- Шапка -->
+        <div class="top-header">
+            <h1>🏆 ТОП</h1>
+            <button class="game-btn back-btn" id="backMenuBtn">
+                <span>🏠</span>
+            </button>
+            <button class="game-btn sound-btn" id="soundToggleTop">
+                <span class="sound-icon">🔊</span>
+            </button>
+        </div>
+
+        <!-- Строка с моим местом -->
+        <div id="myRankRow" class="my-rank-row">
+            <span class="my-rank-loading">⏳ Загрузка...</span>
+        </div>
+
+        <!-- Таблица -->
+        <div class="top-table-wrapper">
+            <table class="top-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="rank">#</th>
+                        <th class="sortable" data-sort="name">Игрок</th>
+                        <th class="sortable active" data-sort="score">Очки</th>
+                        <th class="sortable" data-sort="combo">Комбо</th>
+                        <th class="sortable" data-sort="bonus">Достижения</th>
+                    </tr>
+                </thead>
+                <tbody id="topBody">
+                    <tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="js/nav.js"></script>
+    <script src="js/vk.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/top.js"></script>
+</body>
+</html>

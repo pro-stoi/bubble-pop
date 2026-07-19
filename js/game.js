@@ -416,7 +416,7 @@ statsManager.onScore(this.score);
     }
     
 saveGameResult() {
-    
+    statsManager.onScore(this.score);
     
     // ===== СОХРАНЯЕМ СТАТИСТИКУ В БД =====
     statsManager.save().then((result) => {

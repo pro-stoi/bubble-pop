@@ -133,36 +133,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 '</div>';
         }
 
-        var top20 = sorted.slice(0, 20);
+        var top100 = sorted.slice(0, 100);
         var html = '';
 
-        for (var j = 0; j < top20.length; j++) {
-            var p = top20[j];
-            var place = j + 1;
-            var medal = getMedal(place);
-            var rankClass = place === 1 ? 'rank-1' : place === 2 ? 'rank-2' : place === 3 ? 'rank-3' : '';
-            var isMe = myId && parseInt(p.user_id) === parseInt(myId);
-            var rowClass = isMe ? 'current-user' : '';
+     for (var j = 0; j < top100.length; j++) {
+    var p = top100[j];
+    var place = j + 1;
+    var medal = getMedal(place);
+    var rankClass = place === 1 ? 'rank-1' : place === 2 ? 'rank-2' : place === 3 ? 'rank-3' : '';
+    var isMe = myId && parseInt(p.user_id) === parseInt(myId);
+    var rowClass = isMe ? 'current-user' : '';
 
-            html += '<tr class="' + rowClass + '">' +
-                '<td><span class="' + rankClass + '">' + medal + '</span></td>' +
-                '<td>' + p.user_name + (isMe ? ' 👈' : '') + '</td>' +
-                '<td>' + p.score + '</td>' +
-                '<td>' + p.max_combo + '</td>' +
-                '<td>' + p.challenge_points + '</td>' +
-            '</tr>';
-        }
+    html += '<tr class="' + rowClass + '">' +
+        '<td><span class="' + rankClass + '">' + medal + '</span></td>' +
+        '<td>' + p.user_name + (isMe ? ' 👈' : '') + '</td>' +
+        '<td>' + p.score + '</td>' +
+        '<td>' + p.max_combo + '</td>' +
+        '<td>' + p.challenge_points + '</td>' +
+    '</tr>';
+}
 
-        if (myId && myIndex >= 20) {
-            var p = sorted[myIndex];
-            html += '<tr class="user-outside">' +
-                '<td>' + (myIndex + 1) + '</td>' +
-                '<td>' + p.user_name + ' 👈</td>' +
-                '<td>' + p.score + '</td>' +
-                '<td>' + p.max_combo + '</td>' +
-                '<td>' + p.challenge_points + '</td>' +
-            '</tr>';
-        }
+if (myId && myIndex >= 100) {
+    var p = sorted[myIndex];
+    html += '<tr class="user-outside">' +
+        '<td>' + (myIndex + 1) + '</td>' +
+        '<td>' + p.user_name + ' 👈</td>' +
+        '<td>' + p.score + '</td>' +
+        '<td>' + p.max_combo + '</td>' +
+        '<td>' + p.challenge_points + '</td>' +
+    '</tr>';
+}
 
         tbody.innerHTML = html;
 

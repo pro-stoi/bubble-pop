@@ -371,29 +371,41 @@ class BonusManager {
 }
 
 handleAdWatched(type) {
-    // Если есть VK Bridge — показываем рекламу
-    if (typeof vkBridge !== 'undefined') {
-        vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
-            .then(() => {
-                this.onAdWatched(type);
-            })
-            .catch((error) => {
-                console.warn('⚠️ Реклама не показана:', error);
-                // ВСЁ РАВНО ДАЁМ БОНУС
-                this.onAdWatched(type);
-            });
-    } else {
-        // Если VK Bridge нет — даём бонус без рекламы (для теста)
+    alert('1️⃣ handleAdWatched вызван для: ' + type);
+    
+    // ===== ПРОВЕРЯЕМ, ЕСТЬ ЛИ VK BRIDGE =====
+    if (typeof vkBridge === 'undefined') {
+        alert('2️⃣ VK Bridge НЕ НАЙДЕН! Даём бонус без рекламы');
         this.onAdWatched(type);
+        return;
     }
+    
+    alert('3️⃣ VK Bridge найден, отправляем запрос на рекламу');
+    
+    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
+        .then(() => {
+            alert('4️⃣ ✅ Реклама просмотрена успешно!');
+            this.onAdWatched(type);
+        })
+        .catch((error) => {
+            alert('5️⃣ ❌ Ошибка рекламы: ' + error);
+            // ===== ВРЕМЕННО: даём бонус даже при ошибке для теста =====
+            alert('6️⃣ ⚠️ Даём бонус при ошибке (тестовый режим)');
+            this.onAdWatched(type);
+        });
 }
 
-   onAdWatched(type) {
+onAdWatched(type) {
+    alert('7️⃣ onAdWatched вызван для: ' + type);
+    
     const bonus = this.bonuses[type];
     if (!bonus) {
+        alert('8️⃣ ❌ Бонус не найден!');
         this.showEffect('❌ Ошибка!', '#ff4444');
         return;
     }
+    
+    alert('9️⃣ Бонус найден: ' + bonus.name + ', count=' + bonus.count + ', maxCount=' + bonus.maxCount);
     
     if (bonus.count < bonus.maxCount) {
         bonus.count++;
@@ -401,8 +413,10 @@ handleAdWatched(type) {
             statsManager.onBonusEarned(type);
         }
         this.updateUI();
+        alert('🔟 ✅ Бонус добавлен! Теперь count=' + bonus.count);
         this.showEffect(`✅ +1 ${bonus.name}!`, '#44ff44');
     } else {
+        alert('1️⃣1️⃣ ❌ Лимит достигнут!');
         this.showEffect('❌ Лимит достигнут!', '#ff4444');
     }
 }

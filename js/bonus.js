@@ -379,7 +379,7 @@ handleAdWatched(type) {
             })
             .catch((error) => {
                 console.warn('⚠️ Реклама не показана:', error);
-                // ВСЁ РАВНО ДАЁМ БОНУС
+                // ВСЁ РАВНО ДАЁМ БОНУС (для теста, потом убрать)
                 this.onAdWatched(type);
             });
     } else {
@@ -388,7 +388,7 @@ handleAdWatched(type) {
     }
 }
 
-   onAdWatched(type) {
+onAdWatched(type) {
     const bonus = this.bonuses[type];
     if (!bonus) {
         this.showEffect('❌ Ошибка!', '#ff4444');

@@ -28,6 +28,9 @@ class BonusManager {
         this.slowMotionTimer = 0;
         this.isColorSelectionMode = false;
         this.selectedBonusType = null;
+         // ===== РЕГИСТРИРУЕМ СЕБЯ В ГЛОБАЛЬНОМ ОБЪЕКТЕ =====
+    window.bonusManager = this;
+        
     }
 
     // ===== ОБРАБОТКА ЛОПАНИЯ ПУЗЫРЬКА (ВРУЧНУЮ) =====
@@ -369,33 +372,42 @@ class BonusManager {
         });
     }
 
-    handleAdWatched(type) {
-        if (typeof vkBridge !== 'undefined') {
-            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
-                .then(() => {
-                    this.onAdWatched(type);
-                })
-                .catch((error) => {
-                    console.warn('⚠️ Реклама не показана:', error);
-                    this.onAdWatched(type);
-                });
-        } else {
-            this.onAdWatched(type);
-        }
+handleAdWatched(type) {
+    // Если есть VK Bridge — показываем рекламу
+    if (typeof vkBridge !== 'undefined') {
+        vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
+            .then(() => {
+                this.onAdWatched(type);
+            })
+            .catch((error) => {
+                console.warn('⚠️ Реклама не показана:', error);
+                // ВСЁ РАВНО ДАЁМ БОНУС
+                this.onAdWatched(type);
+            });
+    } else {
+        // Если VK Bridge нет — даём бонус без рекламы (для теста)
+        this.onAdWatched(type);
     }
+}
 
-    onAdWatched(type) {
-        if (this.bonuses[type] && this.bonuses[type].count < this.bonuses[type].maxCount) {
-            this.bonuses[type].count++;
-            if (typeof statsManager !== 'undefined') {
-                statsManager.onBonusEarned(type);
-            }
-            this.updateUI();
-            this.showEffect(`✅ +1 ${this.bonuses[type].name}!`, '#44ff44');
-        } else {
-            this.showEffect('❌ Лимит достигнут!', '#ff4444');
-        }
+   onAdWatched(type) {
+    const bonus = this.bonuses[type];
+    if (!bonus) {
+        this.showEffect('❌ Ошибка!', '#ff4444');
+        return;
     }
+    
+    if (bonus.count < bonus.maxCount) {
+        bonus.count++;
+        if (typeof statsManager !== 'undefined') {
+            statsManager.onBonusEarned(type);
+        }
+        this.updateUI();
+        this.showEffect(`✅ +1 ${bonus.name}!`, '#44ff44');
+    } else {
+        this.showEffect('❌ Лимит достигнут!', '#ff4444');
+    }
+}
 
     // ===== ОБНОВИТЬ UI БОНУСОВ =====
     updateUI() {

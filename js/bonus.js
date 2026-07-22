@@ -315,62 +315,60 @@ class BonusManager {
         modal.style.display = 'flex';
     }
 
-    createBonusModal() {
-        if (document.getElementById('bonusAdModal')) return;
-        const modal = document.createElement('div');
-        modal.id = 'bonusAdModal';
-        modal.className = 'exit-modal';
-        modal.style.display = 'none';
-        modal.innerHTML = `
-            <div class="exit-modal-content" style="max-width:340px;padding:24px 28px;">
-                <div class="exit-modal-title" id="bonusAdModalTitle" style="font-size:20px;">🎁 Получи бонус!</div>
-                <div style="padding:12px 0;color:rgba(255,255,255,0.7);font-size:15px;line-height:1.5;" id="bonusAdModalDesc">
-                    Посмотри рекламу и получи 1 бонус!
-                </div>
-                <div class="exit-modal-buttons" style="display:flex;gap:10px;margin-top:12px;">
-                    <button class="exit-modal-btn exit-modal-btn-back" id="bonusAdModalCancel" style="flex:1;padding:12px;font-size:14px;">
-                        ❌ Отмена
-                    </button>
-                    <button class="exit-modal-btn exit-modal-btn-exit" id="bonusAdModalConfirm" style="flex:1;padding:12px;font-size:14px;background:linear-gradient(135deg,#ffcc00,#f0a500);color:#000;border-color:rgba(255,200,0,0.3);">
-                        ✅ Смотреть
-                    </button>
-                </div>
+   createBonusModal() {
+    if (document.getElementById('bonusAdModal')) return;
+    const self = this;  // ← СОХРАНЯЕМ ССЫЛКУ
+    
+    const modal = document.createElement('div');
+    modal.id = 'bonusAdModal';
+    modal.className = 'exit-modal';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+        <div class="exit-modal-content" style="max-width:340px;padding:24px 28px;">
+            <div class="exit-modal-title" id="bonusAdModalTitle" style="font-size:20px;">🎁 Получи бонус!</div>
+            <div style="padding:12px 0;color:rgba(255,255,255,0.7);font-size:15px;line-height:1.5;" id="bonusAdModalDesc">
+                Посмотри рекламу и получи 1 бонус!
             </div>
-        `;
-        document.body.appendChild(modal);
-        
-        document.getElementById('bonusAdModalCancel').addEventListener('click', function() {
-            const m = document.getElementById('bonusAdModal');
-            if (m) m.style.display = 'none';
-        });
-        document.getElementById('bonusAdModalCancel').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            const m = document.getElementById('bonusAdModal');
-            if (m) m.style.display = 'none';
-        });
-        
-        document.getElementById('bonusAdModalConfirm').addEventListener('click', function() {
-            const m = document.getElementById('bonusAdModal');
-            if (m) {
-                const type = m.dataset.bonusType;
-                m.style.display = 'none';
-                if (window.bonusManager) {
-                    window.bonusManager.handleAdWatched(type);
-                }
-            }
-        });
-        document.getElementById('bonusAdModalConfirm').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            const m = document.getElementById('bonusAdModal');
-            if (m) {
-                const type = m.dataset.bonusType;
-                m.style.display = 'none';
-                if (window.bonusManager) {
-                    window.bonusManager.handleAdWatched(type);
-                }
-            }
-        });
-    }
+            <div class="exit-modal-buttons" style="display:flex;gap:10px;margin-top:12px;">
+                <button class="exit-modal-btn exit-modal-btn-back" id="bonusAdModalCancel" style="flex:1;padding:12px;font-size:14px;">
+                    ❌ Отмена
+                </button>
+                <button class="exit-modal-btn exit-modal-btn-exit" id="bonusAdModalConfirm" style="flex:1;padding:12px;font-size:14px;background:linear-gradient(135deg,#ffcc00,#f0a500);color:#000;border-color:rgba(255,200,0,0.3);">
+                    ✅ Смотреть
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('bonusAdModalCancel').addEventListener('click', function() {
+        const m = document.getElementById('bonusAdModal');
+        if (m) m.style.display = 'none';
+    });
+    document.getElementById('bonusAdModalCancel').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        const m = document.getElementById('bonusAdModal');
+        if (m) m.style.display = 'none';
+    });
+    
+    document.getElementById('bonusAdModalConfirm').addEventListener('click', function() {
+        const m = document.getElementById('bonusAdModal');
+        if (m) {
+            const type = m.dataset.bonusType;
+            m.style.display = 'none';
+            self.handleAdWatched(type);  // ← ИСПОЛЬЗУЕМ self
+        }
+    });
+    document.getElementById('bonusAdModalConfirm').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        const m = document.getElementById('bonusAdModal');
+        if (m) {
+            const type = m.dataset.bonusType;
+            m.style.display = 'none';
+            self.handleAdWatched(type);  // ← ИСПОЛЬЗУЕМ self
+        }
+    });
+}
 
 handleAdWatched(type) {
     // Если есть VK Bridge — показываем рекламу

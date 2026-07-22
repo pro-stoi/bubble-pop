@@ -75,15 +75,89 @@
     </div>
     <!-- ===================================== -->
 
-<script src="js/sound.js"></script>
-<script src="js/bubble.js"></script>
-<script src="js/particle.js"></script>
-<script src="js/stats.js"></script>      <!-- ← ДОЛЖЕН БЫТЬ ПЕРВЫМ -->
-<script src="js/bonus.js"></script>     <!-- ← stats.js ДОЛЖЕН БЫТЬ ДО ВСЕХ, КТО ЕГО ИСПОЛЬЗУЕТ -->
-<script src="js/challengeTracker.js"></script>
-<script src="js/vk.js"></script>
-<script src="js/game.js"></script>
-<script src="js/nav.js"></script>
-<script src="js/main.js"></script>
+    <!-- ===== МОДАЛЬНОЕ ОКНО ДЛЯ РЕКЛАМЫ БОНУСА ===== -->
+    <div id="bonusAdModal" class="exit-modal" style="display:none;">
+        <div class="exit-modal-content" style="max-width:340px;">
+            <div class="exit-modal-title" id="bonusAdModalTitle" style="font-size:20px;">🎁 Получи бонус!</div>
+            <div style="padding:12px 0;color:rgba(255,255,255,0.7);font-size:15px;line-height:1.5;" id="bonusAdModalDesc">
+                Посмотри рекламу и получи 1 бонус!
+            </div>
+            <div class="exit-modal-buttons" style="display:flex;gap:10px;margin-top:12px;">
+                <button class="exit-modal-btn exit-modal-btn-back" id="bonusAdModalCancel" style="flex:1;padding:12px;font-size:14px;">
+                    ❌ Отмена
+                </button>
+                <button class="exit-modal-btn exit-modal-btn-exit" id="bonusAdModalConfirm" style="flex:1;padding:12px;font-size:14px;background:linear-gradient(135deg,#ffcc00,#f0a500);color:#000;border-color:rgba(255,200,0,0.3);">
+                    ✅ Смотреть
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ============================================== -->
+
+    <!-- ===== СКРИПТЫ ===== -->
+    <script src="js/sound.js"></script>
+    <script src="js/bubble.js"></script>
+    <script src="js/particle.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/bonus.js"></script>
+    <script src="js/challengeTracker.js"></script>
+    <script src="js/vk.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/main.js"></script>
+
+    <!-- ===== ОБРАБОТЧИКИ ДЛЯ МОДАЛКИ БОНУСА ===== -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('bonusAdModal');
+        const cancelBtn = document.getElementById('bonusAdModalCancel');
+        const confirmBtn = document.getElementById('bonusAdModalConfirm');
+        
+        // Кнопка "Отмена" — закрывает модалку
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (modal) modal.style.display = 'none';
+            });
+            cancelBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (modal) modal.style.display = 'none';
+            });
+        }
+        
+        // Кнопка "Смотреть" — закрывает модалку и запускает рекламу
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (modal) modal.style.display = 'none';
+                if (window.bonusManager) {
+                    const type = modal.dataset.bonusType;
+                    const mode = modal.dataset.mode || 'get';
+                    window.bonusManager.handleBonusAdConfirm(type, mode);
+                }
+            });
+            confirmBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (modal) modal.style.display = 'none';
+                if (window.bonusManager) {
+                    const type = modal.dataset.bonusType;
+                    const mode = modal.dataset.mode || 'get';
+                    window.bonusManager.handleBonusAdConfirm(type, mode);
+                }
+            });
+        }
+        
+        // Закрытие по клику на фон
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    });
+    </script>
 </body>
 </html>

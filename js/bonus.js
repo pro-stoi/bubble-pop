@@ -4,11 +4,11 @@ class BonusManager {
     constructor(game) {
         this.game = game;
         this.bonuses = {
-            red: { name: 'Замедление', count: 0, maxCount: 5, color: '#ff4444', icon: '🐢' },
-            yellow: { name: 'Магнит', count: 0, maxCount: 5, color: '#ffcc00', icon: '🧲' },
-            green: { name: 'Цветной взрыв', count: 0, maxCount: 5, color: '#44ff44', icon: '🎯' },
-            blue: { name: 'Умножение', count: 0, maxCount: 5, color: '#4488ff', icon: '⚡' },
-            pink: { name: 'Всё поле', count: 0, maxCount: 5, color: '#ff44ff', icon: '💥' }
+            red: { name: 'Замедление', count: 0, maxCount: 8, color: '#ff4444', icon: '🐢' },
+            yellow: { name: 'Магнит', count: 0, maxCount: 8, color: '#ffcc00', icon: '🧲' },
+            green: { name: 'Цветной взрыв', count: 0, maxCount: 8, color: '#44ff44', icon: '🎯' },
+            blue: { name: 'Умножение', count: 0, maxCount: 8, color: '#4488ff', icon: '⚡' },
+            pink: { name: 'Всё поле', count: 0, maxCount: 8, color: '#ff44ff', icon: '💥' }
         };
         
         this.colorCounters = {
@@ -45,6 +45,13 @@ class BonusManager {
         this.colorCounters[colorType] = (this.colorCounters[colorType] || 0) + 1;
         this.updateUI();
         
+        // Проверяем, не достиг ли максимума (8)
+        if (this.bonuses[colorType].count >= this.bonuses[colorType].maxCount) {
+            this.colorCounters[colorType] = 0;
+            this.updateUI();
+            return false;
+        }
+        
         if (this.colorCounters[colorType] >= this.requiredHits) {
             this.addBonus(colorType);
             this.colorCounters[colorType] = 0;
@@ -74,7 +81,6 @@ class BonusManager {
         let colorType = this.getColorType(bubble.hue);
         if (!colorType) return false;
         
-        // Если сменился цвет — сбрасываем счётчики
         if (this.currentColor !== colorType) {
             this.currentColor = colorType;
             this.comboCount = 0;
@@ -84,6 +90,12 @@ class BonusManager {
         this.comboCount++;
         this.colorCounters[colorType] = (this.colorCounters[colorType] || 0) + 1;
         this.updateUI();
+        
+        if (this.bonuses[colorType].count >= this.bonuses[colorType].maxCount) {
+            this.colorCounters[colorType] = 0;
+            this.updateUI();
+            return false;
+        }
         
         if (this.colorCounters[colorType] >= this.requiredHits) {
             this.addBonus(colorType);
@@ -128,39 +140,27 @@ class BonusManager {
     }
 
     // ===== ДОБАВИТЬ БОНУС =====
-addBonus(type) {
-    
-    
-    // ===== ПРОВЕРКА: statsManager существует? =====
-    if (typeof statsManager === 'undefined') {
-        
-    } else {
-        
+    addBonus(type) {
+        if (this.bonuses[type] && this.bonuses[type].count < this.bonuses[type].maxCount) {
+            this.bonuses[type].count++;
+            if (typeof statsManager !== 'undefined') {
+                statsManager.onBonusEarned(type);
+            }
+            this.updateUI();
+            return true;
+        }
+        return false;
     }
-    
-    if (this.bonuses[type] && this.bonuses[type].count < this.bonuses[type].maxCount) {
-        this.bonuses[type].count++;
-        
-        // ===== ПРОВЕРКА: вызывается ли onBonusEarned? =====
-       
-        statsManager.onBonusEarned(type);
-        
-        this.updateUI();
-        return true;
-    }
-    return false;
-}
 
     // ===== ИСПОЛЬЗОВАТЬ БОНУС =====
     useBonus(type) {
-        
-        
-        
         const bonus = this.bonuses[type];
         if (!bonus || bonus.count <= 0) return false;
 
         bonus.count--;
-        statsManager.onBonusUsed(type);
+        if (typeof statsManager !== 'undefined') {
+            statsManager.onBonusUsed(type);
+        }
         this.updateUI();
 
         switch(type) {
@@ -218,14 +218,10 @@ addBonus(type) {
     // ===== 🔵 УМНОЖЕНИЕ x5 =====
     activateMultiplier() {
         this.multiplierBonus *= 3;
-        
-           // ===== НОВОЕ: ОГРАНИЧЕНИЕ =====
-    const MAX_MULTIPLIER = 20;  // Максимальный множитель
-    if (this.multiplierBonus > MAX_MULTIPLIER) {
-        this.multiplierBonus = MAX_MULTIPLIER;
-    }
-        
-    // ============================
+        const MAX_MULTIPLIER = 20;
+        if (this.multiplierBonus > MAX_MULTIPLIER) {
+            this.multiplierBonus = MAX_MULTIPLIER;
+        }
         this.multiplierTimer = 300;
         this.showEffect(`⚡ x${this.multiplierBonus}!`, '#4488ff');
     }
@@ -301,6 +297,106 @@ addBonus(type) {
         });
     }
 
+    // ===== МОДАЛКА ДЛЯ ПОЛУЧЕНИЯ ПЕРВОГО БОНУСА =====
+    showBonusAdModal(type) {
+        const modal = document.getElementById('bonusAdModal');
+        if (!modal) {
+            this.createBonusModal();
+            return;
+        }
+        const title = document.getElementById('bonusAdModalTitle');
+        const desc = document.getElementById('bonusAdModalDesc');
+        if (title) title.textContent = '🎁 Получи бонус!';
+        if (desc) desc.textContent = 'Посмотри рекламу и получи 1 бонус!';
+        modal.dataset.bonusType = type;
+        modal.style.display = 'flex';
+    }
+
+    createBonusModal() {
+        if (document.getElementById('bonusAdModal')) return;
+        const modal = document.createElement('div');
+        modal.id = 'bonusAdModal';
+        modal.className = 'exit-modal';
+        modal.style.display = 'none';
+        modal.innerHTML = `
+            <div class="exit-modal-content" style="max-width:340px;padding:24px 28px;">
+                <div class="exit-modal-title" id="bonusAdModalTitle" style="font-size:20px;">🎁 Получи бонус!</div>
+                <div style="padding:12px 0;color:rgba(255,255,255,0.7);font-size:15px;line-height:1.5;" id="bonusAdModalDesc">
+                    Посмотри рекламу и получи 1 бонус!
+                </div>
+                <div class="exit-modal-buttons" style="display:flex;gap:10px;margin-top:12px;">
+                    <button class="exit-modal-btn exit-modal-btn-back" id="bonusAdModalCancel" style="flex:1;padding:12px;font-size:14px;">
+                        ❌ Отмена
+                    </button>
+                    <button class="exit-modal-btn exit-modal-btn-exit" id="bonusAdModalConfirm" style="flex:1;padding:12px;font-size:14px;background:linear-gradient(135deg,#ffcc00,#f0a500);color:#000;border-color:rgba(255,200,0,0.3);">
+                        ✅ Смотреть
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('bonusAdModalCancel').addEventListener('click', function() {
+            const m = document.getElementById('bonusAdModal');
+            if (m) m.style.display = 'none';
+        });
+        document.getElementById('bonusAdModalCancel').addEventListener('touchend', function(e) {
+            e.preventDefault();
+            const m = document.getElementById('bonusAdModal');
+            if (m) m.style.display = 'none';
+        });
+        
+        document.getElementById('bonusAdModalConfirm').addEventListener('click', function() {
+            const m = document.getElementById('bonusAdModal');
+            if (m) {
+                const type = m.dataset.bonusType;
+                m.style.display = 'none';
+                if (window.bonusManager) {
+                    window.bonusManager.handleAdWatched(type);
+                }
+            }
+        });
+        document.getElementById('bonusAdModalConfirm').addEventListener('touchend', function(e) {
+            e.preventDefault();
+            const m = document.getElementById('bonusAdModal');
+            if (m) {
+                const type = m.dataset.bonusType;
+                m.style.display = 'none';
+                if (window.bonusManager) {
+                    window.bonusManager.handleAdWatched(type);
+                }
+            }
+        });
+    }
+
+    handleAdWatched(type) {
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
+                .then(() => {
+                    this.onAdWatched(type);
+                })
+                .catch((error) => {
+                    console.warn('⚠️ Реклама не показана:', error);
+                    this.onAdWatched(type);
+                });
+        } else {
+            this.onAdWatched(type);
+        }
+    }
+
+    onAdWatched(type) {
+        if (this.bonuses[type] && this.bonuses[type].count < this.bonuses[type].maxCount) {
+            this.bonuses[type].count++;
+            if (typeof statsManager !== 'undefined') {
+                statsManager.onBonusEarned(type);
+            }
+            this.updateUI();
+            this.showEffect(`✅ +1 ${this.bonuses[type].name}!`, '#44ff44');
+        } else {
+            this.showEffect('❌ Лимит достигнут!', '#ff4444');
+        }
+    }
+
     // ===== ОБНОВИТЬ UI БОНУСОВ =====
     updateUI() {
         const container = document.getElementById('bonusContainer');
@@ -319,6 +415,8 @@ addBonus(type) {
         for (const type of types) {
             const bonus = this.bonuses[type];
             const count = this.colorCounters[type] || 0;
+            const maxCount = bonus.maxCount;
+            const isMax = bonus.count >= maxCount;
             const progress = Math.min(count / this.requiredHits, 1);
             
             const item = document.createElement('div');
@@ -330,43 +428,71 @@ addBonus(type) {
             btn.dataset.type = type;
             
             const hasBonus = bonus.count > 0;
-            if (!hasBonus) {
+            
+            // ===== ГЛАВНОЕ: ЗАМЕНЯЕМ ЦИФРУ НА КНОПКУ =====
+            let countDisplay = '';
+            if (bonus.count === 0) {
+                // Нет бонуса → показываем "+"
+                countDisplay = `<span class="bonus-count" style="font-size:20px;font-weight:bold;cursor:pointer;background:rgba(255,255,255,0.1);padding:0 8px;border-radius:10px;border:1px dashed rgba(255,255,255,0.3);">+</span>`;
                 btn.classList.add('inactive');
+            } else {
+                // Есть бонус → показываем цифру
+                countDisplay = `<span class="bonus-count">${bonus.count}</span>`;
+                if (!hasBonus) btn.classList.add('inactive');
             }
             
             btn.innerHTML = `
                 <span class="bonus-icon">${labels[type]}</span>
-                <span class="bonus-count">${bonus.count}</span>
+                ${countDisplay}
             `;
             
+            // ===== КЛИК ПО БОНУСУ =====
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (bonus.count <= 0) {
-                    this.showEffect('❌ Нет бонусов!', '#ff4444');
+                if (bonus.count === 0) {
+                    // Нет бонуса → реклама
+                    this.showBonusAdModal(type);
                     return;
                 }
+                // Есть бонус → используем
                 this.useBonus(type);
             });
             
             btn.addEventListener('touchend', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (bonus.count <= 0) {
-                    this.showEffect('❌ Нет бонусов!', '#ff4444');
+                if (bonus.count === 0) {
+                    this.showBonusAdModal(type);
                     return;
                 }
                 this.useBonus(type);
             });
             
+            // ===== ПРОГРЕСС-БАР =====
             const progressBar = document.createElement('div');
             progressBar.className = 'bonus-progress';
-            progressBar.innerHTML = `
-                <div class="progress-fill" style="width: ${progress * 100}%; background: ${bonus.color};"></div>
-            `;
+            
+            if (isMax && bonus.count >= maxCount) {
+                progressBar.style.position = 'relative';
+                progressBar.innerHTML = `
+                    <div class="progress-fill" style="width: 100%; background: ${bonus.color};"></div>
+                    <div style="position:absolute;top:-8px;left:0;right:0;text-align:center;font-size:9px;font-weight:bold;color:#fff;text-shadow:0 0 6px rgba(0,0,0,0.8);letter-spacing:0.5px;">
+                        МАКС
+                    </div>
+                `;
+            } else {
+                progressBar.innerHTML = `
+                    <div class="progress-fill" style="width: ${progress * 100}%; background: ${bonus.color};"></div>
+                `;
+            }
             
             const label = document.createElement('div');
             label.className = 'progress-label';
-            label.textContent = `${count}/${this.requiredHits}`;
+            if (isMax && bonus.count >= maxCount) {
+                label.textContent = `${bonus.count}/${maxCount}`;
+            } else {
+                label.textContent = `${count}/${this.requiredHits}`;
+            }
             
             item.appendChild(btn);
             item.appendChild(progressBar);
@@ -375,7 +501,7 @@ addBonus(type) {
         }
     }
 
-    // ===== ПРИМЕНИТЬ ЭФФЕКТЫ КО ВСЕМ ПУЗЫРЬКАМ =====
+    // ===== ПРИМЕНИТЬ ЭФФЕКТЫ =====
     applyToAllBubbles(bubbles) {
         if (!bubbles) return;
         for (const bubble of bubbles) {
@@ -393,7 +519,6 @@ addBonus(type) {
         }
     }
 
-    // ===== ПРИМЕНИТЬ ЭФФЕКТЫ К НОВОМУ ПУЗЫРЬКУ =====
     applyEffects(bubble) {
         if (this.slowMotion) {
             bubble.originalSpeed = bubble.speed;
@@ -402,7 +527,6 @@ addBonus(type) {
         return bubble;
     }
 
-    // ===== ОБНОВЛЯТЬ КАЖДЫЙ КАДР =====
     update() {
         if (this.slowMotion) {
             this.slowMotionTimer--;
@@ -414,7 +538,6 @@ addBonus(type) {
                 }
             }
         }
-        
         if (this.multiplierTimer > 0) {
             this.multiplierTimer--;
             if (this.multiplierTimer <= 0) {
@@ -424,12 +547,10 @@ addBonus(type) {
         }
     }
 
-    // ===== ПОЛУЧИТЬ ТЕКУЩИЙ МНОЖИТЕЛЬ =====
     getMultiplier() {
         return this.multiplierBonus;
     }
 
-    // ===== ПРОВЕРИТЬ, АКТИВЕН ЛИ РЕЖИМ ВЫБОРА =====
     isSelectingColor() {
         return this.isColorSelectionMode;
     }

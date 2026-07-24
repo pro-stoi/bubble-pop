@@ -132,33 +132,7 @@ if (isRed && r > 20) {
         }
     }
     ///////////////////////////////////////////////////////////////////////////////////////////////////
-    // Рисуем трещины
-for (const crack of cracks) {
-    ctx.beginPath();
-    ctx.moveTo(crack.x1, crack.y1);
-    ctx.lineTo(crack.x2, crack.y2);
-    // ===== БЕЛАЯ МОЛНИЯ =====
-    ctx.strokeStyle = `hsla(210, 100%, 95%, 0.8)`;
-    ctx.lineWidth = crack.width;
-    ctx.shadowColor = 'rgba(200, 230, 255, 0.6)';
-    ctx.shadowBlur = 8;
-    ctx.stroke();
-}
 
-// ===== ВТОРОЙ СЛОЙ (ЯРКОЕ ЯДРО МОЛНИИ) =====
-for (const crack of cracks) {
-    ctx.beginPath();
-    ctx.moveTo(crack.x1, crack.y1);
-    ctx.lineTo(crack.x2, crack.y2);
-    ctx.strokeStyle = `rgba(255, 255, 255, 0.9)`;
-    ctx.lineWidth = crack.width * 0.4;
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-    ctx.shadowBlur = 12;
-    ctx.stroke();
-}
-
-ctx.restore();
-}
        //////////////////////////////////////////////////////////////////////////////////////////// 
         // Блик
         ctx.beginPath();

@@ -173,6 +173,9 @@ if (myId && myIndex >= 100) {
                 ths[k].classList.add('active');
             }
         }
+             try {
+        localStorage.setItem('cachedTop', JSON.stringify(players));
+    } catch(e) {}
     }
 
 function loadData() {

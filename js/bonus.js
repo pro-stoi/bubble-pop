@@ -31,6 +31,17 @@ class BonusManager {
          // ===== РЕГИСТРИРУЕМ СЕБЯ В ГЛОБАЛЬНОМ ОБЪЕКТЕ =====
     window.bonusManager = this;
         
+        
+        
+      // ===== ТАЙМЕРЫ БОНУСОВ =====
+    this.bonusTimers = {
+        red: 0,
+        yellow: 0,
+        green: 0,
+        blue: 0,
+        pink: 0
+    };
+    this.bonusTimerMax = 90; // 90 секунд    
     }
 
     // ===== ОБРАБОТКА ЛОПАНИЯ ПУЗЫРЬКА (ВРУЧНУЮ) =====
@@ -400,6 +411,10 @@ onAdWatched(type) {
         if (typeof statsManager !== 'undefined') {
             statsManager.onBonusEarned(type);
         }
+        
+        // ===== ЗАПУСКАЕМ ТАЙМЕР =====
+        this.bonusTimers[type] = this.bonusTimerMax;
+        
         this.updateUI();
         this.showEffect(`✅ +1 ${bonus.name}!`, '#44ff44');
     } else {
@@ -441,11 +456,24 @@ onAdWatched(type) {
             
             // ===== ГЛАВНОЕ: ЗАМЕНЯЕМ ЦИФРУ НА КНОПКУ =====
             let countDisplay = '';
-            if (bonus.count === 0) {
-                // Нет бонуса → показываем "+"
-                countDisplay = `<span class="bonus-count" style="font-size:20px;font-weight:bold;cursor:pointer;background:rgba(255,255,255,0.1);padding:0 8px;border-radius:10px;border:1px dashed rgba(255,255,255,0.3);">+</span>`;
-                btn.classList.add('inactive');
-            } else {
+         if (bonus.count === 0) {
+    // ===== ПРОВЕРЯЕМ ТАЙМЕР =====
+    const timer = this.bonusTimers[type] || 0;
+    if (timer > 0) {
+        // Показываем таймер
+        const minutes = Math.floor(timer / 60);
+        const seconds = timer % 60;
+        const timerText = minutes > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : `${seconds}с`;
+        countDisplay = `<span class="bonus-count" style="font-size:14px;font-weight:bold;color:#ffcc00;background:rgba(255,215,0,0.15);padding:0 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.2);">
+            ⏱ ${timerText}
+        </span>`;
+        btn.classList.add('inactive');
+    } else {
+        // Показываем плюсик
+        countDisplay = `<span class="bonus-count" style="font-size:20px;font-weight:bold;cursor:pointer;background:rgba(255,255,255,0.1);padding:0 8px;border-radius:10px;border:1px dashed rgba(255,255,255,0.3);">+</span>`;
+        btn.classList.add('inactive');
+    }
+} else {
                 // Есть бонус → показываем цифру
                 countDisplay = `<span class="bonus-count">${bonus.count}</span>`;
                 if (!hasBonus) btn.classList.add('inactive');
@@ -555,8 +583,25 @@ onAdWatched(type) {
                 this.showEffect('⚡ Множитель сброшен', '#ffffff');
             }
         }
+        // ===== ОБНОВЛЯЕМ ТАЙМЕРЫ БОНУСОВ =====
+    this.updateTimers();
+        
     }
 
+    updateTimers() {
+    let needUpdate = false;
+    for (const type in this.bonusTimers) {
+        if (this.bonusTimers[type] > 0) {
+            this.bonusTimers[type]--;
+            needUpdate = true;
+        }
+    }
+    if (needUpdate) {
+        this.updateUI();
+    }
+}
+    
+    
     getMultiplier() {
         return this.multiplierBonus;
     }

@@ -42,7 +42,14 @@ class BonusManager {
         pink: 0
     };
     this.bonusTimerMax = 90; // 90 секунд    
+        
+          // ===== ТЕСТОВЫЙ РЕЖИМ (true = реклама всегда срабатывает) =====
+    this.testMode = true;  // ← ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ
+       // ===== СЧЁТЧИК ДЛЯ ТАЙМЕРА =====
+    this.timerTickCounter = 0;  
     }
+    
+    
 
     // ===== ОБРАБОТКА ЛОПАНИЯ ПУЗЫРЬКА (ВРУЧНУЮ) =====
     onBubblePopped(bubble) {
@@ -167,22 +174,23 @@ class BonusManager {
     }
 
     // ===== ИСПОЛЬЗОВАТЬ БОНУС =====
- useBonus(type) {
+useBonus(type) {
     const bonus = this.bonuses[type];
     if (!bonus || bonus.count <= 0) return false;
 
+    // ===== ПРОВЕРКА ТАЙМЕРА ПЕРЕД УМЕНЬШЕНИЕМ =====
+    const timerBefore = this.bonusTimers[type] || 0;
+    
+    
     bonus.count--;
     if (typeof statsManager !== 'undefined') {
         statsManager.onBonusUsed(type);
     }
     
-    // ===== ПОСЛЕ ИСПОЛЬЗОВАНИЯ БОНУСА =====
-    // Проверяем, нужно ли показать таймер
-    const timer = this.bonusTimers[type] || 0;
-    if (bonus.count === 0 && timer > 0) {
-        // Бонус кончился, таймер ещё идёт → показываем таймер
-        // updateUI уже вызовется, но оставляем для ясности
-    }
+    // ===== ПРОВЕРКА ТАЙМЕРА ПОСЛЕ =====
+    const timerAfter = this.bonusTimers[type] || 0;
+    
+    
     this.updateUI();
 
     switch(type) {
@@ -390,7 +398,13 @@ class BonusManager {
 }
 
 handleAdWatched(type) {
-    // Если есть VK Bridge — показываем рекламу
+    // ===== ТЕСТОВЫЙ РЕЖИМ =====
+    if (this.testMode) {
+        this.onAdWatched(type);
+        return;
+    }
+    
+    // ===== РЕАЛЬНЫЙ VK =====
     if (typeof vkBridge !== 'undefined') {
         vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
             .then(() => {
@@ -398,11 +412,9 @@ handleAdWatched(type) {
             })
             .catch((error) => {
                 console.warn('⚠️ Реклама не показана:', error);
-                // ВСЁ РАВНО ДАЁМ БОНУС (для теста, потом убрать)
                 this.onAdWatched(type);
             });
     } else {
-        // Если VK Bridge нет — даём бонус без рекламы (для теста)
         this.onAdWatched(type);
     }
 }
@@ -420,7 +432,7 @@ onAdWatched(type) {
             statsManager.onBonusEarned(type);
         }
         
-        // ===== ЗАПУСКАЕМ ТАЙМЕР (В ФОНЕ) =====
+        // ===== ЗАПУСКАЕМ ТАЙМЕР =====
         this.bonusTimers[type] = this.bonusTimerMax;
         
         this.updateUI();
@@ -435,6 +447,16 @@ updateUI() {
     const container = document.getElementById('bonusContainer');
     if (!container) return;
 
+    
+     // ===== ПРОВЕРЯЕМ, ЕСТЬ ЛИ АКТИВНЫЕ ТАЙМЕРЫ =====
+    for (const type in this.bonusTimers) {
+        if (this.bonusTimers[type] > 0) {
+            const bonus = this.bonuses[type];
+           
+        }
+    }
+    
+    
     container.innerHTML = '';
     const types = ['red', 'yellow', 'green', 'blue', 'pink'];
     const labels = {
@@ -491,26 +513,44 @@ updateUI() {
         `;
         
         // ===== КЛИК ПО БОНУСУ =====
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (bonus.count === 0) {
-                // Нет бонуса → реклама
-                this.showBonusAdModal(type);
-                return;
-            }
-            // Есть бонус → используем
-            this.useBonus(type);
-        });
-        
-        btn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (bonus.count === 0) {
-                this.showBonusAdModal(type);
-                return;
-            }
-            this.useBonus(type);
-        });
+     // ===== КЛИК ПО БОНУСУ =====
+btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    
+    // ===== ЕСЛИ ЕСТЬ БОНУС — ИСПОЛЬЗУЕМ (БЕЗ ПРОВЕРКИ ТАЙМЕРА) =====
+    if (bonus.count > 0) {
+        this.useBonus(type);
+        return;
+    }
+    
+    // ===== БОНУСА НЕТ — ПРОВЕРЯЕМ ТАЙМЕР =====
+    const timer = this.bonusTimers[type] || 0;
+    if (timer > 0) {
+        this.showEffect('⏱ Подождите ' + timer + 'с!', '#ffcc00');
+        return;
+    }
+    
+    // ===== БОНУСА НЕТ И ТАЙМЕРА НЕТ → РЕКЛАМА =====
+    this.showBonusAdModal(type);
+});
+
+btn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (bonus.count > 0) {
+        this.useBonus(type);
+        return;
+    }
+    
+    const timer = this.bonusTimers[type] || 0;
+    if (timer > 0) {
+        this.showEffect('⏱ Подождите ' + timer + 'с!', '#ffcc00');
+        return;
+    }
+    
+    this.showBonusAdModal(type);
+});
         
         // ===== ПРОГРЕСС-БАР =====
         const progressBar = document.createElement('div');
@@ -595,6 +635,13 @@ updateUI() {
     }
 
 updateTimers() {
+    // ===== УМЕНЬШАЕМ ТАЙМЕР ТОЛЬКО РАЗ В СЕКУНДУ =====
+    this.timerTickCounter++;
+    if (this.timerTickCounter < 60) {
+        return; // Не обновляем, пока не прошла секунда
+    }
+    this.timerTickCounter = 0;
+    
     let needUpdate = false;
     for (const type in this.bonusTimers) {
         if (this.bonusTimers[type] > 0) {
@@ -603,7 +650,7 @@ updateTimers() {
         }
     }
     if (needUpdate) {
-        this.updateUI();  // ← ОБНОВЛЯЕМ UI, ЧТОБЫ ПОКАЗАТЬ ТАЙМЕР
+        this.updateUI();
     }
 }
     

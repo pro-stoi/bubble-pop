@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     try {
-        const response = await fetch(`http://170.168.10.167:8080/api/bubble/challenges/${userId}`);
+        const response = await fetch(`https://neurodrone-arena.ru/api/bubble/challenges/${userId}`);
         const data = await response.json();
 
         if (data.success) {

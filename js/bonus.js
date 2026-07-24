@@ -167,36 +167,44 @@ class BonusManager {
     }
 
     // ===== ИСПОЛЬЗОВАТЬ БОНУС =====
-    useBonus(type) {
-        const bonus = this.bonuses[type];
-        if (!bonus || bonus.count <= 0) return false;
+ useBonus(type) {
+    const bonus = this.bonuses[type];
+    if (!bonus || bonus.count <= 0) return false;
 
-        bonus.count--;
-        if (typeof statsManager !== 'undefined') {
-            statsManager.onBonusUsed(type);
-        }
-        this.updateUI();
-
-        switch(type) {
-            case 'red':
-                this.activateSlowMotion();
-                break;
-            case 'yellow':
-                this.activateMagnet();
-                break;
-            case 'green':
-                this.activateColorExplosion();
-                break;
-            case 'blue':
-                this.activateMultiplier();
-                break;
-            case 'pink':
-                this.activateFullClear();
-                break;
-        }
-        sound.bonus();
-        return true;
+    bonus.count--;
+    if (typeof statsManager !== 'undefined') {
+        statsManager.onBonusUsed(type);
     }
+    
+    // ===== ПОСЛЕ ИСПОЛЬЗОВАНИЯ БОНУСА =====
+    // Проверяем, нужно ли показать таймер
+    const timer = this.bonusTimers[type] || 0;
+    if (bonus.count === 0 && timer > 0) {
+        // Бонус кончился, таймер ещё идёт → показываем таймер
+        // updateUI уже вызовется, но оставляем для ясности
+    }
+    this.updateUI();
+
+    switch(type) {
+        case 'red':
+            this.activateSlowMotion();
+            break;
+        case 'yellow':
+            this.activateMagnet();
+            break;
+        case 'green':
+            this.activateColorExplosion();
+            break;
+        case 'blue':
+            this.activateMultiplier();
+            break;
+        case 'pink':
+            this.activateFullClear();
+            break;
+    }
+    sound.bonus();
+    return true;
+}
 
     // ===== 🔴 ЗАМЕДЛЕНИЕ =====
     activateSlowMotion() {

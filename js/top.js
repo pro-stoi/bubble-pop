@@ -175,34 +175,72 @@ if (myId && myIndex >= 100) {
         }
     }
 
-    function loadData() {
-        fetch(SERVER_URL + '/top')
-            .then(function(res) {
-                if (!res.ok) throw new Error('Ошибка сервера');
-                return res.json();
-            })
-            .then(function(data) {
-                if (!data || data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
-                    myRankRow.innerHTML = '<span class="not-in-top">🎯 Сыграйте первую игру!</span>';
-                    return;
-                }
-                players = data.map(function(item) {
-                    return {
-                        user_id: parseInt(item.user_id || 0),
-                        user_name: item.user_name || 'Игрок',
-                        score: parseInt(item.score || 0),
-                        max_combo: parseInt(item.max_combo || 0),
-                        challenge_points: parseInt(item.challenge_points || 0)
-                    };
-                });
-                render();
-            })
-            .catch(function(err) {
-                tbody.innerHTML = '<tr><td colspan="5" class="top-empty">❌ Ошибка загрузки</td></tr>';
-                myRankRow.innerHTML = '<span class="not-in-top">❌ Ошибка загрузки</span>';
+function loadData() {
+    // ===== ПОКАЗЫВАЕМ ЗАГРУЗКУ =====
+    tbody.innerHTML = '<tr><td colspan="5" class="top-empty">⏳ Загрузка...</td></tr>';
+    myRankRow.innerHTML = '<span class="not-in-top">⏳ Загрузка...</span>';
+    
+    fetch(SERVER_URL + '/top')
+        .then(function(res) {
+            if (!res.ok) throw new Error('Ошибка сервера');
+            return res.json();
+        })
+        .then(function(data) {
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="top-empty">🎯 Сыграйте первую игру!</td></tr>';
+                myRankRow.innerHTML = '<span class="not-in-top">🎯 Сыграйте первую игру!</span>';
+                return;
+            }
+            players = data.map(function(item) {
+                return {
+                    user_id: parseInt(item.user_id || 0),
+                    user_name: item.user_name || 'Игрок',
+                    score: parseInt(item.score || 0),
+                    max_combo: parseInt(item.max_combo || 0),
+                    challenge_points: parseInt(item.challenge_points || 0)
+                };
             });
-    }
+            render();
+        })
+        .catch(function(err) {
+            // ===== ЗАГЛУШКА ПРИ ОШИБКЕ =====
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="top-empty" style="color:#ffcc00;padding:30px 20px;">
+                        ⚠️ Сервер временно недоступен<br>
+                        <span style="font-size:12px;color:rgba(255,255,255,0.3);">
+                            Данные будут загружены позже
+                        </span>
+                    </td>
+                </tr>
+            `;
+            myRankRow.innerHTML = `
+                <span class="not-in-top" style="color:#ffcc00;">
+                    ⚠️ Нет соединения с сервером
+                </span>
+            `;
+            
+            // ===== ПЫТАЕМСЯ ЗАГРУЗИТЬ ИЗ КЭША =====
+            try {
+                const cached = localStorage.getItem('cachedTop');
+                if (cached) {
+                    const cachedData = JSON.parse(cached);
+                    if (cachedData && cachedData.length > 0) {
+                        players = cachedData;
+                        render();
+                        // Показываем, что данные из кэша
+                        tbody.innerHTML += `
+                            <tr>
+                                <td colspan="5" style="text-align:center;font-size:11px;color:rgba(255,255,255,0.2);padding:4px;">
+                                    📦 Данные из кэша
+                                </td>
+                            </tr>
+                        `;
+                    }
+                }
+            } catch(e) {}
+        });
+}
 
     // ===== СОРТИРОВКА =====
     var ths = document.querySelectorAll('.top-table th.sortable');

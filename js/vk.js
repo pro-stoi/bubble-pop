@@ -17,7 +17,7 @@ class VKManager {
         this.topCacheTime = 0;
         
         // ===== АДРЕС СЕРВЕРА ДЛЯ ПУЗЫРЬКОВ =====
-        this.serverUrl = 'https://neurodrone-arena.ru/api/bubble';
+        this.serverUrl = 'http://170.168.10.167:8080/api/bubble'
         // =========================================
     }
 

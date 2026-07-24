@@ -412,7 +412,7 @@ onAdWatched(type) {
             statsManager.onBonusEarned(type);
         }
         
-        // ===== ЗАПУСКАЕМ ТАЙМЕР =====
+        // ===== ЗАПУСКАЕМ ТАЙМЕР (В ФОНЕ) =====
         this.bonusTimers[type] = this.bonusTimerMax;
         
         this.updateUI();
@@ -423,121 +423,119 @@ onAdWatched(type) {
 }
 
     // ===== ОБНОВИТЬ UI БОНУСОВ =====
-    updateUI() {
-        const container = document.getElementById('bonusContainer');
-        if (!container) return;
+updateUI() {
+    const container = document.getElementById('bonusContainer');
+    if (!container) return;
 
-        container.innerHTML = '';
-        const types = ['red', 'yellow', 'green', 'blue', 'pink'];
-        const labels = {
-            red: '🐢',
-            yellow: '🧲',
-            green: '🎯',
-            blue: '⚡',
-            pink: '💥'
-        };
+    container.innerHTML = '';
+    const types = ['red', 'yellow', 'green', 'blue', 'pink'];
+    const labels = {
+        red: '🐢',
+        yellow: '🧲',
+        green: '🎯',
+        blue: '⚡',
+        pink: '💥'
+    };
+    
+    for (const type of types) {
+        const bonus = this.bonuses[type];
+        const count = this.colorCounters[type] || 0;
+        const maxCount = bonus.maxCount;
+        const isMax = bonus.count >= maxCount;
+        const progress = Math.min(count / this.requiredHits, 1);
         
-        for (const type of types) {
-            const bonus = this.bonuses[type];
-            const count = this.colorCounters[type] || 0;
-            const maxCount = bonus.maxCount;
-            const isMax = bonus.count >= maxCount;
-            const progress = Math.min(count / this.requiredHits, 1);
-            
-            const item = document.createElement('div');
-            item.className = 'bonus-item';
-            
-            const btn = document.createElement('div');
-            btn.className = 'bonus-btn';
-            btn.style.setProperty('--bonus-color', bonus.color);
-            btn.dataset.type = type;
-            
-            const hasBonus = bonus.count > 0;
-            
-            // ===== ГЛАВНОЕ: ЗАМЕНЯЕМ ЦИФРУ НА КНОПКУ =====
-            let countDisplay = '';
-         if (bonus.count === 0) {
-    // ===== ПРОВЕРЯЕМ ТАЙМЕР =====
-    const timer = this.bonusTimers[type] || 0;
-    if (timer > 0) {
-        // Показываем таймер
-        const minutes = Math.floor(timer / 60);
-        const seconds = timer % 60;
-        const timerText = minutes > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : `${seconds}с`;
-        countDisplay = `<span class="bonus-count" style="font-size:14px;font-weight:bold;color:#ffcc00;background:rgba(255,215,0,0.15);padding:0 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.2);">
-            ⏱ ${timerText}
-        </span>`;
-        btn.classList.add('inactive');
-    } else {
-        // Показываем плюсик
-        countDisplay = `<span class="bonus-count" style="font-size:20px;font-weight:bold;cursor:pointer;background:rgba(255,255,255,0.1);padding:0 8px;border-radius:10px;border:1px dashed rgba(255,255,255,0.3);">+</span>`;
-        btn.classList.add('inactive');
-    }
-} else {
-                // Есть бонус → показываем цифру
-                countDisplay = `<span class="bonus-count">${bonus.count}</span>`;
-                if (!hasBonus) btn.classList.add('inactive');
-            }
-            
-            btn.innerHTML = `
-                <span class="bonus-icon">${labels[type]}</span>
-                ${countDisplay}
-            `;
-            
-            // ===== КЛИК ПО БОНУСУ =====
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (bonus.count === 0) {
-                    // Нет бонуса → реклама
-                    this.showBonusAdModal(type);
-                    return;
-                }
-                // Есть бонус → используем
-                this.useBonus(type);
-            });
-            
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (bonus.count === 0) {
-                    this.showBonusAdModal(type);
-                    return;
-                }
-                this.useBonus(type);
-            });
-            
-            // ===== ПРОГРЕСС-БАР =====
-            const progressBar = document.createElement('div');
-            progressBar.className = 'bonus-progress';
-            
-            if (isMax && bonus.count >= maxCount) {
-                progressBar.style.position = 'relative';
-                progressBar.innerHTML = `
-                    <div class="progress-fill" style="width: 100%; background: ${bonus.color};"></div>
-                    <div style="position:absolute;top:-8px;left:0;right:0;text-align:center;font-size:9px;font-weight:bold;color:#fff;text-shadow:0 0 6px rgba(0,0,0,0.8);letter-spacing:0.5px;">
-                        МАКС
-                    </div>
-                `;
+        const item = document.createElement('div');
+        item.className = 'bonus-item';
+        
+        const btn = document.createElement('div');
+        btn.className = 'bonus-btn';
+        btn.style.setProperty('--bonus-color', bonus.color);
+        btn.dataset.type = type;
+        
+        const hasBonus = bonus.count > 0;
+        
+        // ===== ОТОБРАЖЕНИЕ СЧЁТЧИКА / ТАЙМЕРА / ПЛЮСИКА =====
+        let countDisplay = '';
+        
+        if (bonus.count === 0) {
+            // ===== ПРОВЕРЯЕМ ТАЙМЕР =====
+            const timer = this.bonusTimers[type] || 0;
+            if (timer > 0) {
+                // Показываем таймер (только секунды)
+                countDisplay = `<span class="bonus-count" style="font-size:16px;font-weight:bold;color:#ffcc00;background:rgba(255,215,0,0.15);padding:0 8px;border-radius:10px;border:1px solid rgba(255,215,0,0.2);">
+                    ⏱ ${timer}с
+                </span>`;
+                btn.classList.add('inactive');
             } else {
-                progressBar.innerHTML = `
-                    <div class="progress-fill" style="width: ${progress * 100}%; background: ${bonus.color};"></div>
-                `;
+                // Показываем плюсик
+                countDisplay = `<span class="bonus-count" style="font-size:20px;font-weight:bold;cursor:pointer;background:rgba(255,255,255,0.1);padding:0 8px;border-radius:10px;border:1px dashed rgba(255,255,255,0.3);">+</span>`;
+                btn.classList.add('inactive');
             }
-            
-            const label = document.createElement('div');
-            label.className = 'progress-label';
-            if (isMax && bonus.count >= maxCount) {
-                label.textContent = `${bonus.count}/${maxCount}`;
-            } else {
-                label.textContent = `${count}/${this.requiredHits}`;
-            }
-            
-            item.appendChild(btn);
-            item.appendChild(progressBar);
-            item.appendChild(label);
-            container.appendChild(item);
+        } else {
+            // Есть бонус → показываем цифру
+            countDisplay = `<span class="bonus-count">${bonus.count}</span>`;
+            if (!hasBonus) btn.classList.add('inactive');
         }
+        
+        btn.innerHTML = `
+            <span class="bonus-icon">${labels[type]}</span>
+            ${countDisplay}
+        `;
+        
+        // ===== КЛИК ПО БОНУСУ =====
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (bonus.count === 0) {
+                // Нет бонуса → реклама
+                this.showBonusAdModal(type);
+                return;
+            }
+            // Есть бонус → используем
+            this.useBonus(type);
+        });
+        
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (bonus.count === 0) {
+                this.showBonusAdModal(type);
+                return;
+            }
+            this.useBonus(type);
+        });
+        
+        // ===== ПРОГРЕСС-БАР =====
+        const progressBar = document.createElement('div');
+        progressBar.className = 'bonus-progress';
+        
+        if (isMax && bonus.count >= maxCount) {
+            progressBar.style.position = 'relative';
+            progressBar.innerHTML = `
+                <div class="progress-fill" style="width: 100%; background: ${bonus.color};"></div>
+                <div style="position:absolute;top:-8px;left:0;right:0;text-align:center;font-size:9px;font-weight:bold;color:#fff;text-shadow:0 0 6px rgba(0,0,0,0.8);letter-spacing:0.5px;">
+                    МАКС
+                </div>
+            `;
+        } else {
+            progressBar.innerHTML = `
+                <div class="progress-fill" style="width: ${progress * 100}%; background: ${bonus.color};"></div>
+            `;
+        }
+        
+        const label = document.createElement('div');
+        label.className = 'progress-label';
+        if (isMax && bonus.count >= maxCount) {
+            label.textContent = `${bonus.count}/${maxCount}`;
+        } else {
+            label.textContent = `${count}/${this.requiredHits}`;
+        }
+        
+        item.appendChild(btn);
+        item.appendChild(progressBar);
+        item.appendChild(label);
+        container.appendChild(item);
     }
+}
 
     // ===== ПРИМЕНИТЬ ЭФФЕКТЫ =====
     applyToAllBubbles(bubbles) {
@@ -588,7 +586,7 @@ onAdWatched(type) {
         
     }
 
-    updateTimers() {
+updateTimers() {
     let needUpdate = false;
     for (const type in this.bonusTimers) {
         if (this.bonusTimers[type] > 0) {
@@ -597,7 +595,7 @@ onAdWatched(type) {
         }
     }
     if (needUpdate) {
-        this.updateUI();
+        this.updateUI();  // ← ОБНОВЛЯЕМ UI, ЧТОБЫ ПОКАЗАТЬ ТАЙМЕР
     }
 }
     

@@ -4,7 +4,7 @@ class StatsManager {
     constructor() {
         this.userId = null;
         this.isLoaded = false;
-        this.apiUrl = 'http://170.168.10.167:8080/api/bubble/stats';
+        this.apiUrl = 'https://neurodrone-arena.ru/api/bubble/stats';
         
         this.totalPopped = 0;
         this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };

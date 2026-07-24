@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     var tbody = document.getElementById('topBody');
     var myRankRow = document.getElementById('myRankRow');
-    var SERVER_URL = 'http://170.168.10.167:8080/api/bubble';
+    var SERVER_URL = 'https://neurodrone-arena.ru/api/bubble';
     
     var players = [];
     var sortField = 'score';

@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     try {
-       const response = await fetch(`http://170.168.10.167:8080/api/bubble/stats/${userId}`);
-        const data = await response.json();
+        const response = await fetch(`http://170.168.10.167:8080/api/bubble/stats/${userId}`);
+    const data = await response.json();
         
 if (data.success) {
     let stats = data;

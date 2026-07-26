@@ -103,26 +103,59 @@ const API_BASE = 'http://170.168.10.167:8080/api/bubble';
             hideExitModal();
         });
 
+        // ===== КНОПКА "ВЫЙТИ" =====
 // ===== КНОПКА "ВЫЙТИ" =====
-document.getElementById('exitModalExit').addEventListener('click', function(e) {
-    game.saveGameResult();
-    setTimeout(function() {
-        hideExitModal();
-        if (typeof vkBridge !== 'undefined') {
-            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                .finally(function() {
-                    goTo('index.html');
-                });
+document.getElementById('exitModalExit').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Сохранение...';
+    
+    game.saveGameResult(function(success) {
+        if (success) {
+            btn.textContent = '✅ Сохранено!';
         } else {
-            goToWithAd('index.html');
+            btn.textContent = '❌ Ошибка!';
         }
-    }, 500);
+        
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
 });
 
-// Для мобильных — предотвращаем двойной вызов
 document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
     e.preventDefault();
-    // click уже сработает, ничего не делаем
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Сохранение...';
+    
+    game.saveGameResult(function(success) {
+        if (success) {
+            btn.textContent = '✅ Сохранено!';
+        } else {
+            btn.textContent = '❌ Ошибка!';
+        }
+        
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
 });
 
         // ===== ИГРОВОЙ ЦИКЛ =====

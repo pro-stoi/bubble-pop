@@ -416,6 +416,16 @@ statsManager.onScore(this.score);
         this.popBubble(x, y);
     }
     
+handleTap(x, y) {
+    if (this.bonusManager.isSelectingColor()) {
+        if (this.bonusManager.handleColorSelection(x, y)) {
+            return;
+        }
+        return;
+    }
+    this.popBubble(x, y);
+}
+
 saveGameResult(callback) {
     console.log('💾 СОХРАНЕНИЕ РЕЗУЛЬТАТА...');
     
@@ -443,4 +453,6 @@ saveGameResult(callback) {
         if (callback) callback(false);
     });
 }
+
+
 }

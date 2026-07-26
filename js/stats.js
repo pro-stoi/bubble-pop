@@ -47,6 +47,16 @@ this.sessionStart = Date.now();
         this.userId = userId;
         
         try {
+// ===== ВРЕМЕННАЯ ОТЛАДКА НА ЭКРАНЕ =====
+const debugDiv = document.createElement('div');
+debugDiv.style.cssText = 'position:fixed;bottom:10px;left:10px;background:#000;color:#0f0;padding:10px;z-index:9999;font-size:14px;border:1px solid #0f0;';
+debugDiv.innerHTML = '📊 Отправляем: sessions=' + this.sessions + ', total_time=' + this.totalTime + ', last_play=' + this.lastPlay;
+document.body.appendChild(debugDiv);
+
+setTimeout(() => {
+    if (debugDiv) debugDiv.remove();
+}, 10000);
+            
             const response = await fetch(`${this.apiUrl}/${userId}`);
             const data = await response.json();
             

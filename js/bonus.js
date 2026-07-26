@@ -446,6 +446,7 @@ onAdWatched(type) {
     } else {
         this.showEffect('❌ Лимит достигнут!', '#ff4444');
     }
+    statsManager.onAdWatched();
 }
 
     // ===== ОБНОВИТЬ UI БОНУСОВ =====

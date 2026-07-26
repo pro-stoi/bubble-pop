@@ -17,7 +17,7 @@ class VKManager {
         this.topCacheTime = 0;
         
         // ===== АДРЕС СЕРВЕРА ДЛЯ ПУЗЫРЬКОВ =====
-       this.serverUrl = 'https://neurodrone-arena.ru/api/bubble';
+       this.serverUrl = 'http://170.168.10.167:8080/api/bubble';
         
         // =========================================
     }
@@ -80,6 +80,8 @@ class VKManager {
     }
 
     // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
+
+    // ===== АВТОРИЗАЦИЯ НА СЕРВЕРЕ =====
 async loginToServer() {
     try {
         const response = await fetch(`${this.serverUrl}/user/login`, {
@@ -95,12 +97,10 @@ async loginToServer() {
         this.dbUserId = user.id;
         console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
         
-        // ===== СОХРАНЯЕМ ID В LOCALSTORAGE =====
         localStorage.setItem('bubbleUserId', String(this.dbUserId));
-        console.log('💾 Сохранено в localStorage:', localStorage.getItem('bubbleUserId'));
-        // ========================================
         
-        await this.ensureTopRecord();
+        // ===== ВРЕМЕННО ОТКЛЮЧАЕМ =====
+        // await this.ensureTopRecord();
         
     } catch (error) {
         console.error('❌ Ошибка авторизации:', error);

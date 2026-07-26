@@ -79,11 +79,12 @@ async save() {
         return false;
     }
 
-    // ===== СЧИТАЕМ ВРЕМЯ СЕССИИ =====
-    const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
-    this.totalTime = (this.totalTime || 0) + sessionTime;
-    this.sessions = (this.sessions || 0) + 1;
-
+   
+  // ===== СЧИТАЕМ ВРЕМЯ СЕССИИ =====
+const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
+this.totalTime = (this.totalTime || 0) + sessionTime;
+this.sessions = (this.sessions || 0) + 1;
+this.lastPlay = new Date().toISOString();
     try {
         const payload = {
             userId: this.userId,

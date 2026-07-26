@@ -4,7 +4,7 @@ class StatsManager {
     constructor() {
         this.userId = null;
         this.isLoaded = false;
-        this.apiUrl = 'https://neurodrone-arena.ru/api/bubble/stats';
+        this.apiUrl = 'http://170.168.10.167:8080/api/bubble/stats';
         
         this.totalPopped = 0;
         this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };
@@ -18,6 +18,12 @@ class StatsManager {
         this.bigBonusCount = 0;
         this.colorSetCount = 0;
         this.challengeProgress = {};
+        this.sessions = 0;
+this.totalTime = 0;
+this.totalAdsWatched = 0;
+this.skins = {};
+this.activeSkin = 'default';
+this.sessionStart = Date.now();
     }
 
     // ===== ПАРСИНГ JSONB ИЗ БД =====
@@ -67,50 +73,61 @@ class StatsManager {
         return false;
     }
 
-    async save() {
-        if (!this.userId) {
-            console.warn('⚠️ Нет userId для сохранения');
-            return false;
-        }
-
-        try {
-            const payload = {
-                userId: this.userId,
-                total_popped: this.totalPopped,
-                color_pops: JSON.stringify(this.colorPops),
-                max_combo: this.maxCombo,
-                max_score: this.maxScore,
-                total_bonus_earned: this.totalBonusEarned,
-                bonus_earned: JSON.stringify(this.bonusEarned),
-                total_bonus_used: this.totalBonusUsed,
-                bonus_used: JSON.stringify(this.bonusUsed),
-                best_streak: this.bestStreak,
-                big_bonus_count: this.bigBonusCount,
-                color_set_count: this.colorSetCount,
-                challenge_progress: JSON.stringify(this.challengeProgress)
-            };
-
-            const response = await fetch(`${this.apiUrl}/update`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                console.log('✅ Статистика сохранена!');
-                return true;
-            } else {
-                console.error('❌ Ошибка:', result.error);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ Ошибка соединения:', error);
-            return false;
-        }
+async save() {
+    if (!this.userId) {
+        console.warn('⚠️ Нет userId для сохранения');
+        return false;
     }
 
+    // ===== СЧИТАЕМ ВРЕМЯ СЕССИИ =====
+    const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
+    this.totalTime = (this.totalTime || 0) + sessionTime;
+    this.sessions = (this.sessions || 0) + 1;
+
+    try {
+        const payload = {
+            userId: this.userId,
+            total_popped: this.totalPopped,
+            color_pops: JSON.stringify(this.colorPops),
+            max_combo: this.maxCombo,
+            max_score: this.maxScore,
+            total_bonus_earned: this.totalBonusEarned,
+            bonus_earned: JSON.stringify(this.bonusEarned),
+            total_bonus_used: this.totalBonusUsed,
+            bonus_used: JSON.stringify(this.bonusUsed),
+            best_streak: this.bestStreak,
+            big_bonus_count: this.bigBonusCount,
+            color_set_count: this.colorSetCount,
+            challenge_progress: JSON.stringify(this.challengeProgress),
+            // ===== НОВЫЕ ПОЛЯ =====
+            last_play: new Date().toISOString(),
+            sessions: this.sessions,
+            total_time: this.totalTime,
+            total_ads_watched: this.totalAdsWatched || 0,
+            skins: JSON.stringify(this.skins || {}),
+            active_skin: this.activeSkin || 'default'
+        };
+
+
+        const result = await response.json();
+        if (result.success) {
+            console.log('✅ Статистика сохранена!');
+            return true;
+        } else {
+            console.error('❌ Ошибка:', result.error);
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Ошибка соединения:', error);
+        return false;
+    }
+}
+
+    onAdWatched() {
+    this.totalAdsWatched = (this.totalAdsWatched || 0) + 1;
+}
+    
+    
     // ===== ОБНОВЛЕНИЯ ВО ВРЕМЯ ИГРЫ =====
 
     onBubblePopped(colorType) {

@@ -1,12 +1,36 @@
 // js/vk.js
 
 class VKManager {
-    constructor() {
+ constructor() {
+        // ===== ФЛАГ ЛОКАЛЬНОЙ РАЗРАБОТКИ =====
+        this.isLocal = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.protocol === 'file:';
         
-        
-        
-        
-        
+        if (this.isLocal) {
+            console.log('🧪 ЛОКАЛЬНЫЙ РЕЖИМ: имитация пользователя #2');
+            this.isReady = true;
+            this.userId = 'test_user_2';
+            this.userName = 'Тестовый Игрок #2';
+            this.dbUserId = 2;
+            this.bridge = null;
+            this.serverUrl = 'http://170.168.10.167:8080/api/bubble';
+            
+            localStorage.setItem('bubbleUserId', String(this.dbUserId));
+            localStorage.setItem('username', this.userName);
+            
+            // Инициализируем statsManager
+            if (typeof statsManager !== 'undefined') {
+                statsManager.userId = this.dbUserId;
+                statsManager.load(this.dbUserId);
+            }
+            if (typeof challengeTracker !== 'undefined') {
+                challengeTracker.loadFromServer(this.dbUserId);
+            }
+            return;
+        }
+
+        // ===== РЕАЛЬНЫЙ VK =====
         this.isReady = false;
         this.userId = null;
         this.userName = 'Игрок';
@@ -15,11 +39,7 @@ class VKManager {
         this.dbUserId = null;
         this.topCache = null;
         this.topCacheTime = 0;
-        
-        // ===== АДРЕС СЕРВЕРА ДЛЯ ПУЗЫРЬКОВ =====
-       this.serverUrl = 'http://170.168.10.167:8080/api/bubble';
-        
-        // =========================================
+        this.serverUrl = 'http://170.168.10.167:8080/api/bubble';
     }
 
     init() {
@@ -131,44 +151,35 @@ async loginToServer() {
     }
     // ======================================================
 
-    async saveToGlobalTop(score, maxCombo, challengePoints) {
+ async saveToGlobalTop(score, maxCombo, challengePoints, totalPopped) {
+    if (!this.dbUserId) {
+        await this.loginToServer();
         if (!this.dbUserId) {
-            await this.loginToServer();
-            if (!this.dbUserId) {
-                this.saveToLocalTop(score, maxCombo, challengePoints);
-                return false;
-            }
-        }
-        
-        try {
-            const response = await fetch(`${this.serverUrl}/top/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: this.dbUserId,
-                    score: score || 0,
-                    maxCombo: maxCombo || 0,
-                    challengePoints: challengePoints || 0
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log('✅ Результат сохранён на сервере');
-                this.topCache = null;
-                return true;
-            } else {
-                console.warn('⚠️ Ошибка сохранения:', data.message);
-                this.saveToLocalTop(score, maxCombo, challengePoints);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ Ошибка соединения с сервером:', error);
             this.saveToLocalTop(score, maxCombo, challengePoints);
             return false;
         }
     }
+    
+    try {
+        const response = await fetch(`${this.serverUrl}/top/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: this.dbUserId,
+                score: score || 0,
+                maxCombo: maxCombo || 0,
+                challengePoints: challengePoints || 0,
+                totalPopped: totalPopped || 0  // ← новое поле
+            })
+        });
+        
+        const data = await response.json();
+        return data.success;
+    } catch (error) {
+        console.error('❌ Ошибка:', error);
+        return false;
+    }
+}
 
     async getGlobalTop() {
         try {

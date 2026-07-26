@@ -79,12 +79,12 @@ async save() {
         return false;
     }
 
-   
-  // ===== СЧИТАЕМ ВРЕМЯ СЕССИИ =====
-const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
-this.totalTime = (this.totalTime || 0) + sessionTime;
-this.sessions = (this.sessions || 0) + 1;
-this.lastPlay = new Date().toISOString();
+    // ===== СЧИТАЕМ ВРЕМЯ СЕССИИ =====
+    const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
+    this.totalTime = (this.totalTime || 0) + sessionTime;
+    this.sessions = (this.sessions || 0) + 1;
+    this.lastPlay = new Date().toISOString();
+
     try {
         const payload = {
             userId: this.userId,
@@ -101,7 +101,7 @@ this.lastPlay = new Date().toISOString();
             color_set_count: this.colorSetCount,
             challenge_progress: JSON.stringify(this.challengeProgress),
             // ===== НОВЫЕ ПОЛЯ =====
-            last_play: new Date().toISOString(),
+            last_play: this.lastPlay,
             sessions: this.sessions,
             total_time: this.totalTime,
             total_ads_watched: this.totalAdsWatched || 0,
@@ -109,8 +109,15 @@ this.lastPlay = new Date().toISOString();
             active_skin: this.activeSkin || 'default'
         };
 
+        // ===== ВОТ ЗДЕСЬ ДОЛЖЕН БЫТЬ FETCH! =====
+        const response = await fetch(`${this.apiUrl}/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
         const result = await response.json();
+        
         if (result.success) {
             console.log('✅ Статистика сохранена!');
             return true;

@@ -6,6 +6,7 @@ class StatsManager {
         this.isLoaded = false;
         this.apiUrl = 'http://170.168.10.167:8080/api/bubble/stats';
         
+        // ===== ОСНОВНЫЕ СЧЁТЧИКИ =====
         this.totalPopped = 0;
         this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };
         this.maxCombo = 0;
@@ -18,61 +19,47 @@ class StatsManager {
         this.bigBonusCount = 0;
         this.colorSetCount = 0;
         this.challengeProgress = {};
+        
+        // ===== ДОПОЛНИТЕЛЬНЫЕ =====
         this.sessions = 0;
-this.totalTime = 0;
-this.totalAdsWatched = 0;
-this.skins = {};
-this.activeSkin = 'default';
-this.sessionStart = Date.now();
+        this.totalTime = 0;
+        this.totalAdsWatched = 0;
+        this.skins = {};
+        this.activeSkin = 'default';
+        this.sessionStart = Date.now();
+        this.lastPlay = null;
     }
 
-    // ===== ПАРСИНГ JSONB ИЗ БД =====
-    parseJsonBField(field, defaultObj) {
-        if (!field) return defaultObj;
-        if (typeof field === 'string') {
-            try { return JSON.parse(field); } catch (e) { return defaultObj; }
-        }
-        if (typeof field === 'object') {
-            if (field.type === 'jsonb' && field.value) {
-                try { return JSON.parse(field.value); } catch (e) { return defaultObj; }
-            }
-            if (field.red !== undefined || field.slow !== undefined) {
-                return field;
-            }
-        }
-        return defaultObj;
-    }
-
+    // ===== ЗАГРУЗКА ДАННЫХ =====
     async load(userId) {
         this.userId = userId;
         
         try {
-// ===== ВРЕМЕННАЯ ОТЛАДКА НА ЭКРАНЕ =====
-const debugDiv = document.createElement('div');
-debugDiv.style.cssText = 'position:fixed;bottom:10px;left:10px;background:#000;color:#0f0;padding:10px;z-index:9999;font-size:14px;border:1px solid #0f0;';
-debugDiv.innerHTML = '📊 Отправляем: sessions=' + this.sessions + ', total_time=' + this.totalTime + ', last_play=' + this.lastPlay;
-document.body.appendChild(debugDiv);
-
-setTimeout(() => {
-    if (debugDiv) debugDiv.remove();
-}, 10000);
-            
             const response = await fetch(`${this.apiUrl}/${userId}`);
             const data = await response.json();
             
             if (data.success) {
+                // Простые поля
                 this.totalPopped = data.total_popped || 0;
-                this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };
                 this.maxCombo = data.max_combo || 0;
                 this.maxScore = data.max_score || 0;
                 this.totalBonusEarned = data.total_bonus_earned || 0;
-                this.bonusEarned = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
                 this.totalBonusUsed = data.total_bonus_used || 0;
-                this.bonusUsed = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
                 this.bestStreak = data.best_streak || 0;
                 this.bigBonusCount = data.big_bonus_count || 0;
                 this.colorSetCount = data.color_set_count || 0;
-                this.challengeProgress = data.challenge_progress || {};
+                this.sessions = data.sessions || 0;
+                this.totalTime = data.total_time || 0;
+                this.totalAdsWatched = data.total_ads_watched || 0;
+                this.activeSkin = data.active_skin || 'default';
+                this.lastPlay = data.last_play || null;
+                
+                // JSONB поля (парсим)
+                this.colorPops = this.parseJson(data.color_pops, { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 });
+                this.bonusEarned = this.parseJson(data.bonus_earned, { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 });
+                this.bonusUsed = this.parseJson(data.bonus_used, { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 });
+                this.skins = this.parseJson(data.skins, {});
+                this.challengeProgress = this.parseJson(data.challenge_progress, {});
                 
                 this.isLoaded = true;
                 return true;
@@ -83,43 +70,59 @@ setTimeout(() => {
         return false;
     }
 
+    // ===== ПАРСИНГ JSONB =====
+    parseJson(value, defaultValue) {
+        if (!value) return defaultValue;
+        if (typeof value === 'string') {
+            try { return JSON.parse(value); } catch (_) { return defaultValue; }
+        }
+        if (typeof value === 'object') {
+            // Если это обёртка jsonb
+            if (value.type === 'jsonb' && value.value) {
+                try { return JSON.parse(value.value); } catch (_) { return defaultValue; }
+            }
+            return value;
+        }
+        return defaultValue;
+    }
+
+    // ===== СОХРАНЕНИЕ =====
 async save() {
     if (!this.userId) {
         console.warn('⚠️ Нет userId для сохранения');
         return false;
     }
 
-    // ===== СЧИТАЕМ ВРЕМЯ СЕССИИ =====
     const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
     this.totalTime = (this.totalTime || 0) + sessionTime;
     this.sessions = (this.sessions || 0) + 1;
-    this.lastPlay = new Date().toISOString();
+
+    const payload = {
+        userId: this.userId,
+        total_popped: this.totalPopped,
+        color_pops: JSON.stringify(this.colorPops),
+        max_combo: this.maxCombo,
+        max_score: this.maxScore,
+        total_bonus_earned: this.totalBonusEarned,
+        bonus_earned: JSON.stringify(this.bonusEarned),
+        total_bonus_used: this.totalBonusUsed,
+        bonus_used: JSON.stringify(this.bonusUsed),
+        best_streak: this.bestStreak,
+        big_bonus_count: this.bigBonusCount,
+        color_set_count: this.colorSetCount,
+        challenge_progress: JSON.stringify(this.challengeProgress || {}),
+        sessions: this.sessions,
+        total_time: this.totalTime,
+        total_ads_watched: this.totalAdsWatched || 0,
+        active_skin: this.activeSkin || 'default',
+        skins: JSON.stringify(this.skins || {}),
+        // ===== КЛЮЧЕВОЕ ИЗМЕНЕНИЕ =====
+        last_play: new Date()  // ← ОБЪЕКТ DATE, НЕ СТРОКА!
+    };
+
+    console.log('📤 Отправка:', JSON.stringify(payload, null, 2));
 
     try {
-        const payload = {
-            userId: this.userId,
-            total_popped: this.totalPopped,
-            color_pops: JSON.stringify(this.colorPops),
-            max_combo: this.maxCombo,
-            max_score: this.maxScore,
-            total_bonus_earned: this.totalBonusEarned,
-            bonus_earned: JSON.stringify(this.bonusEarned),
-            total_bonus_used: this.totalBonusUsed,
-            bonus_used: JSON.stringify(this.bonusUsed),
-            best_streak: this.bestStreak,
-            big_bonus_count: this.bigBonusCount,
-            color_set_count: this.colorSetCount,
-            challenge_progress: JSON.stringify(this.challengeProgress),
-            // ===== НОВЫЕ ПОЛЯ =====
-            last_play: this.lastPlay,
-            sessions: this.sessions,
-            total_time: this.totalTime,
-            total_ads_watched: this.totalAdsWatched || 0,
-            skins: JSON.stringify(this.skins || {}),
-            active_skin: this.activeSkin || 'default'
-        };
-
-        // ===== ВОТ ЗДЕСЬ ДОЛЖЕН БЫТЬ FETCH! =====
         const response = await fetch(`${this.apiUrl}/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -127,32 +130,21 @@ async save() {
         });
 
         const result = await response.json();
-        
-        if (result.success) {
-            console.log('✅ Статистика сохранена!');
-            return true;
-        } else {
-            console.error('❌ Ошибка:', result.error);
-            return false;
-        }
+        console.log('📥 Ответ:', result);
+        return result.success;
     } catch (error) {
-        console.error('❌ Ошибка соединения:', error);
+        console.error('❌ Ошибка:', error);
         return false;
     }
 }
 
-    onAdWatched() {
-    this.totalAdsWatched = (this.totalAdsWatched || 0) + 1;
-}
-    
-    
     // ===== ОБНОВЛЕНИЯ ВО ВРЕМЯ ИГРЫ =====
-
     onBubblePopped(colorType) {
         this.totalPopped++;
         if (colorType && this.colorPops[colorType] !== undefined) {
             this.colorPops[colorType]++;
         }
+        console.log('📊 Лопнут: ' + colorType + ', всего: ' + this.totalPopped);
     }
 
     onCombo(combo) {
@@ -175,9 +167,7 @@ async save() {
             'blue': 'multiplier',
             'pink': 'clear'
         };
-        
         const mappedType = bonusMap[bonusType] || bonusType;
-        
         if (this.bonusEarned[mappedType] !== undefined) {
             this.bonusEarned[mappedType]++;
             this.totalBonusEarned++;
@@ -192,13 +182,15 @@ async save() {
             'blue': 'multiplier',
             'pink': 'clear'
         };
-        
         const mappedType = bonusMap[bonusType] || bonusType;
-        
         if (this.bonusUsed[mappedType] !== undefined) {
             this.bonusUsed[mappedType]++;
             this.totalBonusUsed++;
         }
+    }
+
+    onAdWatched() {
+        this.totalAdsWatched = (this.totalAdsWatched || 0) + 1;
     }
 
     onStreak(streak) {
@@ -236,7 +228,21 @@ async save() {
         };
     }
 
-    reset() {}
+    reset() {
+        this.totalPopped = 0;
+        this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };
+        this.maxCombo = 0;
+        this.maxScore = 0;
+        this.totalBonusEarned = 0;
+        this.bonusEarned = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
+        this.totalBonusUsed = 0;
+        this.bonusUsed = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
+        this.bestStreak = 0;
+        this.bigBonusCount = 0;
+        this.colorSetCount = 0;
+        this.challengeProgress = {};
+        this.sessionStart = Date.now();
+    }
 }
 
 const statsManager = new StatsManager();

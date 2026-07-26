@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function startGame() {
         
         // ===== ПРИНУДИТЕЛЬНЫЙ URL =====
-        const API_BASE = 'http://170.168.10.167:8080/api/bubble';
+const API_BASE = 'http://170.168.10.167:8080/api/bubble';
         const userId = localStorage.getItem('bubbleUserId');
         console.log('👤 ID пользователя:', userId);
         
@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (userId) {
             const userIdNum = parseInt(userId);
             
+            // Фоновые загрузки — без await
             challengeTracker.loadFromServer(userIdNum).catch(() => {
                 console.warn('⚠️ Испытания не загружены');
             });
@@ -102,39 +103,60 @@ document.addEventListener('DOMContentLoaded', function() {
             hideExitModal();
         });
 
-        // ===== КНОПКА "ВЫЙТИ" (ПРОСТАЯ РАБОЧАЯ) =====
-        document.getElementById('exitModalExit').addEventListener('click', function() {
-            game.saveGameResult();
-            
-            setTimeout(function() {
-                hideExitModal();
-                if (typeof vkBridge !== 'undefined') {
-                    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                        .finally(function() {
-                            goTo('index.html');
-                        });
-                } else {
-                    goToWithAd('index.html');
-                }
-            }, 500);
-        });
+        // ===== КНОПКА "ВЫЙТИ" =====
+// ===== КНОПКА "ВЫЙТИ" =====
+document.getElementById('exitModalExit').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Сохранение...';
+    
+    game.saveGameResult(function(success) {
+        if (success) {
+            btn.textContent = '✅ Сохранено!';
+        } else {
+            btn.textContent = '❌ Ошибка!';
+        }
+        
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
+});
 
-        document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            game.saveGameResult();
-            
-            setTimeout(function() {
-                hideExitModal();
-                if (typeof vkBridge !== 'undefined') {
-                    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                        .finally(function() {
-                            goTo('index.html');
-                        });
-                } else {
-                    goToWithAd('index.html');
-                }
-            }, 500);
-        });
+document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
+    e.preventDefault();
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Сохранение...';
+    
+    game.saveGameResult(function(success) {
+        if (success) {
+            btn.textContent = '✅ Сохранено!';
+        } else {
+            btn.textContent = '❌ Ошибка!';
+        }
+        
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
+});
 
         // ===== ИГРОВОЙ ЦИКЛ =====
         function gameLoop() {

@@ -416,31 +416,20 @@ statsManager.onScore(this.score);
     }
     
 saveGameResult() {
-    // ===== ВРЕМЕННАЯ ОТЛАДКА НА ЭКРАНЕ =====
-    const debug = document.createElement('div');
-    debug.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#000;color:#0f0;padding:12px 24px;z-index:9999;font-size:16px;border:2px solid #0f0;border-radius:8px;text-align:center;';
-    debug.innerHTML = '💾 Сохраняем...<br>sessions=' + (statsManager.sessions || 0) + ' total_time=' + (statsManager.totalTime || 0);
-    document.body.appendChild(debug);
-
-    // ===== ОБНОВЛЯЕМ СЧЁТ =====
     statsManager.onScore(this.score);
-
-    // ===== СОХРАНЯЕМ СТАТИСТИКУ =====
-    statsManager.save().then(() => {
-        debug.innerHTML = '✅ Сохранено! sessions=' + (statsManager.sessions || 0) + ' total_time=' + (statsManager.totalTime || 0);
-        setTimeout(() => { if (debug) debug.remove(); }, 3000);
+    
+    // ===== СОХРАНЯЕМ СТАТИСТИКУ В БД =====
+    statsManager.save().then((result) => {
+        console.log('✅ Статистика сохранена');
     }).catch((err) => {
-        debug.innerHTML = '❌ Ошибка: ' + err;
-        debug.style.borderColor = '#ff0000';
-        debug.style.color = '#ff0000';
-        setTimeout(() => { if (debug) debug.remove(); }, 3000);
+        console.error('❌ Ошибка сохранения статистики:', err);
     });
 
     // ===== ЛОКАЛЬНОЕ СОХРАНЕНИЕ =====
     const now = new Date();
     const dateStr = now.toLocaleDateString('ru-RU');
     const timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
+    
     const result = {
         date: `${dateStr} ${timeStr}`,
         score: this.score,
@@ -449,7 +438,7 @@ saveGameResult() {
         totalPopped: this.totalPopped,
         bestBonus: this._bestBonus || 0
     };
-
+    
     // ===== СОХРАНЕНИЕ В ЛОКАЛЬНЫЙ ТОП =====
     let top = JSON.parse(localStorage.getItem('bubbleTop') || '[]');
     top.push(result);
@@ -458,7 +447,7 @@ saveGameResult() {
         top = top.slice(0, 20);
     }
     localStorage.setItem('bubbleTop', JSON.stringify(top));
-
+    
     // ===== ОТПРАВКА В ГЛОБАЛЬНЫЙ ТОП =====
     const challengePoints = challengeTracker.getTotalRewards();
     vk.saveToGlobalTop(this.score, this.maxCombo, challengePoints);

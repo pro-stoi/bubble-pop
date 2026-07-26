@@ -103,36 +103,27 @@ const API_BASE = 'http://170.168.10.167:8080/api/bubble';
             hideExitModal();
         });
 
-        // ===== КНОПКА "ВЫЙТИ" =====
-        document.getElementById('exitModalExit').addEventListener('click', function() {
-            game.saveGameResult();
-            setTimeout(function() {
-                hideExitModal();
-                if (typeof vkBridge !== 'undefined') {
-                    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                        .finally(function() {
-                            goTo('index.html');
-                        });
-                } else {
-                    goToWithAd('index.html');
-                }
-            }, 500);
-        });
-        document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            game.saveGameResult();
-            setTimeout(function() {
-                hideExitModal();
-                if (typeof vkBridge !== 'undefined') {
-                    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                        .finally(function() {
-                            goTo('index.html');
-                        });
-                } else {
-                    goToWithAd('index.html');
-                }
-            }, 500);
-        });
+// ===== КНОПКА "ВЫЙТИ" =====
+document.getElementById('exitModalExit').addEventListener('click', function(e) {
+    game.saveGameResult();
+    setTimeout(function() {
+        hideExitModal();
+        if (typeof vkBridge !== 'undefined') {
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                .finally(function() {
+                    goTo('index.html');
+                });
+        } else {
+            goToWithAd('index.html');
+        }
+    }, 500);
+});
+
+// Для мобильных — предотвращаем двойной вызов
+document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
+    e.preventDefault();
+    // click уже сработает, ничего не делаем
+});
 
         // ===== ИГРОВОЙ ЦИКЛ =====
         function gameLoop() {

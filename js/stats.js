@@ -1,248 +1,205 @@
-// js/stats.js
+document.addEventListener('DOMContentLoaded', function() {
+    async function startGame() {
+        
+        // ===== ПРИНУДИТЕЛЬНЫЙ URL =====
+const API_BASE = 'http://170.168.10.167:8080/api/bubble';
+        const userId = localStorage.getItem('bubbleUserId');
+        console.log('👤 ID пользователя:', userId);
+        
+        // ===== СОЗДАЁМ ИГРУ СРАЗУ (НЕ ЖДЁМ БД) =====
+        const canvas = document.getElementById('gameCanvas');
+        const game = new Game(canvas);
 
-class StatsManager {
-    constructor() {
-        this.userId = null;
-        this.isLoaded = false;
-        this.apiUrl = 'http://170.168.10.167:8080/api/bubble/stats';
-        
-        // ===== ОСНОВНЫЕ СЧЁТЧИКИ =====
-        this.totalPopped = 0;
-        this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };
-        this.maxCombo = 0;
-        this.maxScore = 0;
-        this.totalBonusEarned = 0;
-        this.bonusEarned = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
-        this.totalBonusUsed = 0;
-        this.bonusUsed = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
-        this.bestStreak = 0;
-        this.bigBonusCount = 0;
-        this.colorSetCount = 0;
-        this.challengeProgress = {};
-        
-        // ===== ДОПОЛНИТЕЛЬНЫЕ =====
-        this.sessions = 0;
-        this.totalTime = 0;
-        this.totalAdsWatched = 0;
-        this.skins = {};
-        this.activeSkin = 'default';
-        this.sessionStart = Date.now();
-        this.lastPlay = null;
-    }
-
-    // ===== ЗАГРУЗКА ДАННЫХ =====
-    async load(userId) {
-        this.userId = userId;
-        
-        try {
-            const response = await fetch(`${this.apiUrl}/${userId}`);
-            const data = await response.json();
+        // ===== ЗАГРУЖАЕМ БД В ФОНЕ (НЕ БЛОКИРУЕМ) =====
+        if (userId) {
+            const userIdNum = parseInt(userId);
             
-            if (data.success) {
-                // Простые поля
-                this.totalPopped = data.total_popped || 0;
-                this.maxCombo = data.max_combo || 0;
-                this.maxScore = data.max_score || 0;
-                this.totalBonusEarned = data.total_bonus_earned || 0;
-                this.totalBonusUsed = data.total_bonus_used || 0;
-                this.bestStreak = data.best_streak || 0;
-                this.bigBonusCount = data.big_bonus_count || 0;
-                this.colorSetCount = data.color_set_count || 0;
-                this.sessions = data.sessions || 0;
-                this.totalTime = data.total_time || 0;
-                this.totalAdsWatched = data.total_ads_watched || 0;
-                this.activeSkin = data.active_skin || 'default';
-                this.lastPlay = data.last_play || null;
-                
-                // JSONB поля (парсим)
-                this.colorPops = this.parseJson(data.color_pops, { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 });
-                this.bonusEarned = this.parseJson(data.bonus_earned, { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 });
-                this.bonusUsed = this.parseJson(data.bonus_used, { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 });
-                this.skins = this.parseJson(data.skins, {});
-                this.challengeProgress = this.parseJson(data.challenge_progress, {});
-                
-                this.isLoaded = true;
-                return true;
+            // Фоновые загрузки — без await
+            challengeTracker.loadFromServer(userIdNum).catch(() => {
+                console.warn('⚠️ Испытания не загружены');
+            });
+            statsManager.load(userIdNum).catch(() => {
+                console.warn('⚠️ Статистика не загружена');
+            });
+        }
+
+        // ===== ОБРАБОТКА ТАПА =====
+        function handleTap(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                e.preventDefault();
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
             }
-        } catch (error) {
-            console.error('❌ Ошибка загрузки:', error);
+            
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            
+            const uiElements = document.querySelectorAll('.game-btn, .bonus-btn, #topBar, #bonusContainer, .exit-modal, .exit-modal-content, .exit-modal-btn');
+            let isOnUI = false;
+            
+            uiElements.forEach(function(el) {
+                const elRect = el.getBoundingClientRect();
+                if (clientX >= elRect.left && clientX <= elRect.right &&
+                    clientY >= elRect.top && clientY <= elRect.bottom) {
+                    isOnUI = true;
+                }
+            });
+            
+            if (isOnUI) return;
+            
+            game.handleTap(x, y);
         }
-        return false;
-    }
 
-    // ===== ПАРСИНГ JSONB =====
-    parseJson(value, defaultValue) {
-        if (!value) return defaultValue;
-        if (typeof value === 'string') {
-            try { return JSON.parse(value); } catch (_) { return defaultValue; }
+        canvas.addEventListener('click', handleTap);
+        canvas.addEventListener('touchstart', handleTap, { passive: false });
+
+        // ===== UI ЭЛЕМЕНТЫ =====
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const pendingEl = document.getElementById('pendingScore');
+        const multiplierEl = document.getElementById('multiplier');
+
+        // ===== МОДАЛЬНОЕ ОКНО =====
+        const exitModal = document.getElementById('exitModal');
+        const exitModalScore = document.getElementById('exitModalScore');
+        const exitModalCombo = document.getElementById('exitModalCombo');
+        const exitModalMultiplier = document.getElementById('exitModalMultiplier');
+        const exitModalPopped = document.getElementById('exitModalPopped');
+
+        function showExitModal() {
+            const stats = game.getStats();
+            exitModalScore.textContent = stats.score;
+            exitModalCombo.textContent = stats.maxCombo;
+            exitModalMultiplier.textContent = '×' + stats.multiplier;
+            exitModalPopped.textContent = stats.totalPopped;
+            exitModal.style.display = 'flex';
         }
-        if (typeof value === 'object') {
-            // Если это обёртка jsonb
-            if (value.type === 'jsonb' && value.value) {
-                try { return JSON.parse(value.value); } catch (_) { return defaultValue; }
-            }
-            return value;
+
+        function hideExitModal() {
+            exitModal.style.display = 'none';
         }
-        return defaultValue;
-    }
 
-    // ===== СОХРАНЕНИЕ =====
-async save() {
-    if (!this.userId) {
-        console.warn('⚠️ Нет userId для сохранения');
-        return false;
-    }
-
-    const sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
-    this.totalTime = (this.totalTime || 0) + sessionTime;
-    this.sessions = (this.sessions || 0) + 1;
-
-    const payload = {
-        userId: this.userId,
-        total_popped: this.totalPopped,
-        color_pops: JSON.stringify(this.colorPops),
-        max_combo: this.maxCombo,
-        max_score: this.maxScore,
-        total_bonus_earned: this.totalBonusEarned,
-        bonus_earned: JSON.stringify(this.bonusEarned),
-        total_bonus_used: this.totalBonusUsed,
-        bonus_used: JSON.stringify(this.bonusUsed),
-        best_streak: this.bestStreak,
-        big_bonus_count: this.bigBonusCount,
-        color_set_count: this.colorSetCount,
-        challenge_progress: JSON.stringify(this.challengeProgress || {}),
-        sessions: this.sessions,
-        total_time: this.totalTime,
-        total_ads_watched: this.totalAdsWatched || 0,
-        active_skin: this.activeSkin || 'default',
-        skins: JSON.stringify(this.skins || {}),
-        // ===== КЛЮЧЕВОЕ ИЗМЕНЕНИЕ =====
-        last_play: new Date()  // ← ОБЪЕКТ DATE, НЕ СТРОКА!
-    };
-
-    console.log('📤 Отправка:', JSON.stringify(payload, null, 2));
-
-    try {
-        const response = await fetch(`${this.apiUrl}/update`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        // ===== КНОПКА "ДОМИК" =====
+        document.getElementById('backMenuBtn').addEventListener('click', function() {
+            showExitModal();
+        });
+        document.getElementById('backMenuBtn').addEventListener('touchend', function(e) {
+            e.preventDefault();
+            showExitModal();
         });
 
-        const result = await response.json();
-        console.log('📥 Ответ:', result);
-        return result.success;
-    } catch (error) {
-        console.error('❌ Ошибка:', error);
-        return false;
-    }
-}
+        // ===== КНОПКА "ВЕРНУТЬСЯ" =====
+        document.getElementById('exitModalBack').addEventListener('click', function() {
+            hideExitModal();
+        });
+        document.getElementById('exitModalBack').addEventListener('touchend', function(e) {
+            e.preventDefault();
+            hideExitModal();
+        });
 
-    // ===== ОБНОВЛЕНИЯ ВО ВРЕМЯ ИГРЫ =====
-    onBubblePopped(colorType) {
-        this.totalPopped++;
-        if (colorType && this.colorPops[colorType] !== undefined) {
-            this.colorPops[colorType]++;
+        // ===== КНОПКА "ВЫЙТИ" =====
+// ===== КНОПКА "ВЫЙТИ" =====
+document.getElementById('exitModalExit').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Сохранение...';
+    
+    game.saveGameResult(function(success) {
+        if (success) {
+            btn.textContent = '✅ Сохранено!';
+        } else {
+            btn.textContent = '❌ Ошибка!';
         }
-        console.log('📊 Лопнут: ' + colorType + ', всего: ' + this.totalPopped);
-    }
+        
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
+});
 
-    onCombo(combo) {
-        if (combo > this.maxCombo) {
-            this.maxCombo = combo;
+document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
+    e.preventDefault();
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = '⏳ Сохранение...';
+    
+    game.saveGameResult(function(success) {
+        if (success) {
+            btn.textContent = '✅ Сохранено!';
+        } else {
+            btn.textContent = '❌ Ошибка!';
         }
-    }
+        
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
+});
 
-    onScore(score) {
-        if (score > this.maxScore) {
-            this.maxScore = score;
+        // ===== ИГРОВОЙ ЦИКЛ =====
+        function gameLoop() {
+            game.update();
+            game.draw();
+            
+            if (pendingEl) {
+                pendingEl.textContent = '+'.concat(game.pendingScore);
+            }
+            if (multiplierEl) {
+                multiplierEl.textContent = '×'.concat(game.multiplier);
+            }
+            scoreEl.textContent = '💎 '.concat(game.score);
+            
+            if (game.combo > 1) {
+                comboEl.textContent = '🔥 x'.concat(game.combo);
+                comboEl.classList.add('show');
+            } else {
+                comboEl.classList.remove('show');
+            }
+
+            requestAnimationFrame(gameLoop);
         }
+
+        gameLoop();
+
+        window.addEventListener('resize', function() {
+            game.resize();
+        });
+
+        let bestScore = parseInt(localStorage.getItem('bubbleBest') || '0');
+        
+        setInterval(function() {
+            if (game.score > bestScore) {
+                bestScore = game.score;
+                localStorage.setItem('bubbleBest', String(bestScore));
+            }
+        }, 5000);
+
+        console.log('🫧 Пузырьки запущены!');
+        console.log('🏆 Рекорд:', bestScore);
     }
 
-    onBonusEarned(bonusType) {
-        const bonusMap = {
-            'red': 'slow',
-            'yellow': 'magnet',
-            'green': 'explosion',
-            'blue': 'multiplier',
-            'pink': 'clear'
-        };
-        const mappedType = bonusMap[bonusType] || bonusType;
-        if (this.bonusEarned[mappedType] !== undefined) {
-            this.bonusEarned[mappedType]++;
-            this.totalBonusEarned++;
-        }
-    }
-
-    onBonusUsed(bonusType) {
-        const bonusMap = {
-            'red': 'slow',
-            'yellow': 'magnet',
-            'green': 'explosion',
-            'blue': 'multiplier',
-            'pink': 'clear'
-        };
-        const mappedType = bonusMap[bonusType] || bonusType;
-        if (this.bonusUsed[mappedType] !== undefined) {
-            this.bonusUsed[mappedType]++;
-            this.totalBonusUsed++;
-        }
-    }
-
-    onAdWatched() {
-        this.totalAdsWatched = (this.totalAdsWatched || 0) + 1;
-    }
-
-    onStreak(streak) {
-        if (streak > this.bestStreak) {
-            this.bestStreak = streak;
-        }
-    }
-
-    onBigBonus() {
-        this.bigBonusCount++;
-    }
-
-    onColorSet() {
-        this.colorSetCount++;
-    }
-
-    updateChallengeProgress(challengeId, progress) {
-        this.challengeProgress[challengeId] = progress;
-    }
-
-    getStats() {
-        return {
-            totalPopped: this.totalPopped,
-            colorPops: this.colorPops,
-            maxCombo: this.maxCombo,
-            maxScore: this.maxScore,
-            totalBonusEarned: this.totalBonusEarned,
-            bonusEarned: this.bonusEarned,
-            totalBonusUsed: this.totalBonusUsed,
-            bonusUsed: this.bonusUsed,
-            bestStreak: this.bestStreak,
-            bigBonusCount: this.bigBonusCount,
-            colorSetCount: this.colorSetCount,
-            challengeProgress: this.challengeProgress
-        };
-    }
-
-    reset() {
-        this.totalPopped = 0;
-        this.colorPops = { red: 0, green: 0, blue: 0, yellow: 0, pink: 0 };
-        this.maxCombo = 0;
-        this.maxScore = 0;
-        this.totalBonusEarned = 0;
-        this.bonusEarned = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
-        this.totalBonusUsed = 0;
-        this.bonusUsed = { slow: 0, magnet: 0, explosion: 0, multiplier: 0, clear: 0 };
-        this.bestStreak = 0;
-        this.bigBonusCount = 0;
-        this.colorSetCount = 0;
-        this.challengeProgress = {};
-        this.sessionStart = Date.now();
-    }
-}
-
-const statsManager = new StatsManager();
+    // ===== ЗАПУСК =====
+    startGame();
+});

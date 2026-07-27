@@ -138,6 +138,7 @@ class StatsManager {
                 totalAdsWatched: this.totalAdsWatched || 0,
                 activeSkin: this.activeSkin || 'default',
                 skins: this.skins || {}
+                last_play: new Date().toISOString() 
             });
             
             console.log('📊 [STATS] Результат сохранения:', result);

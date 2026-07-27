@@ -1,46 +1,47 @@
 // js/vk.js
 
 class VKManager {
- constructor() {
-        // ===== ФЛАГ ЛОКАЛЬНОЙ РАЗРАБОТКИ =====
-        this.isLocal = window.location.hostname === 'localhost' || 
-                       window.location.hostname === '127.0.0.1' ||
-                       window.location.protocol === 'file:';
-        
-        if (this.isLocal) {
-            console.log('🧪 ЛОКАЛЬНЫЙ РЕЖИМ: имитация пользователя #2');
-            this.isReady = true;
-            this.userId = 'test_user_2';
-            this.userName = 'Тестовый Игрок #2';
-            this.dbUserId = 2;
-            this.bridge = null;
-            this.serverUrl = 'http://170.168.10.167:8080/api/bubble';
-            
-            localStorage.setItem('bubbleUserId', String(this.dbUserId));
-            localStorage.setItem('username', this.userName);
-            
-            // Инициализируем statsManager
-            if (typeof statsManager !== 'undefined') {
-                statsManager.userId = this.dbUserId;
-                statsManager.load(this.dbUserId);
-            }
-            if (typeof challengeTracker !== 'undefined') {
-                challengeTracker.loadFromServer(this.dbUserId);
-            }
-            return;
-        }
-
-        // ===== РЕАЛЬНЫЙ VK =====
-        this.isReady = false;
-        this.userId = null;
-        this.userName = 'Игрок';
-        this.appId = 54650664;
+constructor() {
+    // ===== ФЛАГ ЛОКАЛЬНОЙ РАЗРАБОТКИ =====
+    this.isLocal = window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1' ||
+                   window.location.protocol === 'file:';
+    
+    if (this.isLocal) {
+        console.log('🧪 ЛОКАЛЬНЫЙ РЕЖИМ: имитация пользователя #2');
+        this.isReady = true;
+        this.userId = 'test_user_2';
+        this.userName = 'Тестовый Игрок #2';
+        this.dbUserId = 2;
         this.bridge = null;
-        this.dbUserId = null;
-        this.topCache = null;
-        this.topCacheTime = 0;
+        // ===== ЛОКАЛЬНЫЙ URL =====
         this.serverUrl = 'http://170.168.10.167:8080/api/bubble';
+        
+        localStorage.setItem('bubbleUserId', String(this.dbUserId));
+        localStorage.setItem('username', this.userName);
+        
+        if (typeof statsManager !== 'undefined') {
+            statsManager.userId = this.dbUserId;
+            statsManager.load(this.dbUserId);
+        }
+        if (typeof challengeTracker !== 'undefined') {
+            challengeTracker.loadFromServer(this.dbUserId);
+        }
+        return;
     }
+
+    // ===== РЕАЛЬНЫЙ VK =====
+    this.isReady = false;
+    this.userId = null;
+    this.userName = 'Игрок';
+    this.appId = 54650664;
+    this.bridge = null;
+    this.dbUserId = null;
+    this.topCache = null;
+    this.topCacheTime = 0;
+    // ===== ПРАВИЛЬНЫЙ URL ДЛЯ VK =====
+    this.serverUrl = 'https://neurodrone-arena.ru/api/bubble';
+}
 
     init() {
         if (typeof vkBridge !== 'undefined') {

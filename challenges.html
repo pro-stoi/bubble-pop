@@ -7,9 +7,7 @@
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/challenges.css" />
     
-    <!-- ===== VK BRIDGE ===== -->
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-    <!-- =================== -->
 </head>
 <body>
     <div class="challenges-container">
@@ -41,12 +39,18 @@
                     </tr>
                 </thead>
                 <tbody id="challengesBody">
-                    <!-- Заполняется из JS -->
+                    <tr><td colspan="6" class="challenges-empty">⏳ Загрузка...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
+    <!-- ===== НОВАЯ СИСТЕМА ===== -->
+    <script src="js/core/api.js"></script>
+    <script src="js/core/dataMapper.js"></script>
+    <script src="js/core/dataStore.js"></script>
+    <script src="js/core/repository.js"></script>
+    
     <script src="js/nav.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/stats.js"></script>

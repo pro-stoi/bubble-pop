@@ -1,3 +1,4 @@
+<!-- top.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -7,13 +8,10 @@
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/top.css" />
     
-    <!-- ===== VK BRIDGE ===== -->
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-    <!-- =================== -->
 </head>
 <body>
     <div class="top-container">
-        <!-- Шапка -->
         <div class="top-header">
             <h1>🏆 ТОП 100</h1>
             <button class="game-btn back-btn" id="backMenuBtn">
@@ -24,12 +22,10 @@
             </button>
         </div>
 
-        <!-- Строка с моим местом -->
         <div id="myRankRow" class="my-rank-row">
             <span class="my-rank-loading">⏳ Загрузка...</span>
         </div>
 
-        <!-- Таблица -->
         <div class="top-table-wrapper">
             <table class="top-table">
                 <thead>
@@ -47,7 +43,16 @@
             </table>
         </div>
     </div>
-
+<script>
+    console.log('🔴🔴🔴 HTML ЗАГРУЖЕН! 🔴🔴🔴');
+    console.log('Текущее время:', new Date());
+</script>
+    <!-- ===== НОВАЯ СИСТЕМА ===== -->
+    <script src="js/core/api.js"></script>
+    <script src="js/core/dataMapper.js"></script>
+    <script src="js/core/dataStore.js"></script>
+    <script src="js/core/repository.js"></script>
+    
     <script src="js/nav.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/stats.js"></script>

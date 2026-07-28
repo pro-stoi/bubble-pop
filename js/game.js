@@ -90,145 +90,158 @@ spawnBubble() {
     return b;
 }
 
-    popBubble(x, y) {
-        let popped = false;
-        for (let i = this.bubbles.length - 1; i >= 0; i--) {
-            const b = this.bubbles[i];
-            if (b.contains(x, y)) {
-                const now = Date.now();
-                const timeSinceLastPop = now - this.lastPopTime;
-                
-                if (timeSinceLastPop > this.comboTimeout && this.lastPopTime > 0) {
-                    this.combo = 0;
-                    this.multiplier = 1;
-                    this.flushScore();
+popBubble(x, y) {
+    let popped = false;
+    for (let i = this.bubbles.length - 1; i >= 0; i--) {
+        const b = this.bubbles[i];
+        if (b.contains(x, y)) {
+            const now = Date.now();
+            const timeSinceLastPop = now - this.lastPopTime;
+            
+            if (timeSinceLastPop > this.comboTimeout && this.lastPopTime > 0) {
+                console.log('⏰ ТАЙМАУТ! Сбрасываем серию');
+                sound.comboReset();
+                this.combo = 0;
+                this.multiplier = 1;
+                this.flushScore();
+            }
+            
+            this.combo++;
+            if (this.combo > this.maxCombo) {
+                this.maxCombo = this.combo;
+            }
+            
+            if (this.combo <= 3) this.multiplier = this.combo;
+            else if (this.combo <= 6) this.multiplier = 3 + Math.floor((this.combo - 3) / 2);
+            else this.multiplier = 5 + Math.floor((this.combo - 6) / 3);
+            this.multiplier = Math.min(this.multiplier, 20);
+            
+            const bonusMultiplier = this.bonusManager.getMultiplier();
+            const points = b.points || 1;
+            const earned = points * this.multiplier * bonusMultiplier;
+            this.pendingScore += earned;
+            this.lastPopTime = now;
+            
+            // ===== ЗВУК =====
+            var colorTypeSound = this.bonusManager.getColorType(b.hue);
+            
+            if (this.combo > 1) {
+                if (colorTypeSound) {
+                    sound.popByColorWithCombo(colorTypeSound, this.combo, 0.3);
+                } else {
+                    var pitch = 600 + b.points * 60 + this.combo * 20;
+                    sound.pop(pitch, 0.15, 0.3);
                 }
+            } else {
+                if (colorTypeSound) {
+                    sound.popByColor(colorTypeSound, 0.3);
+                } else {
+                    var pitch = 600 + b.points * 60;
+                    sound.pop(pitch, 0.15, 0.3);
+                }
+            }
+            
+            this.scorePopups.push({
+                x: b.x,
+                y: b.y - 10,
+                text: `+${earned}`,
+                subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
+                life: 60,
+                maxLife: 60,
+                hue: b.hue
+            });
+            
+            const count = 8 + Math.floor(Math.random() * 12) + Math.floor(this.combo / 3);
+            for (let j = 0; j < count; j++) {
+                this.particles.push(new Particle(b.x, b.y, b.hue, 1 + this.combo * 0.05));
+            }
+            
+            this.bonusManager.onBubblePopped(b);
+            
+            const colorType = this.bonusManager.getColorType(b.hue);
+            if (colorType) {
+                statsManager.onBubblePopped(colorType);
+            }
+            statsManager.onCombo(this.combo);
+            statsManager.onScore(this.score);
+            
+            challengeTracker.onBubblePopped(b, this);
+            
+            if (this.combo >= 10 && this.combo % 10 === 0) {
+                challengeTracker.onCombo(this.combo);
+            }
+            
+            this.bubbles.splice(i, 1);
+            this.totalPopped++;
+            popped = true;
+            break;
+        }
+    }
+    
+    if (!popped) {
+        console.log('❌ ПРОМАХ!');
+        sound.missSound();
+        this.combo = 0;
+        this.multiplier = 1;
+        this.flushScore();
+        this.bonusManager.resetCounters();
+        this.bonusManager.currentColor = null;
+        this.bonusManager.comboCount = 0;
+        challengeTracker.onMiss();
+    }
+    
+    return popped;
+}
+popBubbleAt(x, y, isBonus = false) {
+    for (let i = this.bubbles.length - 1; i >= 0; i--) {
+        const b = this.bubbles[i];
+        if (b.contains(x, y)) {
+            // ===== ЗВУК ПРИ ЛОПАНИИ (ДАЖЕ БОНУСНОМ) =====
+            var colorTypeSound = this.bonusManager.getColorType(b.hue);
+            if (colorTypeSound) {
+                sound.popByColor(colorTypeSound, 0.2);
+            } else {
+                var pitch = 600 + b.points * 60;
+                sound.pop(pitch, 0.12, 0.2);
+            }
+            
+            const count = 8 + Math.floor(Math.random() * 12);
+            for (let j = 0; j < count; j++) {
+                this.particles.push(new Particle(b.x, b.y, b.hue, 1));
+            }
+            
+            if (isBonus) {
+                const points = b.points || 1;
+                const bonusMultiplier = this.bonusManager.getMultiplier();
+                const earned = points * this.multiplier * bonusMultiplier;
+                this.pendingScore += earned;
+                this.score += earned;
                 
                 this.combo++;
                 if (this.combo > this.maxCombo) {
                     this.maxCombo = this.combo;
                 }
                 
-                if (this.combo <= 3) this.multiplier = this.combo;
-                else if (this.combo <= 6) this.multiplier = 3 + Math.floor((this.combo - 3) / 2);
-                else this.multiplier = 5 + Math.floor((this.combo - 6) / 3);
-                this.multiplier = Math.min(this.multiplier, 20);
+                this.bonusManager.processBonusPopped(b);
                 
-                const bonusMultiplier = this.bonusManager.getMultiplier();
-                const points = b.points || 1;
-                const earned = points * this.multiplier * bonusMultiplier;
-                this.pendingScore += earned;
-                this.lastPopTime = now;
-                
-                // ===== ЗВУК =====
-                if (this.combo > 1) {
-                    sound.combo(Math.min(this.combo, 10));
-                } else {
-                    const pitch = 600 + b.points * 60;
-                    sound.pop(pitch, 0.15, 0.3);
-                }
-                
-                // Всплывающая надпись
                 this.scorePopups.push({
                     x: b.x,
                     y: b.y - 10,
                     text: `+${earned}`,
                     subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
-                    life: 60,
-                    maxLife: 60,
+                    life: 50,
+                    maxLife: 50,
                     hue: b.hue
                 });
-                
-                // Частицы
-                const count = 8 + Math.floor(Math.random() * 12) + Math.floor(this.combo / 3);
-                for (let j = 0; j < count; j++) {
-                    this.particles.push(new Particle(b.x, b.y, b.hue, 1 + this.combo * 0.05));
-                }
-                
-                // ===== БОНУСЫ =====
-                this.bonusManager.onBubblePopped(b);
-                
-                // ===== СТАТИСТИКА =====
-// ===== СТАТИСТИКА =====
-const colorType = this.bonusManager.getColorType(b.hue);
-if (colorType) {
-    statsManager.onBubblePopped(colorType);
-}
-statsManager.onCombo(this.combo);
-statsManager.onScore(this.score);
-                
-                // ===== ИСПЫТАНИЯ =====
-                challengeTracker.onBubblePopped(b, this);
-                
-                // ===== КОМБО ДЛЯ ИСПЫТАНИЙ =====
-                if (this.combo >= 10 && this.combo % 10 === 0) {
-                    challengeTracker.onCombo(this.combo);
-                }
-                
-                this.bubbles.splice(i, 1);
-                this.totalPopped++;
-                popped = true;
-                break;
             }
-        }
-        
-        if (!popped) {
-            sound.miss();
-            this.combo = 0;
-            this.multiplier = 1;
-            this.flushScore();
-            this.bonusManager.resetCounters();
-            this.bonusManager.currentColor = null;
-            this.bonusManager.comboCount = 0;
             
-            // ===== ИСПЫТАНИЯ: ПРОМАХ =====
-            challengeTracker.onMiss();
+            this.bubbles.splice(i, 1);
+            this.totalPopped++;
+            return true;
         }
-        
-        return popped;
     }
-
-    popBubbleAt(x, y, isBonus = false) {
-        for (let i = this.bubbles.length - 1; i >= 0; i--) {
-            const b = this.bubbles[i];
-            if (b.contains(x, y)) {
-                const count = 8 + Math.floor(Math.random() * 12);
-                for (let j = 0; j < count; j++) {
-                    this.particles.push(new Particle(b.x, b.y, b.hue, 1));
-                }
-                
-                if (isBonus) {
-                    const points = b.points || 1;
-                    const bonusMultiplier = this.bonusManager.getMultiplier();
-                    const earned = points * this.multiplier * bonusMultiplier;
-                    this.pendingScore += earned;
-                    this.score += earned;
-                    
-                    this.combo++;
-                    if (this.combo > this.maxCombo) {
-                        this.maxCombo = this.combo;
-                    }
-                    
-                    this.bonusManager.processBonusPopped(b);
-                    
-                    this.scorePopups.push({
-                        x: b.x,
-                        y: b.y - 10,
-                        text: `+${earned}`,
-                        subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
-                        life: 50,
-                        maxLife: 50,
-                        hue: b.hue
-                    });
-                }
-                
-                this.bubbles.splice(i, 1);
-                this.totalPopped++;
-                return true;
-            }
-        }
-        return false;
-    }
+    return false;
+}
 
     flushScore() {
         if (this.pendingScore > 0) {
@@ -244,7 +257,7 @@ statsManager.onScore(this.score);
             challengeTracker.onBigBonus(total);
             
             if (total > 0) {
-                sound.bonus();
+                
                 
                 this.scorePopups.push({
                     x: this.width / 2,
@@ -262,58 +275,61 @@ statsManager.onScore(this.score);
         }
     }
 
-    update() {
-        this.frame++;
-        this.difficulty = 1 + this.score / 80;
-        
-        this.bonusManager.applyToAllBubbles(this.bubbles);
-        
-        if (this.bubbles.length > 40) {
-            this.bubbles.splice(0, 3);
+  update() {
+    this.frame++;
+    this.difficulty = 1 + this.score / 80;
+    
+    this.bonusManager.applyToAllBubbles(this.bubbles);
+    
+    if (this.bubbles.length > 40) {
+        this.bubbles.splice(0, 3);
+    }
+    
+    const currentSpawnRate = Math.max(8, Math.floor(25 / this.difficulty));
+    if (this.frame % currentSpawnRate === 0) {
+        const b = this.spawnBubble();
+        if (b && this.bubbles.length < 35) {
+            this.bubbles.push(b);
         }
-        
-        const currentSpawnRate = Math.max(8, Math.floor(25 / this.difficulty));
-        if (this.frame % currentSpawnRate === 0) {
-            const b = this.spawnBubble();
-            if (b && this.bubbles.length < 35) {
-                this.bubbles.push(b);
+        if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < 35) {
+            const b2 = this.spawnBubble();
+            if (b2) {
+                this.bubbles.push(b2);
             }
-            if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < 35) {
-                const b2 = this.spawnBubble();
-                if (b2) {
-                    this.bubbles.push(b2);
-                }
-            }
-        }
-
-        for (let i = this.bubbles.length - 1; i >= 0; i--) {
-            this.bubbles[i].update();
-            if (!this.bubbles[i].alive) {
-                this.bubbles.splice(i, 1);
-            }
-        }
-
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            this.particles[i].update();
-            if (this.particles[i].isDead()) {
-                this.particles.splice(i, 1);
-            }
-        }
-
-        for (let i = this.scorePopups.length - 1; i >= 0; i--) {
-            this.scorePopups[i].life--;
-            this.scorePopups[i].y -= 0.8;
-            if (this.scorePopups[i].life <= 0) {
-                this.scorePopups.splice(i, 1);
-            }
-        }
-
-        this.bonusManager.update();
-
-        if (this.pendingScore > 0 && Date.now() - this.lastPopTime > this.comboTimeout) {
-            this.flushScore();
         }
     }
+
+    for (let i = this.bubbles.length - 1; i >= 0; i--) {
+        this.bubbles[i].update();
+        if (!this.bubbles[i].alive) {
+            this.bubbles.splice(i, 1);
+        }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+        this.particles[i].update();
+        if (this.particles[i].isDead()) {
+            this.particles.splice(i, 1);
+        }
+    }
+
+    for (let i = this.scorePopups.length - 1; i >= 0; i--) {
+        this.scorePopups[i].life--;
+        this.scorePopups[i].y -= 0.8;
+        if (this.scorePopups[i].life <= 0) {
+            this.scorePopups.splice(i, 1);
+        }
+    }
+
+    this.bonusManager.update();
+
+    // ===== СБРОС СЕРИИ ПО ТАЙМАУТУ =====
+    if (this.pendingScore > 0 && Date.now() - this.lastPopTime > this.comboTimeout) {
+        console.log('⏰ ТАЙМАУТ! Сбрасываем серию в update()');
+        sound.comboReset();  // ← ЗВУК СБРОСА СЕРИИ
+        this.flushScore();
+    }
+}
 
     drawPopups(ctx) {
         for (const popup of this.scorePopups) {

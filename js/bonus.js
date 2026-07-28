@@ -97,7 +97,7 @@ class BonusManager {
                 customColor: this.bonuses[colorType].color
             });
             
-            sound.bonus();
+            
             return true;
         }
         return false;
@@ -142,7 +142,7 @@ class BonusManager {
                 customColor: this.bonuses[colorType].color
             });
             
-            sound.bonus();
+            
             return true;
         }
         return false;
@@ -167,17 +167,28 @@ class BonusManager {
     }
 
     // ===== ДОБАВИТЬ БОНУС =====
-    addBonus(type) {
-        if (this.bonuses[type] && this.bonuses[type].count < this.bonuses[type].maxCount) {
-            this.bonuses[type].count++;
-            if (typeof statsManager !== 'undefined') {
-                statsManager.onBonusEarned(type);
-            }
-            this.updateUI();
-            return true;
+  // ===== ДОБАВИТЬ БОНУС =====
+addBonus(type) {
+    if (this.bonuses[type] && this.bonuses[type].count < this.bonuses[type].maxCount) {
+        this.bonuses[type].count++;
+        if (typeof statsManager !== 'undefined') {
+            statsManager.onBonusEarned(type);
         }
-        return false;
+        this.updateUI();
+        
+        // ===== ЗВУК НАКОПЛЕНИЯ БОНУСА =====
+        switch(type) {
+            case 'red': sound.bonusRedEarned(); break;
+            case 'yellow': sound.bonusYellowEarned(); break;
+            case 'green': sound.bonusGreenEarned(); break;
+            case 'blue': sound.bonusBlueEarned(); break;
+            case 'pink': sound.bonusPinkEarned(); break;
+        }
+        
+        return true;
     }
+    return false;
+}
 
     // ===== ИСПОЛЬЗОВАТЬ БОНУС =====
 useBonus(type) {
@@ -216,16 +227,17 @@ useBonus(type) {
             this.activateFullClear();
             break;
     }
-    sound.bonus();
+   
     return true;
 }
 
-    // ===== 🔴 ЗАМЕДЛЕНИЕ =====
-    activateSlowMotion() {
-        this.slowMotion = true;
-        this.slowMotionTimer = 300;
-        this.showEffect('🐢 ВСЕ ОСТАНОВИЛИСЬ!', '#ff4444');
-    }
+ // 🔴 КРАСНЫЙ БОНУС (замедление)
+activateSlowMotion() {
+    this.slowMotion = true;
+    this.slowMotionTimer = 300;
+    this.showEffect('🐢 ВСЕ ОСТАНОВИЛИСЬ!', '#ff4444');
+    sound.slowMotion();  // ← звук замедления
+}
 
     // ===== 🟡 МАГНИТ =====
     activateMagnet() {
@@ -251,16 +263,17 @@ useBonus(type) {
         this.showEffect('🎯 Нажми на пузырёк!', '#44ff44');
     }
 
-    // ===== 🔵 УМНОЖЕНИЕ x5 =====
-    activateMultiplier() {
-        this.multiplierBonus *= 3;
-        const MAX_MULTIPLIER = 20;
-        if (this.multiplierBonus > MAX_MULTIPLIER) {
-            this.multiplierBonus = MAX_MULTIPLIER;
-        }
-        this.multiplierTimer = 300;
-        this.showEffect(`⚡ x${this.multiplierBonus}!`, '#4488ff');
+// 🔵 СИНИЙ БОНУС (умножение)
+activateMultiplier() {
+    this.multiplierBonus *= 3;
+    const MAX_MULTIPLIER = 20;
+    if (this.multiplierBonus > MAX_MULTIPLIER) {
+        this.multiplierBonus = MAX_MULTIPLIER;
     }
+    this.multiplierTimer = 300;
+    this.showEffect(`⚡ x${this.multiplierBonus}!`, '#4488ff');
+    sound.bonusHappy();  // ← радостный звук
+}
 
     // ===== 🟣 ЛОПНУТЬ ВСЁ ПОЛЕ =====
     activateFullClear() {

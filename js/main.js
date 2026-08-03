@@ -131,7 +131,24 @@ if (userId) {
             e.preventDefault();
             hideExitModal();
         });
-
+// ===== КНОПКА "ПОДЕЛИТЬСЯ" =====
+document.getElementById('exitModalShare').addEventListener('click', function() {
+    const stats = game.getStats();
+    if (typeof vk !== 'undefined' && vk.shareResult) {
+        vk.shareResult(stats.score, stats.maxCombo);
+    } else {
+        alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
+    }
+});
+document.getElementById('exitModalShare').addEventListener('touchend', function(e) {
+    e.preventDefault();
+    const stats = game.getStats();
+    if (typeof vk !== 'undefined' && vk.shareResult) {
+        vk.shareResult(stats.score, stats.maxCombo);
+    } else {
+        alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
+    }
+});
         // ===== КНОПКА "ВЫЙТИ" =====
         document.getElementById('exitModalExit').addEventListener('click', function() {
             game.saveGameResult();

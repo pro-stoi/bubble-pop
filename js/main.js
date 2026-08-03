@@ -212,19 +212,32 @@ if (userId) {
 // ===== ЗАГРУЗКА БОНУСОВ =====
 async function loadUserBonuses(userId, game) {
     try {
-        const response = await fetch(`http://170.168.10.167:8080/api/bubble/user-bonus/${userId}`);
+        // Определяем URL в зависимости от окружения
+        const isLocal = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname.startsWith('192.168.') ||
+                       window.location.protocol === 'file:';
+        
+        const apiUrl = isLocal 
+            ? `http://170.168.10.167:8080/api/bubble/user-bonus/${userId}`
+            : `https://neurodrone-arena.ru/api/bubble/user-bonus/${userId}`;
+        
+        console.log('📡 Загрузка бонусов:', apiUrl);
+        
+        const response = await fetch(apiUrl);
         const data = await response.json();
         
         if (data.success && data.availableBonuses && data.availableBonuses.length > 0) {
             console.log('🎁 Загружено бонусов:', data.availableBonuses.length);
             
-            // Добавляем бонусы в BonusManager
             if (game && game.bonusManager) {
                 game.bonusManager.addBonusesFromDB(data.availableBonuses);
             }
+        } else {
+            console.log('📭 Нет бонусов');
         }
     } catch (error) {
-        console.error('Ошибка загрузки бонусов:', error);
+        console.error('❌ Ошибка загрузки бонусов:', error);
     }
 }
 

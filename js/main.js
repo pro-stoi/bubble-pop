@@ -15,16 +15,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const game = new Game(canvas);
 
         // ===== ЗАГРУЖАЕМ БД В ФОНЕ =====
-        if (userId) {
-            const userIdNum = parseInt(userId);
-            
-            challengeTracker.loadFromServer(userIdNum).catch(() => {
-                console.warn('⚠️ Испытания не загружены');
-            });
-            statsManager.load(userIdNum).catch(() => {
-                console.warn('⚠️ Статистика не загружена');
-            });
-        }
+   // ===== ЗАГРУЖАЕМ ДАННЫЕ В ФОНЕ =====
+if (userId) {
+    const userIdNum = parseInt(userId);
+    
+    challengeTracker.loadFromServer(userIdNum).catch(() => {
+        console.warn('⚠️ Испытания не загружены');
+    });
+    statsManager.load(userIdNum).catch(() => {
+        console.warn('⚠️ Статистика не загружена');
+    });
+    
+    // ===== ЗАГРУЖАЕМ БОНУСЫ =====
+    loadUserBonuses(userIdNum, game);
+}
 
         // ===== ОБРАБОТКА ТАПА =====
         function handleTap(e) {
@@ -97,6 +101,28 @@ document.addEventListener('DOMContentLoaded', function() {
             showExitModal();
         });
 
+        // ===== КНОПКА "ПРИГЛАСИТЬ" =====
+        const inviteBtn = document.getElementById('inviteFriendBtn');
+        if (inviteBtn) {
+            inviteBtn.addEventListener('click', function() {
+                if (typeof vk !== 'undefined' && vk.inviteFriend) {
+                    vk.inviteFriend();
+                } else {
+                    console.warn('⚠️ VK не инициализирован');
+                    // Локальный режим
+                    alert('👥 В локальном режиме приглашение не работает');
+                }
+            });
+            inviteBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                if (typeof vk !== 'undefined' && vk.inviteFriend) {
+                    vk.inviteFriend();
+                } else {
+                    alert('👥 В локальном режиме приглашение не работает');
+                }
+            });
+        }
+
         // ===== КНОПКА "ВЕРНУТЬСЯ" =====
         document.getElementById('exitModalBack').addEventListener('click', function() {
             hideExitModal();
@@ -106,7 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
             hideExitModal();
         });
 
-        // ===== КНОПКА "ВЫЙТИ" — ПРОСТАЯ, БЕЗ ОЖИДАНИЯ =====
+        // ===== КНОПКА "ВЫЙТИ" =====
         document.getElementById('exitModalExit').addEventListener('click', function() {
             game.saveGameResult();
             
@@ -182,18 +208,60 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('🏆 Рекорд:', bestScore);
     }
 
+    // ===== ЗАГРУЗКА БОНУСОВ =====
+// ===== ЗАГРУЗКА БОНУСОВ =====
+async function loadUserBonuses(userId, game) {
+    try {
+        const response = await fetch(`http://170.168.10.167:8080/api/bubble/user-bonus/${userId}`);
+        const data = await response.json();
+        
+        if (data.success && data.availableBonuses && data.availableBonuses.length > 0) {
+            console.log('🎁 Загружено бонусов:', data.availableBonuses.length);
+            
+            // Добавляем бонусы в BonusManager
+            if (game && game.bonusManager) {
+                game.bonusManager.addBonusesFromDB(data.availableBonuses);
+            }
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки бонусов:', error);
+    }
+}
+
+    function updateBonusDisplay(bonuses) {
+        const container = document.getElementById('bonusDisplay');
+        if (!container) return;
+        
+        if (!bonuses || bonuses.length === 0) {
+            container.innerHTML = '🎁 Нет бонусов';
+            return;
+        }
+        
+        const emojis = {
+            red: '🐢',
+            yellow: '🧲',
+            green: '🎯',
+            blue: '⚡',
+            pink: '💥'
+        };
+        
+        let html = '🎁 Бонусы: ';
+        bonuses.forEach(type => {
+            html += emojis[type] || '🎁';
+        });
+        
+        container.innerHTML = html;
+    }
+
     // ===== ЗАПУСК ИГРЫ =====
-    // Если VK уже готов (локальный режим или уже проинициализирован)
     if (typeof vk !== 'undefined' && vk.isReady && vk.dbUserId) {
         startGame();
     } else {
-        // Ждём событие от VK
         document.addEventListener('vkReady', function(e) {
             console.log('🎮 VK готов, запускаем игру!', e.detail);
             startGame();
         });
         
-        // Таймаут: если VK не ответил через 5 секунд — всё равно запускаем
         setTimeout(function() {
             if (!gameStarted) {
                 console.warn('⏱ VK не ответил, запускаем игру принудительно');

@@ -343,6 +343,21 @@ class VKManager {
             return { totalReward: 0 };
         }
     }
+    
+    // ===== ПРИГЛАСИТЬ ДРУГА =====
+async inviteFriend() {
+    try {
+        const result = await this.bridge.send('VKWebAppShowInviteBox', {});
+        
+        if (result && result.result) {
+            // Друг приглашён, ждём его регистрации
+            this.showNotification('👥 Приглашение отправлено! Когда друг зайдёт в игру, вы получите бонус! 🎁');
+        }
+    } catch (error) {
+        console.error('Ошибка приглашения:', error);
+        this.showNotification('❌ Не удалось отправить приглашение');
+    }
+}
 }
 
 const vk = new VKManager();

@@ -242,21 +242,22 @@ class VKManager {
         return JSON.parse(localStorage.getItem('globalTop') || '[]');
     }
 
-    async shareResult(score, combo) {
-        if (!this.isReady) {
-            this.fallbackShare(score, combo);
-            return;
-        }
-
-        const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧`;
-
-        try {
-            await this.bridge.send('VKWebAppShare', { message: message });
-            this.showNotification('🎉 Результат опубликован!');
-        } catch (error) {
-            this.fallbackShare(score, combo);
-        }
+  async shareResult(score, combo) {
+    if (!this.isReady) {
+        this.fallbackShare(score, combo);
+        return;
     }
+
+    const appUrl = 'https://vk.com/app54650664';
+    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\n${appUrl}`;
+
+    try {
+        await this.bridge.send('VKWebAppShare', { message: message });
+        this.showNotification('🎉 Результат опубликован!');
+    } catch (error) {
+        this.fallbackShare(score, combo);
+    }
+}
 
     fallbackShare(score, combo) {
         const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;

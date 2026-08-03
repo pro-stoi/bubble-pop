@@ -55,7 +55,17 @@ class BonusManager {
     this.timerTickCounter = 0;  
     }
     
+    // ===== ДОБАВИТЬ БОНУСЫ ИЗ БД =====
+addBonusesFromDB(bonuses) {
+    if (!bonuses || bonuses.length === 0) return;
     
+    bonuses.forEach(type => {
+        if (this.bonuses[type]) {
+            this.bonuses[type].count++;
+        }
+    });
+    this.updateUI();
+}
 
     // ===== ОБРАБОТКА ЛОПАНИЯ ПУЗЫРЬКА (ВРУЧНУЮ) =====
     onBubblePopped(bubble) {
@@ -191,24 +201,27 @@ addBonus(type) {
 }
 
     // ===== ИСПОЛЬЗОВАТЬ БОНУС =====
+// ===== ИСПОЛЬЗОВАТЬ БОНУС =====
 useBonus(type) {
     const bonus = this.bonuses[type];
     if (!bonus || bonus.count <= 0) return false;
 
-    // ===== ПРОВЕРКА ТАЙМЕРА ПЕРЕД УМЕНЬШЕНИЕМ =====
-    const timerBefore = this.bonusTimers[type] || 0;
-    
-    
     bonus.count--;
     if (typeof statsManager !== 'undefined') {
         statsManager.onBonusUsed(type);
     }
     
-    // ===== ПРОВЕРКА ТАЙМЕРА ПОСЛЕ =====
-    const timerAfter = this.bonusTimers[type] || 0;
-    
-    
     this.updateUI();
+
+    // ===== ОТПРАВЛЯЕМ НА СЕРВЕР, ЧТО БОНУС ИСПОЛЬЗОВАН =====
+    const userId = localStorage.getItem('bubbleUserId');
+    if (userId) {
+        fetch(`http://170.168.10.167:8080/api/bubble/user-bonus/use-bonus`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: parseInt(userId), bonusType: type })
+        }).catch(err => console.warn('⚠️ Ошибка отметки бонуса:', err));
+    }
 
     switch(type) {
         case 'red':

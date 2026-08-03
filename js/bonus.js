@@ -216,7 +216,17 @@ useBonus(type) {
     // ===== ОТПРАВЛЯЕМ НА СЕРВЕР, ЧТО БОНУС ИСПОЛЬЗОВАН =====
     const userId = localStorage.getItem('bubbleUserId');
     if (userId) {
-        fetch(`http://170.168.10.167:8080/api/bubble/user-bonus/use-bonus`, {
+        // Определяем URL в зависимости от окружения
+        const isLocal = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname.startsWith('192.168.') ||
+                       window.location.protocol === 'file:';
+        
+        const apiUrl = isLocal 
+            ? 'http://170.168.10.167:8080/api/bubble/user-bonus/use-bonus'
+            : 'https://neurodrone-arena.ru/api/bubble/user-bonus/use-bonus';
+        
+        fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: parseInt(userId), bonusType: type })

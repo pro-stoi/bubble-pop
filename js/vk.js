@@ -242,143 +242,21 @@ class VKManager {
         return JSON.parse(localStorage.getItem('globalTop') || '[]');
     }
 
-async shareResult(score, combo) {
-    console.log('📤 shareResult вызван, isReady=' + this.isReady + ', bridge=' + (this.bridge ? 'есть' : 'нет'));
+  async shareResult(score, combo) {
+    if (!this.isReady) {
+        this.fallbackShare(score, combo);
+        return;
+    }
 
     const appUrl = 'https://vk.com/app54650664';
-    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧`;
+    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\n${appUrl}`;
 
     try {
-        let photoId = null;
-        
-        // 1. Делаем скриншот модального окна
-        const modal = document.getElementById('exitModal');
-        if (modal && typeof html2canvas !== 'undefined') {
-            console.log('📸 Делаем скриншот...');
-            const canvas = await html2canvas(modal, {
-                scale: 1.5,
-                backgroundColor: null,
-                allowTaint: true,
-                useCORS: true,
-                logging: false
-            });
-            console.log('✅ Скриншот готов');
-            
-            // 2. Пробуем загрузить фото
-            if (this.bridge) {
-                console.log('📤 Загружаем фото в VK...');
-                photoId = await this.uploadPhoto(canvas.toDataURL('image/png'));
-                if (photoId) {
-                    console.log('✅ Фото загружено, id=' + photoId);
-                } else {
-                    console.log('⚠️ Фото не загружено, публикуем без фото');
-                }
-            } else {
-                console.log('⚠️ Нет bridge, публикуем без фото');
-            }
-        } else {
-            console.log('📝 Публикуем без картинки (нет html2canvas или модалки)');
-        }
-        
-        // 3. Публикуем на стену
-        const wallPostParams = {
-            message: message,
-            type: 'owner'
-        };
-        
-        if (photoId) {
-            wallPostParams.attachments = [photoId];
-        }
-        
-        console.log('📝 Публикуем на стену...', wallPostParams);
-        await this.bridge.send('VKWebAppWallPost', wallPostParams);
-        console.log('✅ Опубликовано!');
-        
-        this.showNotification('✅ Результат опубликован на стене!');
-        
+        await this.bridge.send('VKWebAppShare', { message: message });
+        this.showNotification('🎉 Результат опубликован!');
     } catch (error) {
-        console.error('❌ Ошибка публикации:', error.message);
         this.fallbackShare(score, combo);
     }
-}
-
-// ===== ЗАГРУЗКА ФОТО В VK =====
-async uploadPhoto(dataUrl) {
-    try {
-        alert('1️⃣ uploadPhoto начат');
-        
-        if (!this.bridge) {
-            alert('2️⃣ ❌ Нет bridge');
-            return null;
-        }
-        alert('2️⃣ ✅ bridge есть');
-        
-        alert('3️⃣ Запрашиваем сервер для загрузки...');
-        const uploadInfo = await this.bridge.send('VKWebAppGetUploadServer', {
-            type: 'photo_wall'
-        });
-        
-        alert('4️⃣ uploadInfo получен: ' + JSON.stringify(uploadInfo));
-        
-        if (!uploadInfo || !uploadInfo.upload_url) {
-            alert('5️⃣ ❌ Нет upload_url');
-            return null;
-        }
-        alert('5️⃣ ✅ upload_url: ' + uploadInfo.upload_url);
-        
-        alert('6️⃣ Конвертируем dataUrl в Blob...');
-        const blob = this.dataURLToBlob(dataUrl);
-        const formData = new FormData();
-        formData.append('photo', blob, 'result.png');
-        alert('6️⃣ ✅ Blob создан, размер: ' + blob.size);
-        
-        alert('7️⃣ Загружаем на сервер VK...');
-        const response = await fetch(uploadInfo.upload_url, {
-            method: 'POST',
-            body: formData
-        });
-        alert('7️⃣ ✅ Статус загрузки: ' + response.status);
-        
-        const uploadResult = await response.json();
-        alert('8️⃣ uploadResult: ' + JSON.stringify(uploadResult));
-        
-        alert('9️⃣ Сохраняем фото в альбом...');
-        const saveResult = await this.bridge.send('VKWebAppSavePhoto', {
-            photo: uploadResult.photo,
-            server: uploadResult.server,
-            hash: uploadResult.hash
-        });
-        alert('🔟 saveResult: ' + JSON.stringify(saveResult));
-        
-        if (!saveResult || saveResult.length === 0) {
-            alert('1️⃣1️⃣ ❌ Не удалось сохранить фото');
-            return null;
-        }
-        
-        const photoId = `photo${saveResult[0].owner_id}_${saveResult[0].id}`;
-        alert('1️⃣2️⃣ ✅ Фото сохранено, id: ' + photoId);
-        return photoId;
-        
-    } catch (error) {
-        alert('❌ ОШИБКА: ' + error.message);
-        console.error('Ошибка загрузки фото:', error);
-        return null;
-    }
-}
-
-// ===== ВСПОМОГАТЕЛЬНЫЙ МЕТОД =====
-dataURLToBlob(dataUrl) {
-    const parts = dataUrl.split(';base64,');
-    const contentType = parts[0].split(':')[1];
-    const raw = atob(parts[1]);
-    const rawLength = raw.length;
-    const uInt8Array = new Uint8Array(rawLength);
-    
-    for (let i = 0; i < rawLength; ++i) {
-        uInt8Array[i] = raw.charCodeAt(i);
-    }
-    
-    return new Blob([uInt8Array], { type: contentType });
 }
 
     fallbackShare(score, combo) {

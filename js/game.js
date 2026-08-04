@@ -12,6 +12,7 @@ class Game {
         
         this.pendingScore = 0;
         this.multiplier = 1;
+        this.maxMultiplier = 1; 
         this.lastPopTime = 0;
         this.comboTimeout = 2000;
         this.isProcessing = false;
@@ -115,7 +116,10 @@ popBubble(x, y) {
             else if (this.combo <= 6) this.multiplier = 3 + Math.floor((this.combo - 3) / 2);
             else this.multiplier = 5 + Math.floor((this.combo - 6) / 3);
             this.multiplier = Math.min(this.multiplier, 20);
-            
+            // ===== СОХРАНЯЕМ МАКСИМАЛЬНЫЙ =====
+if (this.multiplier > this.maxMultiplier) {
+    this.maxMultiplier = this.multiplier;
+}
             const bonusMultiplier = this.bonusManager.getMultiplier();
             const points = b.points || 1;
             const earned = points * this.multiplier * bonusMultiplier;
@@ -412,6 +416,8 @@ popBubbleAt(x, y, isBonus = false) {
             score: this.score,
             combo: this.combo,
             maxCombo: this.maxCombo,
+            maxMultiplier: this.maxMultiplier,
+            
             totalPopped: this.totalPopped,
             bubbles: this.bubbles.length,
             particles: this.particles.length,

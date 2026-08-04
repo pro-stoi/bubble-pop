@@ -242,21 +242,101 @@ class VKManager {
         return JSON.parse(localStorage.getItem('globalTop') || '[]');
     }
 
-  async shareResult(score, combo) {
+async shareResult(score, combo) {
     if (!this.isReady) {
         this.fallbackShare(score, combo);
         return;
     }
 
     const appUrl = 'https://vk.com/app54650664';
-    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\n${appUrl}`;
+    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧`;
 
     try {
-        await this.bridge.send('VKWebAppShare', { message: message });
-        this.showNotification('🎉 Результат опубликован!');
+        // 1. Делаем скриншот модального окна
+        const modal = document.getElementById('exitModal');
+        if (modal && typeof html2canvas !== 'undefined') {
+            const canvas = await html2canvas(modal, {
+                scale: 1.5,
+                backgroundColor: null,
+                allowTaint: true,
+                useCORS: true,
+                logging: false
+            });
+            
+            // 2. Загружаем картинку в VK
+            const photoId = await this.uploadPhoto(canvas.toDataURL('image/png'));
+            
+            // 3. Публикуем на стену с картинкой
+            await this.bridge.send('VKWebAppWallPost', {
+                message: message,
+                attachments: [photoId],
+                type: 'owner'
+            });
+        } else {
+            // Если не получилось сделать скриншот - просто текст
+            await this.bridge.send('VKWebAppWallPost', {
+                message: message,
+                type: 'owner'
+            });
+        }
+        
+        this.showNotification('✅ Результат опубликован на стене!');
+        
     } catch (error) {
+        console.error('Ошибка публикации:', error);
         this.fallbackShare(score, combo);
     }
+}
+
+// ===== ЗАГРУЗКА ФОТО В VK =====
+async uploadPhoto(dataUrl) {
+    try {
+        // 1. Получаем сервер для загрузки
+        const uploadInfo = await this.bridge.send('VKWebAppGetUploadServer', {
+            type: 'photo_wall'
+        });
+        
+        // 2. Конвертируем dataUrl в Blob
+        const blob = this.dataURLToBlob(dataUrl);
+        const formData = new FormData();
+        formData.append('photo', blob, 'result.png');
+        
+        // 3. Загружаем на сервер VK
+        const response = await fetch(uploadInfo.upload_url, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const uploadResult = await response.json();
+        
+        // 4. Сохраняем фото в альбом
+        const saveResult = await this.bridge.send('VKWebAppSavePhoto', {
+            photo: uploadResult.photo,
+            server: uploadResult.server,
+            hash: uploadResult.hash
+        });
+        
+        return `photo${saveResult[0].owner_id}_${saveResult[0].id}`;
+        
+    } catch (error) {
+        console.error('Ошибка загрузки фото:', error);
+        throw error;
+    }
+}
+
+// ===== ВСПОМОГАТЕЛЬНЫЙ МЕТОД =====
+dataURLToBlob(dataUrl) {
+    const parts = dataUrl.split(';base64,');
+    const contentType = parts[0].split(':')[1];
+    const raw = atob(parts[1]);
+    const rawLength = raw.length;
+    const uInt8Array = new Uint8Array(rawLength);
+    
+    for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+    }
+    
+    return new Blob([uInt8Array], { type: contentType });
 }
 
     fallbackShare(score, combo) {

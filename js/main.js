@@ -83,7 +83,8 @@ if (userId) {
             const stats = game.getStats();
             exitModalScore.textContent = stats.score;
             exitModalCombo.textContent = stats.maxCombo;
-            exitModalMultiplier.textContent = '×' + stats.multiplier;
+            
+            exitModalMultiplier.textContent = '×' + stats.maxMultiplier;
             exitModalPopped.textContent = stats.totalPopped;
             exitModal.style.display = 'flex';
         }

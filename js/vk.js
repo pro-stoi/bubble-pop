@@ -242,19 +242,18 @@ class VKManager {
         return JSON.parse(localStorage.getItem('globalTop') || '[]');
     }
 
-  async shareResult(score, combo) {
-    if (!this.isReady) {
-        this.fallbackShare(score, combo);
-        return;
-    }
-
-    const appUrl = 'https://vk.com/app54650664';
-    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\n${appUrl}`;
+async shareResult(score, combo) {
+    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\nhttps://vk.com/app54650664`;
 
     try {
-        await this.bridge.send('VKWebAppShare', { message: message });
-        this.showNotification('🎉 Результат опубликован!');
+        // ===== ВМЕСТО VKWebAppShare ИСПОЛЬЗУЕМ VKWebAppWallPost =====
+        await this.bridge.send('VKWebAppWallPost', {
+            message: message,
+            type: 'owner'  // ← публикация на свою стену
+        });
+        this.showNotification('✅ Результат опубликован на стене!');
     } catch (error) {
+        console.error('Ошибка публикации:', error);
         this.fallbackShare(score, combo);
     }
 }

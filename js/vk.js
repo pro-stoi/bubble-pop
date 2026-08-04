@@ -304,64 +304,64 @@ async shareResult(score, combo) {
 
 // ===== ЗАГРУЗКА ФОТО В VK =====
 async uploadPhoto(dataUrl) {
-    alert('📸 uploadPhoto начат');
-    console.log('📸 uploadPhoto начат');
-    
     try {
+        alert('1️⃣ uploadPhoto начат');
+        
         if (!this.bridge) {
-            console.warn('⚠️ Нет bridge, пропускаем загрузку фото');
+            alert('2️⃣ ❌ Нет bridge');
             return null;
         }
-        console.log('✅ bridge есть');
+        alert('2️⃣ ✅ bridge есть');
         
-        console.log('📤 Запрашиваем сервер для загрузки...');
+        alert('3️⃣ Запрашиваем сервер для загрузки...');
         const uploadInfo = await this.bridge.send('VKWebAppGetUploadServer', {
             type: 'photo_wall'
         });
-        console.log('📥 uploadInfo:', JSON.stringify(uploadInfo, null, 2));
+        
+        alert('4️⃣ uploadInfo получен: ' + JSON.stringify(uploadInfo));
         
         if (!uploadInfo || !uploadInfo.upload_url) {
-            console.warn('⚠️ Не удалось получить сервер для загрузки');
+            alert('5️⃣ ❌ Нет upload_url');
             return null;
         }
-        console.log('✅ Сервер получен:', uploadInfo.upload_url);
+        alert('5️⃣ ✅ upload_url: ' + uploadInfo.upload_url);
         
-        console.log('📤 Конвертируем dataUrl в Blob...');
+        alert('6️⃣ Конвертируем dataUrl в Blob...');
         const blob = this.dataURLToBlob(dataUrl);
         const formData = new FormData();
         formData.append('photo', blob, 'result.png');
-        console.log('✅ Blob создан, размер:', blob.size);
+        alert('6️⃣ ✅ Blob создан, размер: ' + blob.size);
         
-        console.log('📤 Загружаем на сервер VK...');
+        alert('7️⃣ Загружаем на сервер VK...');
         const response = await fetch(uploadInfo.upload_url, {
             method: 'POST',
             body: formData
         });
-        console.log('📥 Статус загрузки:', response.status);
+        alert('7️⃣ ✅ Статус загрузки: ' + response.status);
         
         const uploadResult = await response.json();
-        console.log('📥 uploadResult:', JSON.stringify(uploadResult, null, 2));
+        alert('8️⃣ uploadResult: ' + JSON.stringify(uploadResult));
         
-        console.log('📤 Сохраняем фото в альбом...');
+        alert('9️⃣ Сохраняем фото в альбом...');
         const saveResult = await this.bridge.send('VKWebAppSavePhoto', {
             photo: uploadResult.photo,
             server: uploadResult.server,
             hash: uploadResult.hash
         });
-        console.log('📥 saveResult:', JSON.stringify(saveResult, null, 2));
+        alert('🔟 saveResult: ' + JSON.stringify(saveResult));
         
         if (!saveResult || saveResult.length === 0) {
-            console.warn('⚠️ Не удалось сохранить фото');
+            alert('1️⃣1️⃣ ❌ Не удалось сохранить фото');
             return null;
         }
         
         const photoId = `photo${saveResult[0].owner_id}_${saveResult[0].id}`;
-        console.log('✅ Фото сохранено, id:', photoId);
+        alert('1️⃣2️⃣ ✅ Фото сохранено, id: ' + photoId);
         return photoId;
         
     } catch (error) {
-        console.error('❌ Ошибка загрузки фото:', error);
-        console.error('❌ Stack:', error.stack);
+        alert('❌ ОШИБКА: ' + error.message);
+        console.error('Ошибка загрузки фото:', error);
         return null;
     }
 }

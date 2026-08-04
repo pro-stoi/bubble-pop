@@ -52,14 +52,36 @@ class VKManager {
         this.serverUrl = API_BASE_URL;
     }
 
-    init() {
-        if (typeof vkBridge !== 'undefined') {
-            this.bridge = vkBridge;
-            this.isReady = true;
-            
+init() {
+    if (typeof vkBridge !== 'undefined') {
+        this.bridge = vkBridge;
+        this.isReady = true;
+        
+        // ===== ЗАПРАШИВАЕМ ПРАВА =====
+        this.bridge.send('VKWebAppGetAuthToken', {
+            scope: 'wall,share'
+        })
+        .then(() => {
+            console.log('✅ Права wall получены');
+            return this.bridge.send('VKWebAppInit');
+        })
+        .then(() => {
+            console.log('✅ VK Bridge инициализирован');
+            return this.getUserInfo();
+        })
+        .then(() => {
+            console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
+            document.dispatchEvent(new CustomEvent('vkReady', { 
+                detail: { userId: this.dbUserId } 
+            }));
+        })
+        .catch((error) => {
+            console.warn('⚠️ Ошибка получения прав:', error);
+            // ===== ЕСЛИ ПРАВА НЕ ПОЛУЧЕНЫ - ВСЁ РАВНО ПРОДОЛЖАЕМ =====
+            // Пользователь может отказать в правах, но игра должна работать
             this.bridge.send('VKWebAppInit')
                 .then(() => {
-                    console.log('✅ VK Bridge инициализирован');
+                    console.log('✅ VK Bridge инициализирован (без прав wall)');
                     return this.getUserInfo();
                 })
                 .then(() => {
@@ -68,17 +90,18 @@ class VKManager {
                         detail: { userId: this.dbUserId } 
                     }));
                 })
-                .catch((error) => {
-                    console.warn('⚠️ Ошибка инициализации VK:', error);
+                .catch((err) => {
+                    console.warn('⚠️ Ошибка инициализации VK:', err);
                     document.dispatchEvent(new CustomEvent('vkReady', { 
                         detail: { userId: null } 
                     }));
                 });
-        } else {
-            console.warn('⚠️ VK Bridge не загружен');
-            this.loadBridge();
-        }
+        });
+    } else {
+        console.warn('⚠️ VK Bridge не загружен');
+        this.loadBridge();
     }
+}
 
     loadBridge() {
         const script = document.createElement('script');
@@ -246,13 +269,24 @@ async shareResult(score, combo) {
     const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\nhttps://vk.com/app54650664`;
 
     try {
-        await this.bridge.send('VKWebAppShare', {
-            message: message
+        // Сначала пробуем опубликовать на стену
+        await this.bridge.send('VKWebAppWallPost', {
+            message: message,
+            type: 'owner'
         });
-        this.showNotification('✅ Результат опубликован!');
+        this.showNotification('✅ Результат опубликован на стене!');
     } catch (error) {
-        console.error('Ошибка:', error);
-        this.fallbackShare(score, combo);
+        console.warn('⚠️ Не удалось опубликовать на стену, пробуем share:', error);
+        try {
+            // Если не получилось - используем share (пользователь сам выберет куда)
+            await this.bridge.send('VKWebAppShare', {
+                message: message
+            });
+            this.showNotification('✅ Готово!');
+        } catch (err) {
+            console.error('❌ Ошибка:', err);
+            this.fallbackShare(score, combo);
+        }
     }
 }
 

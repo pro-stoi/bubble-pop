@@ -246,14 +246,12 @@ async shareResult(score, combo) {
     const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\nhttps://vk.com/app54650664`;
 
     try {
-        // ===== ВМЕСТО VKWebAppShare ИСПОЛЬЗУЕМ VKWebAppWallPost =====
-        await this.bridge.send('VKWebAppWallPost', {
-            message: message,
-            type: 'owner'  // ← публикация на свою стену
+        await this.bridge.send('VKWebAppShare', {
+            message: message
         });
-        this.showNotification('✅ Результат опубликован на стене!');
+        this.showNotification('✅ Результат опубликован!');
     } catch (error) {
-        console.error('Ошибка публикации:', error);
+        console.error('Ошибка:', error);
         this.fallbackShare(score, combo);
     }
 }

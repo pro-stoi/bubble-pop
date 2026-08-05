@@ -76,61 +76,60 @@ class ChallengeTracker {
     }
 
     // ===== ОБНОВЛЕНИЕ ПРОГРЕССА =====
-    async update(challengeId, delta) {
-        console.log('🔄 [TRACKER] update() вызван, challengeId =', challengeId, 'delta =', delta);
-        
-        if (!this.userId) {
-            console.warn('⚠️ [TRACKER] Пользователь не авторизован');
-            return false;
-        }
-
-        try {
-            console.log('🔄 [TRACKER] Вызываем repository.updateChallenge(' + this.userId + ', ' + challengeId + ', ' + delta + ')');
-            var result = await repository.updateChallenge(this.userId, challengeId, delta);
-            
-            console.log('🔄 [TRACKER] Результат:', result);
-            
-            if (result.success) {
-                // Обновляем локальные данные
-                var prog = this.progress.find(function(p) { return p.challenge_id === challengeId; });
-                if (prog) {
-                    prog.progress = result.newProgress;
-                    prog.level = result.newLevel;
-                    prog.total_reward = result.totalReward;
-                }
-                
-                // Если был переход уровня
-                if (result.levelUp) {
-                    console.log('🔥 [TRACKER] Уровень повышен! Новый уровень =', result.newLevel);
-                    
-                    // Обновляем общую сумму наград
-                    var total = await repository.getTotalRewards(this.userId);
-                    this.totalReward = total || 0;
-                    
-                    // Показываем уведомление
-                    this.showNotification(
-                        '🎉 ' + this.getChallengeName(challengeId) + ' ' + result.newLevel + ' уровень! +' + result.reward + ' 💎'
-                    );
-                    
-                    if (window.sound) {
-                        sound.bonus();
-                    }
-                }
-                
-                // Обновляем UI
-                if (window.renderChallenges) {
-                    window.renderChallenges();
-                }
-                
-                return true;
-            }
-        } catch (error) {
-            console.error('❌ [TRACKER] Ошибка обновления:', error);
-        }
-        
+async update(challengeId, delta) {
+    if (!this.userId) {
+        console.warn('⚠️ [TRACKER] Пользователь не авторизован');
         return false;
     }
 
+    try {
+        console.log('🔄 [TRACKER] Вызываем repository.updateChallenge(' + this.userId + ', ' + challengeId + ', ' + delta + ')');
+        var result = await repository.updateChallenge(this.userId, challengeId, delta);
+        
+        console.log('🔄 [TRACKER] Результат:', result);
+        
+        if (result.success) {
+            // Обновляем локальные данные
+            var prog = this.progress.find(function(p) { return p.challenge_id === challengeId; });
+            if (prog) {
+                prog.progress = result.newProgress;
+                prog.level = result.newLevel;
+                prog.total_reward = result.totalReward;
+            }
+            
+            // Если был переход уровня
+            if (result.levelUp) {
+                console.log('🔥 [TRACKER] Уровень повышен! Новый уровень =', result.newLevel);
+                
+                // Обновляем общую сумму наград
+                var total = await repository.getTotalRewards(this.userId);
+                this.totalReward = total || 0;
+                
+                // ===== ВРЕМЕННО ОТКЛЮЧАЕМ УВЕДОМЛЕНИЯ ДЛЯ ИСПЫТАНИЯ №5 =====
+                if (challengeId !== 5) {
+                    this.showNotification(
+                        '🎉 ' + this.getChallengeName(challengeId) + ' ' + result.newLevel + ' уровень! +' + result.reward + ' 💎'
+                    );
+                }
+                
+                if (window.sound) {
+                    sound.bonus();
+                }
+            }
+            
+            // Обновляем UI
+            if (window.renderChallenges) {
+                window.renderChallenges();
+            }
+            
+            return true;
+        }
+    } catch (error) {
+        console.error('❌ [TRACKER] Ошибка обновления:', error);
+    }
+    
+    return false;
+}
     // ===== ПОЛУЧИТЬ НАЗВАНИЕ ИСПЫТАНИЯ ПО ID =====
     getChallengeName(challengeId) {
         var ch = this.challenges.find(function(c) { return c.id === challengeId; });

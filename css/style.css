@@ -217,7 +217,7 @@ body {
 }
 
 .bonus-btn.inactive {
-    opacity: 0.25;
+    opacity: 0.85;
     filter: grayscale(0.8);
 }
 

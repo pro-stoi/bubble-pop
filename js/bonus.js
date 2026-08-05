@@ -253,13 +253,15 @@ useBonus(type) {
    
     return true;
 }
-
  // 🔴 КРАСНЫЙ БОНУС (замедление)
 activateSlowMotion() {
     this.slowMotion = true;
     this.slowMotionTimer = 300;
     this.showEffect('🐢 ВСЕ ОСТАНОВИЛИСЬ!', '#ff4444');
-    sound.slowMotion();  // ← звук замедления
+    sound.slowMotion();
+    
+    // ===== ПРИБАВЛЯЕМ ВРЕМЯ К ТАЙМЕРУ СБРОСА МНОЖИТЕЛЯ =====
+    this.game.lastPopTime = Date.now() + 5000; // +5 секунд (время работы красного бонуса)
 }
 
     // ===== 🟡 МАГНИТ =====

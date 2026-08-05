@@ -217,7 +217,7 @@ body {
 }
 
 .bonus-btn.inactive {
-    opacity: 0.85;
+    opacity: 0.95;
     filter: grayscale(0.8);
 }
 
@@ -605,6 +605,7 @@ body {
     border-radius: 10px;
     border: 1px solid rgba(255, 215, 0, 0.2);
 }
+
 #exitModalShare {
     display: none !important;
 }

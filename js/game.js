@@ -200,6 +200,9 @@ popBubbleAt(x, y, isBonus = false) {
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
         if (b.contains(x, y)) {
+            // ===== ОБНОВЛЯЕМ ВРЕМЯ ПОСЛЕДНЕГО ЛОПАНИЯ =====
+            this.lastPopTime = Date.now();
+            
             // ===== ЗВУК ПРИ ЛОПАНИИ (ДАЖЕ БОНУСНОМ) =====
             var colorTypeSound = this.bonusManager.getColorType(b.hue);
             if (colorTypeSound) {

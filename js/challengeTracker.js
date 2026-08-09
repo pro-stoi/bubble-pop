@@ -105,12 +105,12 @@ async update(challengeId, delta) {
                 var total = await repository.getTotalRewards(this.userId);
                 this.totalReward = total || 0;
                 
-                // ===== ВРЕМЕННО ОТКЛЮЧАЕМ УВЕДОМЛЕНИЯ ДЛЯ ИСПЫТАНИЯ №5 =====
-                if (challengeId !== 5) {
-                    this.showNotification(
-                        '🎉 ' + this.getChallengeName(challengeId) + ' ' + result.newLevel + ' уровень! +' + result.reward + ' 💎'
-                    );
-                }
+                             // ===== ВРЕМЕННО ОТКЛЮЧАЕМ УВЕДОМЛЕНИЯ ДЛЯ ИСПЫТАНИЯ №5 =====
+                  if (challengeId !== 5 && challengeId !== 2) {  // ← ДОБАВИЛИ challengeId !== 2
+        this.showNotification(
+            '🎉 ' + this.getChallengeName(challengeId) + ' ' + result.newLevel + ' уровень! +' + result.reward + ' 💎'
+        );
+    }
                 
                 if (window.sound) {
                     sound.bonus();

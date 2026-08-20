@@ -2,13 +2,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== ПРОВЕРЯЕМ, НЕ ЗАПУЩЕНА ЛИ УЖЕ ИГРА =====
     let gameStarted = false;
     
-    function startGame() {
+    async function startGame() {
         if (gameStarted) return;
         gameStarted = true;
         
         // ===== ПРИНУДИТЕЛЬНЫЙ URL =====
         const userId = localStorage.getItem('bubbleUserId');
         console.log('👤 ID пользователя:', userId);
+        
+  // ===== СОХРАНЯЕМ НАЧАЛО СЕССИИ =====
+ if (userId && typeof statsManager !== 'undefined' && typeof statsManager.sessionStart === 'function') {
+    try {
+        await statsManager.sessionStart();
+        console.log('✅ Сессия сохранена');
+    } catch (error) {
+        console.warn('⚠️ Ошибка сохранения сессии:', error);
+    }
+} else {
+    console.warn('⚠️ sessionStart не доступен');
+}
+        
         
         // ===== СОЗДАЁМ ИГРУ =====
         const canvas = document.getElementById('gameCanvas');

@@ -185,27 +185,46 @@ document.getElementById('exitModalShare').addEventListener('touchend', function(
         });
 
         // ===== ИГРОВОЙ ЦИКЛ =====
-        function gameLoop() {
-            game.update();
-            game.draw();
-            
-            if (pendingEl) {
-                pendingEl.textContent = '+'.concat(game.pendingScore);
-            }
-            if (multiplierEl) {
-                multiplierEl.textContent = '×'.concat(game.multiplier);
-            }
-            scoreEl.textContent = '💎 '.concat(game.score);
-            
-            if (game.combo > 1) {
-                comboEl.textContent = '🔥 x'.concat(game.combo);
-                comboEl.classList.add('show');
-            } else {
-                comboEl.classList.remove('show');
-            }
-
-            requestAnimationFrame(gameLoop);
+  function gameLoop() {
+    game.update();
+    game.draw();
+    
+    if (pendingEl) {
+        pendingEl.textContent = '+'.concat(game.pendingScore);
+        
+        // Размер pendingScore
+        var size = 20 + Math.min(game.pendingScore / 20, 16);
+        pendingEl.style.fontSize = size + 'px';
+        
+        // Цвет pendingScore
+        if (game.pendingScore > 500) {
+            pendingEl.style.color = '#00ff88';
+        } else if (game.pendingScore > 100) {
+            pendingEl.style.color = '#88ff44';
+        } else {
+            pendingEl.style.color = '#ffcc00';
         }
+    }
+    
+    if (multiplierEl) {
+        multiplierEl.textContent = '×'.concat(game.multiplier);
+        
+        // Размер множителя
+        var multSize = 16 + Math.min(game.multiplier * 1.5, 24);
+        multiplierEl.style.fontSize = multSize + 'px';
+    }
+    
+    scoreEl.textContent = '💎 '.concat(game.score);
+    
+    if (game.combo > 1) {
+        comboEl.textContent = '🔥 x'.concat(game.combo);
+        comboEl.classList.add('show');
+    } else {
+        comboEl.classList.remove('show');
+    }
+
+    requestAnimationFrame(gameLoop);
+}
 
         gameLoop();
 

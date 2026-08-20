@@ -41,9 +41,56 @@ class StatsManager {
         this.activeSkin = 'default';
         this.lastPlay = null;
         
+        this.sessionStart = Date.now();
+        
         console.log('✅ [STATS] Экземпляр создан');
     }
+// ===== НАЧАЛО СЕССИИ (при нажатии "Играть") =====
+async sessionStart() {
+    if (!this.userId) {
+        console.warn('⚠️ Нет userId для сохранения сессии');
+        return false;
+    }
+    
+    this.sessions = (this.sessions || 0) + 1;
+    this.lastPlay = new Date().toISOString();
+    this.sessionStart = Date.now();  // для подсчёта времени в игре
+    
+    console.log('📊 [STATS] Начало сессии #' + this.sessions + ', время:', this.lastPlay);
+    
+    // Сохраняем только сессии и last_play
+    return await this.saveSessionOnly();
+}
+    
+    // stats.js
 
+// ===== СОХРАНЕНИЕ ТОЛЬКО СЕССИИ И ВРЕМЕНИ =====
+async saveSessionOnly() {
+    if (!this.userId) return false;
+    
+    try {
+        // Отправляем только сессии и last_play
+        const payload = {
+            userId: this.userId,
+            sessions: this.sessions,
+            last_play: this.lastPlay
+        };
+        
+        const response = await fetch(this.apiUrl + '/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        console.log('📊 [STATS] Сессия сохранена:', result);
+        return result.success;
+        
+    } catch (error) {
+        console.error('❌ [STATS] Ошибка сохранения сессии:', error);
+        return false;
+    }
+}
     async load(userId) {
         console.log('📊 [STATS] load() вызван, userId =', userId);
         this.userId = userId;
@@ -107,7 +154,7 @@ async save() {
 
     var sessionTime = Math.floor((Date.now() - this.sessionStart) / 1000);
     this.totalTime = (this.totalTime || 0) + sessionTime;
-    this.sessions = (this.sessions || 0) + 1;
+    
     
     // ===== СОЗДАЁМ ВРЕМЯ =====
     var now = new Date();

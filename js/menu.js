@@ -220,14 +220,47 @@ document.addEventListener('DOMContentLoaded', () => {
     animate();
 
     // ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
-    document.getElementById('playBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        const rect = document.getElementById('playBtn').getBoundingClientRect();
-        spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
-        setTimeout(() => {
-            goTo('game.html');  // ← РЕКЛАМА ТОЛЬКО ЗДЕСЬ
-        }, 300);
-    });
+// ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
+document.getElementById('playBtn').addEventListener('click', async (e) => {
+    e.stopPropagation();
+    
+    // ===== СОХРАНЯЕМ СЕССИЮ ПРИ НАЖАТИИ НА ИГРАТЬ =====
+    const userId = localStorage.getItem('bubbleUserId');
+    if (userId && typeof statsManager !== 'undefined') {
+        try {
+            // Просто вызываем sessionStart
+            await statsManager.sessionStart();
+            console.log('✅ Сессия сохранена при входе в игру');
+        } catch (error) {
+            console.warn('⚠️ Ошибка сохранения сессии:', error);
+        }
+    }
+    
+    const rect = document.getElementById('playBtn').getBoundingClientRect();
+    spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
+    setTimeout(() => {
+        goTo('game.html');
+    }, 300);
+});
+
+document.getElementById('playBtn').addEventListener('touchend', async (e) => {
+    e.preventDefault();
+    
+    const userId = localStorage.getItem('bubbleUserId');
+    if (userId && typeof statsManager !== 'undefined') {
+        try {
+            await statsManager.sessionStart();
+        } catch (error) {
+            console.warn('⚠️ Ошибка сохранения сессии:', error);
+        }
+    }
+    
+    const rect = document.getElementById('playBtn').getBoundingClientRect();
+    spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
+    setTimeout(() => {
+        goTo('game.html');
+    }, 300);
+});
 
     document.getElementById('playBtn').addEventListener('touchend', (e) => {
         e.preventDefault();

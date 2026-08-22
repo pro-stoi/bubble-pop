@@ -219,17 +219,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     animate();
 
-    // ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
+    
 // ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
 document.getElementById('playBtn').addEventListener('click', async (e) => {
     e.stopPropagation();
     
-    // ===== СОХРАНЯЕМ СЕССИЮ ПРИ НАЖАТИИ НА ИГРАТЬ =====
     const userId = localStorage.getItem('bubbleUserId');
+    
     if (userId && typeof statsManager !== 'undefined') {
         try {
-            // Просто вызываем sessionStart
-            await statsManager.sessionStart();
+            await statsManager.sessionStart(parseInt(userId));
             console.log('✅ Сессия сохранена при входе в игру');
         } catch (error) {
             console.warn('⚠️ Ошибка сохранения сессии:', error);

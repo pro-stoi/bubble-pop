@@ -46,19 +46,19 @@ class StatsManager {
         console.log('✅ [STATS] Экземпляр создан');
     }
 // ===== НАЧАЛО СЕССИИ (при нажатии "Играть") =====
-async sessionStart() {
-    if (!this.userId) {
+async sessionStart(userId) {
+    if (!userId) {
         console.warn('⚠️ Нет userId для сохранения сессии');
         return false;
     }
     
+    this.userId = userId;
     this.sessions = (this.sessions || 0) + 1;
     this.lastPlay = new Date().toISOString();
-    this.sessionStart = Date.now();  // для подсчёта времени в игре
+    this.sessionStart = Date.now();
     
     console.log('📊 [STATS] Начало сессии #' + this.sessions + ', время:', this.lastPlay);
     
-    // Сохраняем только сессии и last_play
     return await this.saveSessionOnly();
 }
     

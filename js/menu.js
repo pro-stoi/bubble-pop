@@ -221,20 +221,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     
 // ===== КНОПКА "ИГРАТЬ" С РЕКЛАМОЙ =====
-document.getElementById('playBtn').addEventListener('click', async (e) => {
+document.getElementById('playBtn').addEventListener('click', (e) => {
     e.stopPropagation();
-    
-    const userId = localStorage.getItem('bubbleUserId');
-    
-    if (userId && typeof statsManager !== 'undefined') {
-        try {
-            await statsManager.sessionStart(parseInt(userId));
-            console.log('✅ Сессия сохранена при входе в игру');
-        } catch (error) {
-            console.warn('⚠️ Ошибка сохранения сессии:', error);
-        }
-    }
-    
     const rect = document.getElementById('playBtn').getBoundingClientRect();
     spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
     setTimeout(() => {
@@ -242,25 +230,14 @@ document.getElementById('playBtn').addEventListener('click', async (e) => {
     }, 300);
 });
 
-document.getElementById('playBtn').addEventListener('touchend', async (e) => {
+document.getElementById('playBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
-    
-    const userId = localStorage.getItem('bubbleUserId');
-    if (userId && typeof statsManager !== 'undefined') {
-        try {
-            await statsManager.sessionStart();
-        } catch (error) {
-            console.warn('⚠️ Ошибка сохранения сессии:', error);
-        }
-    }
-    
     const rect = document.getElementById('playBtn').getBoundingClientRect();
     spawnParticles(rect.left + rect.width/2, rect.top + rect.height/2, 200);
     setTimeout(() => {
         goTo('game.html');
     }, 300);
 });
-
     document.getElementById('playBtn').addEventListener('touchend', (e) => {
         e.preventDefault();
         const rect = document.getElementById('playBtn').getBoundingClientRect();

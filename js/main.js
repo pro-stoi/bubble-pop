@@ -10,18 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const userId = localStorage.getItem('bubbleUserId');
         console.log('👤 ID пользователя:', userId);
         
-  // ===== СОХРАНЯЕМ НАЧАЛО СЕССИИ =====
- if (userId && typeof statsManager !== 'undefined' && typeof statsManager.sessionStart === 'function') {
-    try {
-        await statsManager.sessionStart();
-        console.log('✅ Сессия сохранена');
-    } catch (error) {
-        console.warn('⚠️ Ошибка сохранения сессии:', error);
-    }
-} else {
-    console.warn('⚠️ sessionStart не доступен');
-}
-        
+    
         
         // ===== СОЗДАЁМ ИГРУ =====
         const canvas = document.getElementById('gameCanvas');

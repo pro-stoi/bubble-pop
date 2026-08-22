@@ -2,250 +2,246 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== ПРОВЕРЯЕМ, НЕ ЗАПУЩЕНА ЛИ УЖЕ ИГРА =====
     let gameStarted = false;
     
-    async function startGame() {
-        if (gameStarted) return;
-        gameStarted = true;
-        
-        // ===== ПРИНУДИТЕЛЬНЫЙ URL =====
-        const userId = localStorage.getItem('bubbleUserId');
-        console.log('👤 ID пользователя:', userId);
-        
+async function startGame() {
+    if (gameStarted) return;
+    gameStarted = true;
     
+    const userId = localStorage.getItem('bubbleUserId');
+    console.log('👤 ID пользователя:', userId);
+    
+    // ===== СОЗДАЁМ ИГРУ (ОДИН РАЗ!) =====
+    const canvas = document.getElementById('gameCanvas');
+    const game = new Game(canvas);
+    
+    if (userId) {
+        const userIdNum = parseInt(userId);
         
-        // ===== СОЗДАЁМ ИГРУ =====
-        const canvas = document.getElementById('gameCanvas');
-        const game = new Game(canvas);
-
-        // ===== ЗАГРУЖАЕМ БД В ФОНЕ =====
-   // ===== ЗАГРУЖАЕМ ДАННЫЕ В ФОНЕ =====
-if (userId) {
-    const userIdNum = parseInt(userId);
-    
-    challengeTracker.loadFromServer(userIdNum).catch(() => {
-        console.warn('⚠️ Испытания не загружены');
-    });
-    statsManager.load(userIdNum).catch(() => {
-        console.warn('⚠️ Статистика не загружена');
-    });
-    
-    // ===== ЗАГРУЖАЕМ БОНУСЫ =====
-    loadUserBonuses(userIdNum, game);
-}
-
-        // ===== ОБРАБОТКА ТАПА =====
-        function handleTap(e) {
-            const rect = canvas.getBoundingClientRect();
-            let clientX, clientY;
-            
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-                e.preventDefault();
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-            
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
-            
-            const uiElements = document.querySelectorAll('.game-btn, .bonus-btn, #topBar, #bonusContainer, .exit-modal, .exit-modal-content, .exit-modal-btn');
-            let isOnUI = false;
-            
-            uiElements.forEach(function(el) {
-                const elRect = el.getBoundingClientRect();
-                if (clientX >= elRect.left && clientX <= elRect.right &&
-                    clientY >= elRect.top && clientY <= elRect.bottom) {
-                    isOnUI = true;
-                }
-            });
-            
-            if (isOnUI) return;
-            
-            game.handleTap(x, y);
-        }
-
-        canvas.addEventListener('click', handleTap);
-        canvas.addEventListener('touchstart', handleTap, { passive: false });
-
-        // ===== UI ЭЛЕМЕНТЫ =====
-        const scoreEl = document.getElementById('score');
-        const comboEl = document.getElementById('combo');
-        const pendingEl = document.getElementById('pendingScore');
-        const multiplierEl = document.getElementById('multiplier');
-
-        // ===== МОДАЛЬНОЕ ОКНО =====
-        const exitModal = document.getElementById('exitModal');
-        const exitModalScore = document.getElementById('exitModalScore');
-        const exitModalCombo = document.getElementById('exitModalCombo');
-        const exitModalMultiplier = document.getElementById('exitModalMultiplier');
-        const exitModalPopped = document.getElementById('exitModalPopped');
-
-        function showExitModal() {
-            const stats = game.getStats();
-            exitModalScore.textContent = stats.score;
-            exitModalCombo.textContent = stats.maxCombo;
-            
-            exitModalMultiplier.textContent = '×' + stats.maxMultiplier;
-            exitModalPopped.textContent = stats.totalPopped;
-            exitModal.style.display = 'flex';
-        }
-
-        function hideExitModal() {
-            exitModal.style.display = 'none';
-        }
-
-        // ===== КНОПКА "ДОМИК" =====
-        document.getElementById('backMenuBtn').addEventListener('click', function() {
-            showExitModal();
+        // ===== ЗАГРУЖАЕМ ДАННЫЕ =====
+        await challengeTracker.loadFromServer(userIdNum).catch(() => {
+            console.warn('⚠️ Испытания не загружены');
         });
-        document.getElementById('backMenuBtn').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            showExitModal();
+        await statsManager.load(userIdNum).catch(() => {
+            console.warn('⚠️ Статистика не загружена');
         });
-
-        // ===== КНОПКА "ПРИГЛАСИТЬ" =====
-        const inviteBtn = document.getElementById('inviteFriendBtn');
-        if (inviteBtn) {
-            inviteBtn.addEventListener('click', function() {
-                if (typeof vk !== 'undefined' && vk.inviteFriend) {
-                    vk.inviteFriend();
-                } else {
-                    console.warn('⚠️ VK не инициализирован');
-                    // Локальный режим
-                    alert('👥 В локальном режиме приглашение не работает');
-                }
-            });
-            inviteBtn.addEventListener('touchend', function(e) {
-                e.preventDefault();
-                if (typeof vk !== 'undefined' && vk.inviteFriend) {
-                    vk.inviteFriend();
-                } else {
-                    alert('👥 В локальном режиме приглашение не работает');
-                }
-            });
+        
+        // ===== СОХРАНЯЕМ СЕССИЮ =====
+        if (statsManager.userId) {
+            statsManager.sessions = (statsManager.sessions || 0) + 1;
+            statsManager.lastPlay = new Date().toISOString();
+            statsManager.sessionStart = Date.now();
+            await statsManager.saveSessionOnly();
+            console.log('✅ Сессия сохранена: #' + statsManager.sessions);
         }
-
-        // ===== КНОПКА "ВЕРНУТЬСЯ" =====
-        document.getElementById('exitModalBack').addEventListener('click', function() {
-            hideExitModal();
-        });
-        document.getElementById('exitModalBack').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            hideExitModal();
-        });
-// ===== КНОПКА "ПОДЕЛИТЬСЯ" =====
-document.getElementById('exitModalShare').addEventListener('click', function() {
-    const stats = game.getStats();
-    if (typeof vk !== 'undefined' && vk.shareResult) {
-        vk.shareResult(stats.score, stats.maxCombo);
-    } else {
-        alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
+        
+        // ===== ЗАГРУЖАЕМ БОНУСЫ =====
+        loadUserBonuses(userIdNum, game);
     }
-});
-document.getElementById('exitModalShare').addEventListener('touchend', function(e) {
-    e.preventDefault();
-    const stats = game.getStats();
-    if (typeof vk !== 'undefined' && vk.shareResult) {
-        vk.shareResult(stats.score, stats.maxCombo);
-    } else {
-        alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
-    }
-});
-        // ===== КНОПКА "ВЫЙТИ" =====
-        document.getElementById('exitModalExit').addEventListener('click', function() {
-            game.saveGameResult();
-            
-            setTimeout(function() {
-                hideExitModal();
-                if (typeof vkBridge !== 'undefined') {
-                    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                        .finally(function() {
-                            goTo('index.html');
-                        });
-                } else {
-                    goToWithAd('index.html');
-                }
-            }, 500);
-        });
-
-        document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
-            e.preventDefault();
-            game.saveGameResult();
-            
-            setTimeout(function() {
-                hideExitModal();
-                if (typeof vkBridge !== 'undefined') {
-                    vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                        .finally(function() {
-                            goTo('index.html');
-                        });
-                } else {
-                    goToWithAd('index.html');
-                }
-            }, 500);
-        });
-
-        // ===== ИГРОВОЙ ЦИКЛ =====
-  function gameLoop() {
-    game.update();
-    game.draw();
     
-    if (pendingEl) {
-        pendingEl.textContent = '+'.concat(game.pendingScore);
+    // ===== ОБРАБОТКА ТАПА =====
+    function handleTap(e) {
+        const rect = canvas.getBoundingClientRect();
+        let clientX, clientY;
         
-        // Размер pendingScore
-        var size = 20 + Math.min(game.pendingScore / 20, 16);
-        pendingEl.style.fontSize = size + 'px';
-        
-        // Цвет pendingScore
-        if (game.pendingScore > 500) {
-            pendingEl.style.color = '#00ff88';
-        } else if (game.pendingScore > 100) {
-            pendingEl.style.color = '#88ff44';
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+            e.preventDefault();
         } else {
-            pendingEl.style.color = '#ffcc00';
+            clientX = e.clientX;
+            clientY = e.clientY;
         }
-    }
-    
-    if (multiplierEl) {
-        multiplierEl.textContent = '×'.concat(game.multiplier);
         
-        // Размер множителя
-        var multSize = 16 + Math.min(game.multiplier * 1.5, 24);
-        multiplierEl.style.fontSize = multSize + 'px';
-    }
-    
-    scoreEl.textContent = '💎 '.concat(game.score);
-    
-    if (game.combo > 1) {
-        comboEl.textContent = '🔥 x'.concat(game.combo);
-        comboEl.classList.add('show');
-    } else {
-        comboEl.classList.remove('show');
-    }
-
-    requestAnimationFrame(gameLoop);
-}
-
-        gameLoop();
-
-        window.addEventListener('resize', function() {
-            game.resize();
-        });
-
-        let bestScore = parseInt(localStorage.getItem('bubbleBest') || '0');
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
         
-        setInterval(function() {
-            if (game.score > bestScore) {
-                bestScore = game.score;
-                localStorage.setItem('bubbleBest', String(bestScore));
+        const uiElements = document.querySelectorAll('.game-btn, .bonus-btn, #topBar, #bonusContainer, .exit-modal, .exit-modal-content, .exit-modal-btn');
+        let isOnUI = false;
+        
+        uiElements.forEach(function(el) {
+            const elRect = el.getBoundingClientRect();
+            if (clientX >= elRect.left && clientX <= elRect.right &&
+                clientY >= elRect.top && clientY <= elRect.bottom) {
+                isOnUI = true;
             }
-        }, 5000);
-
-        console.log('🫧 Пузырьки запущены!');
-        console.log('🏆 Рекорд:', bestScore);
+        });
+        
+        if (isOnUI) return;
+        
+        game.handleTap(x, y);
     }
+
+    canvas.addEventListener('click', handleTap);
+    canvas.addEventListener('touchstart', handleTap, { passive: false });
+
+    // ===== UI ЭЛЕМЕНТЫ =====
+    const scoreEl = document.getElementById('score');
+    const comboEl = document.getElementById('combo');
+    const pendingEl = document.getElementById('pendingScore');
+    const multiplierEl = document.getElementById('multiplier');
+
+    // ===== МОДАЛЬНОЕ ОКНО =====
+    const exitModal = document.getElementById('exitModal');
+    const exitModalScore = document.getElementById('exitModalScore');
+    const exitModalCombo = document.getElementById('exitModalCombo');
+    const exitModalMultiplier = document.getElementById('exitModalMultiplier');
+    const exitModalPopped = document.getElementById('exitModalPopped');
+
+    function showExitModal() {
+        const stats = game.getStats();
+        exitModalScore.textContent = stats.score;
+        exitModalCombo.textContent = stats.maxCombo;
+        exitModalMultiplier.textContent = '×' + stats.maxMultiplier;
+        exitModalPopped.textContent = stats.totalPopped;
+        exitModal.style.display = 'flex';
+    }
+
+    function hideExitModal() {
+        exitModal.style.display = 'none';
+    }
+
+    // ===== КНОПКА "ДОМИК" =====
+    document.getElementById('backMenuBtn').addEventListener('click', function() {
+        showExitModal();
+    });
+    document.getElementById('backMenuBtn').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        showExitModal();
+    });
+
+    // ===== КНОПКА "ПРИГЛАСИТЬ" =====
+    const inviteBtn = document.getElementById('inviteFriendBtn');
+    if (inviteBtn) {
+        inviteBtn.addEventListener('click', function() {
+            if (typeof vk !== 'undefined' && vk.inviteFriend) {
+                vk.inviteFriend();
+            } else {
+                console.warn('⚠️ VK не инициализирован');
+                alert('👥 В локальном режиме приглашение не работает');
+            }
+        });
+        inviteBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            if (typeof vk !== 'undefined' && vk.inviteFriend) {
+                vk.inviteFriend();
+            } else {
+                alert('👥 В локальном режиме приглашение не работает');
+            }
+        });
+    }
+
+    // ===== КНОПКА "ВЕРНУТЬСЯ" =====
+    document.getElementById('exitModalBack').addEventListener('click', function() {
+        hideExitModal();
+    });
+    document.getElementById('exitModalBack').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        hideExitModal();
+    });
+
+    // ===== КНОПКА "ПОДЕЛИТЬСЯ" =====
+    document.getElementById('exitModalShare').addEventListener('click', function() {
+        const stats = game.getStats();
+        if (typeof vk !== 'undefined' && vk.shareResult) {
+            vk.shareResult(stats.score, stats.maxCombo);
+        } else {
+            alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
+        }
+    });
+    document.getElementById('exitModalShare').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        const stats = game.getStats();
+        if (typeof vk !== 'undefined' && vk.shareResult) {
+            vk.shareResult(stats.score, stats.maxCombo);
+        } else {
+            alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
+        }
+    });
+
+    // ===== КНОПКА "ВЫЙТИ" =====
+    document.getElementById('exitModalExit').addEventListener('click', function() {
+        game.saveGameResult();
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
+    document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        game.saveGameResult();
+        setTimeout(function() {
+            hideExitModal();
+            if (typeof vkBridge !== 'undefined') {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .finally(function() {
+                        goTo('index.html');
+                    });
+            } else {
+                goToWithAd('index.html');
+            }
+        }, 500);
+    });
+
+    // ===== ИГРОВОЙ ЦИКЛ =====
+    function gameLoop() {
+        game.update();
+        game.draw();
+        
+        if (pendingEl) {
+            pendingEl.textContent = '+'.concat(game.pendingScore);
+            var size = 20 + Math.min(game.pendingScore / 20, 16);
+            pendingEl.style.fontSize = size + 'px';
+            if (game.pendingScore > 500) {
+                pendingEl.style.color = '#00ff88';
+            } else if (game.pendingScore > 100) {
+                pendingEl.style.color = '#88ff44';
+            } else {
+                pendingEl.style.color = '#ffcc00';
+            }
+        }
+        
+        if (multiplierEl) {
+            multiplierEl.textContent = '×'.concat(game.multiplier);
+            var multSize = 16 + Math.min(game.multiplier * 1.5, 24);
+            multiplierEl.style.fontSize = multSize + 'px';
+        }
+        
+        scoreEl.textContent = '💎 '.concat(game.score);
+        
+        if (game.combo > 1) {
+            comboEl.textContent = '🔥 x'.concat(game.combo);
+            comboEl.classList.add('show');
+        } else {
+            comboEl.classList.remove('show');
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+
+    window.addEventListener('resize', function() {
+        game.resize();
+    });
+
+    let bestScore = parseInt(localStorage.getItem('bubbleBest') || '0');
+    
+    setInterval(function() {
+        if (game.score > bestScore) {
+            bestScore = game.score;
+            localStorage.setItem('bubbleBest', String(bestScore));
+        }
+    }, 5000);
+
+    console.log('🫧 Пузырьки запущены!');
+    console.log('🏆 Рекорд:', bestScore);
+}
 
     // ===== ЗАГРУЗКА БОНУСОВ =====
 // ===== ЗАГРУЗКА БОНУСОВ =====

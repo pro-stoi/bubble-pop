@@ -195,6 +195,10 @@ addBonus(type) {
             case 'pink': sound.bonusPinkEarned(); break;
         }
         
+         // ===== СОЗДАЁМ ЗОЛОТОЙ ШАР =====
+        if (this.game) {
+            this.game.spawnGoldenBubble();
+        }
         return true;
     }
     return false;

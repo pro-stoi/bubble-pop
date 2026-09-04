@@ -22,6 +22,9 @@ class Bubble {
         this.wobbleAmount = 0.5 + Math.random() * 1.5;
         this.popSound = null;
         this.points = 1;
+        
+         this.isGolden = false;  // ← добавить
+         this.goldenChildren = 0;
     }
 
     update() {
@@ -42,13 +45,59 @@ class Bubble {
         }
     }
 
-  draw(ctx) {
+draw(ctx) {
     if (!this.alive) return;
 
     const r = this.radius;
     const x = this.x;
     const y = this.y;
     const hue = this.hue;
+
+    // ===== ЗОЛОТОЙ ШАР =====
+    if (this.isGolden) {
+        // Свечение
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+        glow.addColorStop(0, 'rgba(255, 215, 0, 0.4)');
+        glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Основной шар (золотой градиент)
+        const grad = ctx.createRadialGradient(
+            x - r * 0.3, y - r * 0.3, 0,
+            x, y, r
+        );
+        grad.addColorStop(0, '#ffec8b');
+        grad.addColorStop(0.5, '#ffd700');
+        grad.addColorStop(1, '#b8860b');
+        
+        ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+        ctx.shadowBlur = 40;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // Блик
+        ctx.beginPath();
+        ctx.arc(x - r * 0.25, y - r * 0.3, r * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fill();
+        
+        // Иконка ⭐
+        ctx.font = `${r * 0.9}px 'Segoe UI', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,215,0,0.15)';
+        ctx.fillText('⭐', x, y + 2);
+        
+        return;  // ← Выходим, не рисуем обычный шар
+    }
+
+    // ===== ОБЫЧНЫЙ ШАР (весь код ниже) =====
 
     // Тень (свечение)
     const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 2);

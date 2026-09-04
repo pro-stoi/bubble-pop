@@ -92,12 +92,174 @@ spawnBubble() {
     this.bonusManager.applyEffects(b);
     return b;
 }
+// game.js
 
+spawnGoldenBubble() {
+    let goldenCount = 0;
+    for (let i = 0; i < this.bubbles.length; i++) {
+        if (this.bubbles[i].isGolden) goldenCount++;
+    }
+    if (goldenCount >= 3) return;
+    
+    const b = new Bubble(this.width, this.height);
+    b.isGolden = true;
+    b.radius = 25 + Math.random() * 15;
+    b.x = 50 + Math.random() * (this.width - 100);
+    b.y = this.height + b.radius + Math.random() * 100;
+    b.speed = 1.2 + Math.random() * 1.5;  // ← БЫСТРЕЕ (было 0.5 + 0.8)
+    b.hue = 45;
+    b.saturation = 95;
+    b.lightness = 60;
+    b.points = 100;
+    b.goldenChildren = 5 + Math.floor(Math.random() * 6);
+    
+    this.bubbles.push(b);
+}
+    
+  // game.js
+
+popGoldenBubble(goldenBubble) {
+    // ===== 100 ОЧКОВ =====
+    this.pendingScore += 100;
+    this.score += 100;
+    
+    // ===== ВСПЛЫВАЮЩАЯ НАДПИСЬ =====
+    this.scorePopups.push({
+        x: goldenBubble.x,
+        y: goldenBubble.y - 30,
+        text: '⭐ +100',
+        subtext: 'ЗОЛОТОЙ ШАР!',
+        life: 70,
+        maxLife: 70,
+        hue: 45,
+        big: true,
+        customColor: '#ffd700'
+    });
+    
+    // ===== ЧАСТИЦЫ (золотые) - ИСПРАВЛЕНО! =====
+    for (let i = 0; i < 30; i++) {
+        const p = new Particle(goldenBubble.x, goldenBubble.y, 45, 1);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed - 2;
+        p.radius = 2 + Math.random() * 4;
+        p.hue = 45 + (Math.random() - 0.5) * 20;
+        p.life = 40 + Math.random() * 30;
+        p.maxLife = 70;
+        p.gravity = 0.06;
+        this.particles.push(p);
+    }
+    
+    // ===== СОЗДАЁМ 5-10 СЛУЧАЙНЫХ ШАРОВ =====
+    const count = 8 + Math.floor(Math.random() * 8);
+    const colors = ['red', 'yellow', 'green', 'blue', 'pink'];
+    const hueMap = { 'red': 0, 'yellow': 45, 'green': 120, 'blue': 200, 'pink': 320 };
+    
+    for (let i = 0; i < Math.min(count, 40 - this.bubbles.length); i++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const newBubble = new Bubble(this.width, this.height);
+        newBubble.radius = 15 + Math.random() * 25;
+        newBubble.hue = hueMap[color] + (Math.random() - 0.5) * 20;
+        if (newBubble.hue < 0) newBubble.hue += 360;
+        if (newBubble.hue >= 360) newBubble.hue -= 360;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 30 + Math.random() * 60;
+        newBubble.x = goldenBubble.x + Math.cos(angle) * distance;
+        newBubble.y = goldenBubble.y + Math.sin(angle) * distance;
+        newBubble.speed = 0.3 + Math.random() * 0.5;
+        newBubble.points = Math.floor(Math.random() * 3) + 1;
+        
+        if (newBubble.x < newBubble.radius) newBubble.x = newBubble.radius;
+        if (newBubble.x > this.width - newBubble.radius) newBubble.x = this.width - newBubble.radius;
+        if (newBubble.y < newBubble.radius) newBubble.y = newBubble.radius;
+        
+        this.bubbles.push(newBubble);
+    }
+    
+    // ===== ЗВУК =====
+    sound.bonusHappy();
+}
+    
 popBubble(x, y) {
     let popped = false;
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
         if (b.contains(x, y)) {
+            
+           if (b.isGolden) {
+    this.lastPopTime = Date.now();
+    this.combo++;
+    if (this.combo > this.maxCombo) {
+        this.maxCombo = this.combo;
+    }
+    
+    // ===== МНОЖИТЕЛЬ РАБОТАЕТ! =====
+    const bonusMultiplier = this.bonusManager.getMultiplier();
+    const earned = 100 * this.multiplier * bonusMultiplier;
+    this.pendingScore += earned;
+    
+    this.scorePopups.push({
+        x: b.x,
+        y: b.y - 30,
+        text: `⭐ +${earned}`,
+        subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
+        life: 70,
+        maxLife: 70,
+        hue: 45,
+        big: true,
+        customColor: '#ffd700'
+    });
+    
+    // Частицы (золотые)
+    for (let j = 0; j < 30; j++) {
+        const p = new Particle(b.x, b.y, 45, 1);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed - 2;
+        p.radius = 2 + Math.random() * 4;
+        p.hue = 45 + (Math.random() - 0.5) * 20;
+        p.life = 40 + Math.random() * 30;
+        p.maxLife = 70;
+        p.gravity = 0.06;
+        this.particles.push(p);
+    }
+    
+    // 8-15 случайных шаров
+    const count = 8 + Math.floor(Math.random() * 8);
+    const colors = ['red', 'yellow', 'green', 'blue', 'pink'];
+    const hueMap = { 'red': 0, 'yellow': 45, 'green': 120, 'blue': 200, 'pink': 320 };
+    
+    for (let j = 0; j < Math.min(count, 40 - this.bubbles.length); j++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const newBubble = new Bubble(this.width, this.height);
+        newBubble.radius = 15 + Math.random() * 25;
+        newBubble.hue = hueMap[color] + (Math.random() - 0.5) * 20;
+        if (newBubble.hue < 0) newBubble.hue += 360;
+        if (newBubble.hue >= 360) newBubble.hue -= 360;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 30 + Math.random() * 60;
+        newBubble.x = b.x + Math.cos(angle) * distance;
+        newBubble.y = b.y + Math.sin(angle) * distance;
+        newBubble.speed = 0.3 + Math.random() * 0.5;
+        newBubble.points = Math.floor(Math.random() * 3) + 1;
+        
+        if (newBubble.x < newBubble.radius) newBubble.x = newBubble.radius;
+        if (newBubble.x > this.width - newBubble.radius) newBubble.x = this.width - newBubble.radius;
+        if (newBubble.y < newBubble.radius) newBubble.y = newBubble.radius;
+        
+        this.bubbles.push(newBubble);
+    }
+    
+    this.bubbles.splice(i, 1);
+    this.totalPopped++;
+    sound.bonusHappy();
+    return true;
+}
+            
             const now = Date.now();
             const timeSinceLastPop = now - this.lastPopTime;
             
@@ -174,12 +336,10 @@ popBubble(x, y) {
                 challengeTracker.onCombo(this.combo);
             }
             
-            // ===== УДАЛЯЕМ ШАРИК =====
             this.bubbles.splice(i, 1);
             this.totalPopped++;
             popped = true;
             
-            // ===== РАСПАД ШАРИКА =====
             this.splitBubble(b);
             
             break;
@@ -202,6 +362,9 @@ popBubble(x, y) {
 }
     
 splitBubble(bubble) {
+    // ===== ЗОЛОТОЙ ШАР НЕ РАСПАДАЕТСЯ =====
+    if (bubble.isGolden) return;
+    
     var colorType = this.bonusManager.getColorType(bubble.hue);
     if (!colorType) return;
     if (this.bubbles.length >= 40) return;
@@ -209,13 +372,13 @@ splitBubble(bubble) {
     var options = this.getSplitOptions(colorType);
     if (!options || options.children.length === 0) return;
     
-    // ===== СТАНДАРТНЫЕ РАЗМЕРЫ ДЛЯ ЦВЕТОВ =====
+    // ===== СТАНДАРТНЫЕ РАЗМЕРЫ И ОЧКИ ДЛЯ ЦВЕТОВ =====
     var sizeMap = {
-        'red': { min: 40, max: 55 },
-        'yellow': { min: 30, max: 45 },
-        'green': { min: 22, max: 35 },
-        'blue': { min: 16, max: 25 },
-        'pink': { min: 12, max: 18 }
+        'red': { min: 40, max: 55, points: 1 },
+        'yellow': { min: 30, max: 45, points: 2 },
+        'green': { min: 22, max: 35, points: 4 },
+        'blue': { min: 16, max: 25, points: 7 },
+        'pink': { min: 12, max: 18, points: 10 }
     };
     
     var maxNew = Math.min(options.children.length, 40 - this.bubbles.length);
@@ -224,8 +387,11 @@ splitBubble(bubble) {
         var newBubble = new Bubble(this.width, this.height);
         
         // ===== РАЗМЕР ПО ЦВЕТУ =====
-        var size = sizeMap[childColor] || { min: 20, max: 30 };
+        var size = sizeMap[childColor] || { min: 20, max: 30, points: 3 };
         newBubble.radius = size.min + Math.random() * (size.max - size.min);
+        
+        // ===== ОЧКИ ПО ЦВЕТУ (СВОИ!) =====
+        newBubble.points = size.points;
         
         // Цвет
         var hueMap = { 'red': 0, 'yellow': 45, 'green': 120, 'blue': 200, 'pink': 320 };
@@ -294,6 +460,11 @@ popBubbleAt(x, y, isBonus = false) {
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
         if (b.contains(x, y)) {
+            
+             // ===== ЗОЛОТОЙ ШАР НЕ ТРОГАЕМ БОНУСАМИ =====
+            if (b.isGolden) {
+                return false;
+            }
             // ===== ОБНОВЛЯЕМ ВРЕМЯ ПОСЛЕДНЕГО ЛОПАНИЯ =====
             this.lastPopTime = Date.now();
             

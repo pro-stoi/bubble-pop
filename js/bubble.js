@@ -1,5 +1,14 @@
 class Bubble {
     constructor(canvasWidth, canvasHeight) {
+        
+        // ===== СКОРОСТЬ =====
+if (window.innerWidth < 768) {
+    this.speed = 0.3 + Math.random() * 1.0;  // медленнее
+} else {
+    this.speed = 0.6 + Math.random() * 1.8;  // обычная
+}
+        
+        
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
         

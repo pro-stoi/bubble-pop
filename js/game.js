@@ -1,5 +1,24 @@
 class Game {
     constructor(canvas) {
+        
+        // ===== ОПРЕДЕЛЯЕМ МОБИЛЬНОЕ УСТРОЙСТВО =====
+this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+// ===== НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ =====
+if (this.isMobile) {
+    this.maxBubbles = 20;        // максимум шаров
+    this.spawnRateMin = 15;      // мин. спавн
+    this.spawnRateMax = 40;      // макс. спавн
+    this.speedMultiplier = 0.6;  // скорость шаров
+} else {
+    this.maxBubbles = 35;
+    this.spawnRateMin = 8;
+    this.spawnRateMax = 25;
+    this.speedMultiplier = 1.0;
+}
+        
+        
+        
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         
@@ -14,7 +33,7 @@ class Game {
         this.multiplier = 1;
         this.maxMultiplier = 1; 
         this.lastPopTime = 0;
-        this.comboTimeout = 2000;
+        this.comboTimeout = 3000;
         this.isProcessing = false;
         this.scorePopups = [];
         
@@ -46,6 +65,8 @@ class Game {
     } else {
         
     }
+        
+        
         
     }
 
@@ -81,6 +102,12 @@ spawnBubble() {
     b.points = chosen.points;
     b.hue = chosen.hue + (Math.random() - 0.5) * 20;
     b.type = chosen;
+    // ===== СКОРОСТЬ ДЛЯ МОБИЛЬНЫХ =====
+if (this.isMobile) {
+    b.speed *= this.speedMultiplier;
+}
+    
+    
     
     // ===== ШАРИКИ СПАВНЯТСЯ НИЖЕ ГРАНИЦЫ =====
     const topBoundary = 70;
@@ -106,7 +133,11 @@ spawnGoldenBubble() {
     b.radius = 25 + Math.random() * 15;
     b.x = 50 + Math.random() * (this.width - 100);
     b.y = this.height + b.radius + Math.random() * 100;
-    b.speed = 1.2 + Math.random() * 1.5;  // ← БЫСТРЕЕ (было 0.5 + 0.8)
+    
+    b.speed = this.isMobile 
+    ? 0.8 + Math.random() * 0.8 
+    : 1.2 + Math.random() * 1.5;
+    
     b.hue = 45;
     b.saturation = 95;
     b.lightness = 60;
@@ -181,7 +212,18 @@ popGoldenBubble(goldenBubble) {
     // ===== ЗВУК =====
     sound.bonusHappy();
 }
+   // ===== ДИНАМИЧЕСКОЕ ВРЕМЯ СБРОСА КОМБО =====
+getComboTimeout() {
+    const minTimeout = 2000;   // минимальное время (при ×20)
+    const maxTimeout = 4000;   // максимальное время (при ×1)
+    const maxMultiplier = 20;
     
+    // Чем больше множитель, тем меньше время
+    const progress = (this.multiplier - 1) / (maxMultiplier - 1);
+    const timeout = maxTimeout - progress * (maxTimeout - minTimeout);
+    
+    return Math.round(timeout);
+} 
 popBubble(x, y) {
     let popped = false;
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
@@ -260,16 +302,17 @@ popBubble(x, y) {
     return true;
 }
             
-            const now = Date.now();
-            const timeSinceLastPop = now - this.lastPopTime;
-            
-            if (timeSinceLastPop > this.comboTimeout && this.lastPopTime > 0) {
-                console.log('⏰ ТАЙМАУТ! Сбрасываем серию');
-                sound.comboReset();
-                this.combo = 0;
-                this.multiplier = 1;
-                this.flushScore();
-            }
+          const now = Date.now();
+const timeSinceLastPop = now - this.lastPopTime;
+const currentTimeout = this.getComboTimeout();
+
+if (timeSinceLastPop > currentTimeout && this.lastPopTime > 0) {
+    console.log('⏰ ТАЙМАУТ! Сбрасываем серию (таймаут:', currentTimeout, 'мс)');
+    sound.comboReset();
+    this.combo = 0;
+    this.multiplier = 1;
+    this.flushScore();
+}
             
             this.combo++;
             if (this.combo > this.maxCombo) {
@@ -404,7 +447,7 @@ splitBubble(bubble) {
         var distance = 20 + Math.random() * 30;
         newBubble.x = bubble.x + Math.cos(angle) * distance;
         newBubble.y = bubble.y + Math.sin(angle) * distance;
-        newBubble.speed = bubble.speed * (0.7 + Math.random() * 0.6);
+        newBubble.speed = bubble.speed * (0.7 + Math.random() * 0.6) * (this.isMobile ? 0.7 : 1);
         
         this.bubbles.push(newBubble);
     }
@@ -553,23 +596,28 @@ popBubbleAt(x, y, isBonus = false) {
     
     this.bonusManager.applyToAllBubbles(this.bubbles);
     
-    if (this.bubbles.length > 40) {
-        this.bubbles.splice(0, 3);
-    }
+   const maxBubbles = this.isMobile ? this.maxBubbles + 5 : 40;
+if (this.bubbles.length > maxBubbles) {
+    this.bubbles.splice(0, 3);
+}
     
-    const currentSpawnRate = Math.max(8, Math.floor(25 / this.difficulty));
-    if (this.frame % currentSpawnRate === 0) {
-        const b = this.spawnBubble();
-        if (b && this.bubbles.length < 35) {
-            this.bubbles.push(b);
-        }
-        if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < 35) {
-            const b2 = this.spawnBubble();
-            if (b2) {
-                this.bubbles.push(b2);
-            }
+ // ===== СПАВН С УЧЁТОМ МОБИЛЬНОГО =====
+const spawnRate = this.isMobile 
+    ? Math.max(this.spawnRateMin, Math.floor(this.spawnRateMax / this.difficulty))
+    : Math.max(8, Math.floor(25 / this.difficulty));
+
+if (this.frame % spawnRate === 0) {
+    const b = this.spawnBubble();
+    if (b && this.bubbles.length < this.maxBubbles) {
+        this.bubbles.push(b);
+    }
+    if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < this.maxBubbles) {
+        const b2 = this.spawnBubble();
+        if (b2) {
+            this.bubbles.push(b2);
         }
     }
+}
 
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
         this.bubbles[i].update();
@@ -595,12 +643,13 @@ popBubbleAt(x, y, isBonus = false) {
 
     this.bonusManager.update();
 
-    // ===== СБРОС СЕРИИ ПО ТАЙМАУТУ =====
-    if (this.pendingScore > 0 && Date.now() - this.lastPopTime > this.comboTimeout) {
-        console.log('⏰ ТАЙМАУТ! Сбрасываем серию в update()');
-        sound.comboReset();  // ← ЗВУК СБРОСА СЕРИИ
-        this.flushScore();
-    }
+ // ===== СБРОС СЕРИИ ПО ТАЙМАУТУ =====
+const currentTimeout = this.getComboTimeout();
+if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
+    console.log('⏰ ТАЙМАУТ! Сбрасываем серию в update() (таймаут:', currentTimeout, 'мс)');
+    sound.comboReset();
+    this.flushScore();
+}
           for (let i = this.flyingNumbers.length - 1; i >= 0; i--) {
         const fn = this.flyingNumbers[i];
         

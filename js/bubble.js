@@ -21,7 +21,7 @@ if (window.innerWidth < 768) {
         this.radius = 20 + Math.random() * 45;
         this.x = Math.random() * (canvasWidth - this.radius * 2) + this.radius;
         this.y = canvasHeight + this.radius + Math.random() * 100;
-        this.speed = 0.6 + Math.random() * 1.8;
+        
         this.hue = Math.random() * 360;
         this.saturation = 80 + Math.random() * 20;
         this.lightness = 55 + Math.random() * 25;

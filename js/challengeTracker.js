@@ -98,24 +98,22 @@ async update(challengeId, delta) {
             }
             
             // Если был переход уровня
-            if (result.levelUp) {
-                console.log('🔥 [TRACKER] Уровень повышен! Новый уровень =', result.newLevel);
-                
-                // Обновляем общую сумму наград
-                var total = await repository.getTotalRewards(this.userId);
-                this.totalReward = total || 0;
-                
-                             // ===== ВРЕМЕННО ОТКЛЮЧАЕМ УВЕДОМЛЕНИЯ ДЛЯ ИСПЫТАНИЯ №5 =====
-                  if (challengeId !== 5 && challengeId !== 2) {  // ← ДОБАВИЛИ challengeId !== 2
-        this.showNotification(
-            '🎉 ' + this.getChallengeName(challengeId) + ' ' + result.newLevel + ' уровень! +' + result.reward + ' 💎'
-        );
+        if (result.levelUp) {
+    console.log('🔥 [TRACKER] Уровень повышен! Новый уровень =', result.newLevel);
+    
+    // Обновляем общую сумму наград
+    var total = await repository.getTotalRewards(this.userId);
+    this.totalReward = total || 0;
+    
+    // ===== УВЕДОМЛЕНИЯ ОТКЛЮЧЕНЫ =====
+    // this.showNotification(
+    //     '🎉 ' + this.getChallengeName(challengeId) + ' ' + result.newLevel + ' уровень! +' + result.reward + ' 💎'
+    // );
+    
+    if (window.sound) {
+        sound.bonus();
     }
-                
-                if (window.sound) {
-                    sound.bonus();
-                }
-            }
+}
             
             // Обновляем UI
             if (window.renderChallenges) {

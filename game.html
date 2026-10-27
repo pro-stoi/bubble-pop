@@ -41,8 +41,13 @@
             </div>
         </div>
 
-        <!-- Левая панель (бонусы) -->
+              <!-- Левая панель (бонусы) -->
         <div id="bonusContainer" class="bonus-container"></div>
+
+        <!-- ===== ЖИЗНИ ===== -->
+        <div id="livesContainer">
+            <canvas id="livesCanvas"></canvas>
+        </div>
     </div>
 
     <!-- Подсказка для бонуса -->
@@ -70,7 +75,8 @@
                     <span id="exitModalPopped">0</span>
                 </div>
             </div>
-            <div class="exit-modal-buttons">
+                      <div class="exit-modal-buttons">
+                <button class="exit-modal-btn exit-modal-btn-continue" id="exitModalContinue" style="display:none;">📺 Продолжить</button>
                 <button class="exit-modal-btn exit-modal-btn-back" id="exitModalBack">↩ Вернуться</button>
                 <button class="exit-modal-btn exit-modal-btn-share" id="exitModalShare">📤 Поделиться</button>
                 <button class="exit-modal-btn exit-modal-btn-exit" id="exitModalExit">💾 Сохранить и выйти</button>
@@ -79,17 +85,14 @@
     </div>
     <!-- ===================================== -->
 
-
        <!-- ===== АУДИО МЕНЕДЖЕР ===== -->
 <script src="js/audioManager.js"></script>     
       <!-- ===== АУДИО ===== -->
 <audio id="bgMusic" loop preload="auto">
     <source src="audio/game.mp3" type="audio/mpeg">
-</audio>  
-
-    
-<!-- game.html - добавить перед скриптами -->
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</audio>      
+            
+            
     <!-- ===== СКРИПТЫ ===== -->
 <!-- 1. Сначала ядро -->
 <script src="js/core/api.js"></script>

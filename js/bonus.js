@@ -377,17 +377,25 @@ activateMultiplier() {
 
     // ===== МОДАЛКА ДЛЯ ПОЛУЧЕНИЯ ПЕРВОГО БОНУСА =====
     showBonusAdModal(type) {
-        const modal = document.getElementById('bonusAdModal');
-        if (!modal) {
+        // Создаём, если ещё нет — и сразу показываем.
+        if (!document.getElementById('bonusAdModal')) {
             this.createBonusModal();
-            return;
         }
+        const modal = document.getElementById('bonusAdModal');
+        if (!modal) return;
+
         const title = document.getElementById('bonusAdModalTitle');
         const desc = document.getElementById('bonusAdModalDesc');
         if (title) title.textContent = '🎁 Получи бонус!';
         if (desc) desc.textContent = 'Посмотри рекламу и получи 1 бонус!';
+
         modal.dataset.bonusType = type;
         modal.style.display = 'flex';
+
+        // Пауза, пока открыта модалка
+        if (this.game) {
+            this.game.pauseGame();
+        }
     }
 
    createBonusModal() {
@@ -419,19 +427,21 @@ activateMultiplier() {
     document.getElementById('bonusAdModalCancel').addEventListener('click', function() {
         const m = document.getElementById('bonusAdModal');
         if (m) m.style.display = 'none';
+        if (self.game) self.game.resumeGame();
     });
     document.getElementById('bonusAdModalCancel').addEventListener('touchend', function(e) {
         e.preventDefault();
         const m = document.getElementById('bonusAdModal');
         if (m) m.style.display = 'none';
+        if (self.game) self.game.resumeGame();
     });
-    
+
     document.getElementById('bonusAdModalConfirm').addEventListener('click', function() {
         const m = document.getElementById('bonusAdModal');
         if (m) {
             const type = m.dataset.bonusType;
             m.style.display = 'none';
-            self.handleAdWatched(type);  // ← ИСПОЛЬЗУЕМ self
+            self.handleAdWatched(type);
         }
     });
     document.getElementById('bonusAdModalConfirm').addEventListener('touchend', function(e) {
@@ -440,30 +450,44 @@ activateMultiplier() {
         if (m) {
             const type = m.dataset.bonusType;
             m.style.display = 'none';
-            self.handleAdWatched(type);  // ← ИСПОЛЬЗУЕМ self
+            self.handleAdWatched(type);
         }
     });
 }
 
 handleAdWatched(type) {
+    const game = this.game;
+
+    // ===== СТАВИМ ПАУЗУ И ФЛАГ РЕКЛАМЫ =====
+    if (game) {
+        game.pauseGame();
+        game.isAdPlaying = true;
+    }
+
+    const finish = () => {
+        if (game) {
+            game.isAdPlaying = false;
+            game.resumeGame();
+        }
+        this.onAdWatched(type);
+    };
+
     // ===== ТЕСТОВЫЙ РЕЖИМ =====
     if (this.testMode) {
-        this.onAdWatched(type);
+        finish();
         return;
     }
-    
+
     // ===== РЕАЛЬНЫЙ VK =====
     if (typeof vkBridge !== 'undefined') {
         vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' })
-            .then(() => {
-                this.onAdWatched(type);
-            })
+            .then(finish)
             .catch((error) => {
                 console.warn('⚠️ Реклама не показана:', error);
-                this.onAdWatched(type);
+                finish();
             });
     } else {
-        this.onAdWatched(type);
+        finish();
     }
 }
 
@@ -562,44 +586,46 @@ updateUI() {
         `;
         
         // ===== КЛИК ПО БОНУСУ =====
-     // ===== КЛИК ПО БОНУСУ =====
-btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    
-    // ===== ЕСЛИ ЕСТЬ БОНУС — ИСПОЛЬЗУЕМ (БЕЗ ПРОВЕРКИ ТАЙМЕРА) =====
-    if (bonus.count > 0) {
-        this.useBonus(type);
-        return;
-    }
-    
-    // ===== БОНУСА НЕТ — ПРОВЕРЯЕМ ТАЙМЕР =====
-    const timer = this.bonusTimers[type] || 0;
-    if (timer > 0) {
-        this.showEffect('⏱ Подождите ' + timer + 'с!', '#ffcc00');
-        return;
-    }
-    
-    // ===== БОНУСА НЕТ И ТАЙМЕРА НЕТ → РЕКЛАМА =====
-    this.showBonusAdModal(type);
-});
+        let lastTouchTime = 0;
 
-btn.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (bonus.count > 0) {
-        this.useBonus(type);
-        return;
-    }
-    
-    const timer = this.bonusTimers[type] || 0;
-    if (timer > 0) {
-        this.showEffect('⏱ Подождите ' + timer + 'с!', '#ffcc00');
-        return;
-    }
-    
-    this.showBonusAdModal(type);
-});
+        const handleBonusClick = (e) => {
+            if (e) {
+                e.stopPropagation();
+            }
+
+            // Если есть бонус — используем
+            if (bonus.count > 0) {
+                this.useBonus(type);
+                return;
+            }
+
+            // Бонуса нет — проверяем таймер
+            const timer = this.bonusTimers[type] || 0;
+            if (timer > 0) {
+                this.showEffect('⏱ Подождите ' + timer + 'с!', '#ffcc00');
+                return;
+            }
+
+            // Бонуса нет и таймера нет → модалка рекламы
+            this.showBonusAdModal(type);
+        };
+
+        btn.addEventListener('click', (e) => {
+            // Если только что был touchend (в течение 500 мс) — click игнорируем,
+            // это синтетический клик от браузера после тача.
+            if (Date.now() - lastTouchTime < 500) {
+                e.stopPropagation();
+                return;
+            }
+            handleBonusClick(e);
+        });
+
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            lastTouchTime = Date.now();
+            handleBonusClick(null);
+        });
         
         // ===== ПРОГРЕСС-БАР =====
         const progressBar = document.createElement('div');
@@ -634,32 +660,36 @@ btn.addEventListener('touchend', (e) => {
     }
 }
 
-    // ===== ПРИМЕНИТЬ ЭФФЕКТЫ =====
+    // ===== ПРИМЕНИТЬ ЭФФЕКТЫ КО ВСЕМ ШАРИКАМ =====
     applyToAllBubbles(bubbles) {
         if (!bubbles) return;
+        const gameSlow = (this.game && this.game.slowFactor) ? this.game.slowFactor : 1;
+
         for (const bubble of bubbles) {
-            if (this.slowMotion) {
-                if (bubble.originalSpeed === undefined) {
-                    bubble.originalSpeed = bubble.speed;
-                }
-                bubble.speed = 0;
-            } else {
-                if (bubble.originalSpeed !== undefined) {
-                    bubble.speed = bubble.originalSpeed;
-                    bubble.originalSpeed = undefined;
-                }
+            if (bubble.originalSpeed === undefined) {
+                bubble.originalSpeed = bubble.speed;
             }
+
+            // Красный бонус — полная остановка всех (включая сердечки)
+            if (this.slowMotion) {
+                bubble.speed = 0;
+                continue;
+            }
+
+            // Обычный режим: базовая скорость × динамическое замедление по серии
+            bubble.speed = bubble.originalSpeed * gameSlow;
         }
     }
 
-    applyEffects(bubble) {
+     applyEffects(bubble) {
+        // Сердечко реагирует только на красный бонус (полная остановка).
+        // Остальные бонусы (магнит, умножение и т.д.) на него не действуют.
         if (this.slowMotion) {
             bubble.originalSpeed = bubble.speed;
             bubble.speed = 0;
         }
         return bubble;
     }
-
     update() {
         if (this.slowMotion) {
             this.slowMotionTimer--;

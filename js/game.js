@@ -37,13 +37,29 @@ if (this.isMobile) {
         this.isProcessing = false;
         this.scorePopups = [];
         
-        this.spawnRate = 20;
+                this.spawnRate = 20;
         this.frame = 0;
         this.isRunning = true;
         this.difficulty = 1;
         
         this.flyingNumbers = [];
-        
+
+        // ===== ЖИЗНИ =====
+        this.lives = 5;
+        this.maxLives = 5;
+        this.isGameOver = false;
+        this.isAdPlaying = false;
+        this.heartBubbleChance = 0.04;
+
+        // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ (по серии) =====
+               
+        this.slowFactor = 1.0;
+        this.targetSlow = 1.0;
+        this.minSlow = 0.4;
+
+        // ===== ПАУЗА =====
+        this.isPaused = false;
+        this.pauseStartedAt = 0;
         // Бонусы
         this.bonusManager = new BonusManager(this);
         
@@ -78,6 +94,19 @@ if (this.isMobile) {
     }
 
 spawnBubble() {
+    // ===== ШАРИК-СЕРДЕЧКО =====
+    // Появляется только если жизней меньше максимума.
+    if (this.lives < this.maxLives && Math.random() < this.heartBubbleChance) {
+        const hb = new Bubble(this.width, this.height);
+        hb.isHeart = true;
+        hb.radius = 22;
+        hb.points = 0;
+        hb.speed = 0.5 + Math.random() * 0.5;
+        hb.hue = 0;
+        this.bonusManager.applyEffects(hb);
+        return hb;
+    }
+
     const types = [
         { radius: 12, points: 10, hue: 320, weight: 15 },
         { radius: 18, points: 7, hue: 200, weight: 20 },
@@ -229,7 +258,34 @@ popBubble(x, y) {
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
         const b = this.bubbles[i];
         if (b.contains(x, y)) {
-            
+
+            // ===== ЛОПАНИЕ СЕРДЕЧКА =====
+            if (b.isHeart) {
+                if (this.lives < this.maxLives) {
+                    this.lives++;
+                    this.updateLivesUI();
+                    sound.heartPop();
+                    this.scorePopups.push({
+                        x: b.x,
+                        y: b.y - 10,
+                        text: '❤️ +1 жизнь',
+                        subtext: '',
+                        life: 60,
+                        maxLife: 60,
+                        hue: 0,
+                        big: true,
+                        customColor: '#ff4477'
+                    });
+                }
+                for (let j = 0; j < 20; j++) {
+                    this.particles.push(new Particle(b.x, b.y, 0, 1.5));
+                }
+                this.bubbles.splice(i, 1);
+                this.lastPopTime = Date.now();
+                popped = true;
+                break;
+            }
+
            if (b.isGolden) {
     this.lastPopTime = Date.now();
     this.combo++;
@@ -399,10 +455,91 @@ if (timeSinceLastPop > currentTimeout && this.lastPopTime > 0) {
         this.bonusManager.currentColor = null;
         this.bonusManager.comboCount = 0;
         challengeTracker.onMiss();
+        this.loseLife();
     }
     
     return popped;
 }
+
+loseLife() {
+    if (this.lives <= 0 || this.isGameOver) return;
+    this.lives--;
+    this.updateLivesUI();
+    if (this.lives <= 0) {
+        this.triggerGameOver();
+    }
+}
+
+triggerGameOver() {
+    this.isGameOver = true;
+    this.isRunning = false;
+    this.showGameOverModal();
+}
+
+    showGameOverModal() {
+        const modal = document.getElementById('exitModal');
+        if (!modal) return;
+
+        const scoreEl = document.getElementById('exitModalScore');
+        const comboEl = document.getElementById('exitModalCombo');
+        const multEl = document.getElementById('exitModalMultiplier');
+        const poppedEl = document.getElementById('exitModalPopped');
+        if (scoreEl) scoreEl.textContent = this.score;
+        if (comboEl) comboEl.textContent = this.maxCombo;
+        if (multEl) multEl.textContent = '×' + this.maxMultiplier;
+        if (poppedEl) poppedEl.textContent = this.totalPopped;
+
+        const title = document.getElementById('exitModalTitle');
+        if (title) title.textContent = '💔 Жизни кончились!';
+
+        // Показать "Продолжить", скрыть "Вернуться" и "Поделиться"
+        const continueBtn = document.getElementById('exitModalContinue');
+        if (continueBtn) continueBtn.style.display = 'block';
+        const backBtn = document.getElementById('exitModalBack');
+        if (backBtn) backBtn.style.display = 'none';
+        const shareBtn = document.getElementById('exitModalShare');
+        if (shareBtn) shareBtn.style.display = 'none';
+
+        modal.style.display = 'flex';
+    }
+
+    // ===== ПАУЗА / РЕЗЮМ =====
+    // pauseGame(): замораживает мир, запоминает время начала паузы
+    // resumeGame(): размораживает мир, сдвигает lastPopTime на длительность паузы,
+    //               чтобы комбо не сгорало за время паузы/рекламы/модалки.
+    pauseGame() {
+        if (this.isPaused) return;
+        this.isPaused = true;
+        this.pauseStartedAt = Date.now();
+    }
+
+    resumeGame() {
+        // Если paused не был — всё равно сдвигаем lastPopTime,
+        // чтобы комбо не сгорело за время рекламы (если lastPopTime валиден).
+        const pausedMs = this.isPaused
+            ? Date.now() - (this.pauseStartedAt || Date.now())
+            : 0;
+
+        this.isPaused = false;
+        this.pauseStartedAt = 0;
+
+        // Комбо не должно сгорать за время паузы
+        if (this.lastPopTime > 0 && pausedMs > 0) {
+            this.lastPopTime += pausedMs;
+        }
+
+        // Жёстко восстанавливаем скорости
+        if (this.bonusManager && this.bonusManager.slowMotion) {
+            this.bonusManager.slowMotion = false;
+            this.bonusManager.slowMotionTimer = 0;
+        }
+        for (const b of this.bubbles) {
+            if (b.originalSpeed !== undefined) {
+                b.speed = b.originalSpeed;
+                b.originalSpeed = undefined;
+            }
+        }
+    }
     
 splitBubble(bubble) {
     // ===== ЗОЛОТОЙ ШАР НЕ РАСПАДАЕТСЯ =====
@@ -504,8 +641,8 @@ popBubbleAt(x, y, isBonus = false) {
         const b = this.bubbles[i];
         if (b.contains(x, y)) {
             
-             // ===== ЗОЛОТОЙ ШАР НЕ ТРОГАЕМ БОНУСАМИ =====
-            if (b.isGolden) {
+                      // ===== ЗОЛОТОЙ ШАР И СЕРДЕЧКО НЕ ТРОГАЕМ БОНУСАМИ =====
+            if (b.isGolden || b.isHeart) {
                 return false;
             }
             // ===== ОБНОВЛЯЕМ ВРЕМЯ ПОСЛЕДНЕГО ЛОПАНИЯ =====
@@ -590,10 +727,21 @@ popBubbleAt(x, y, isBonus = false) {
         }
     }
 
-  update() {
+    update() {
     this.frame++;
     this.difficulty = 1 + this.score / 80;
-    
+
+      // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
+    // combo 0   → множитель 1.0 (обычная скорость)
+    // combo 25+ → множитель 0.4 (мир заметно замедлен)
+    // Плавная интерполяция, чтобы не дёргалось.
+    const SLOW_FULL_AT_COMBO = 30;   // ← сколько комбо до максимума замедления
+    const SLOW_LERP = 0.03;          // ← скорость плавного перехода
+
+    const comboProgress = Math.min(this.combo / SLOW_FULL_AT_COMBO, 1);
+    this.targetSlow = 1.0 - comboProgress * (1.0 - this.minSlow);
+    this.slowFactor += (this.targetSlow - this.slowFactor) * SLOW_LERP;
+
     this.bonusManager.applyToAllBubbles(this.bubbles);
     
    const maxBubbles = this.isMobile ? this.maxBubbles + 5 : 40;
@@ -754,8 +902,23 @@ if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
             p.draw(ctx);
         }
 
-        this.drawPopups(ctx);
-        
+              this.drawPopups(ctx);
+
+        // ===== ВИНЬЕТКА ПРИ ЗАМЕДЛЕНИИ =====
+        // Появляется, когда slowFactor < 0.7 (серия длинная).
+        // Лёгкий синий оттенок по краям — визуальное «мир замирает».
+        if (this.slowFactor < 0.7) {
+            const intensity = (0.7 - this.slowFactor) / 0.3;
+            const vg = ctx.createRadialGradient(
+                w / 2, h / 2, h * 0.3,
+                w / 2, h / 2, h * 0.85
+            );
+            vg.addColorStop(0, 'rgba(0,80,200,0)');
+            vg.addColorStop(1, 'rgba(0,80,200,' + (0.25 * intensity) + ')');
+            ctx.fillStyle = vg;
+            ctx.fillRect(0, 0, w, h);
+        }
+
             for (const fn of this.flyingNumbers) {
         const alpha = fn.life / fn.maxLife;
         const scale = 1 + (1 - alpha) * 0.3;
@@ -774,7 +937,7 @@ if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
         
     }
 
-    getStats() {
+     getStats() {
         return {
             score: this.score,
             combo: this.combo,
@@ -788,6 +951,94 @@ if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
             pendingScore: this.pendingScore,
             multiplier: this.multiplier
         };
+    }
+
+    updateLivesUI() {
+        const canvas = document.getElementById('livesCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const t = Date.now() / 1000;
+
+        // CSS-размеры (страховка — если CSS не применился)
+        const cssWidth = canvas.clientWidth || 68;
+        const cssHeight = canvas.clientHeight || 68;
+
+        // Физический буфер ×2 для резкости
+        if (canvas.width !== cssWidth * 2 || canvas.height !== cssHeight * 2) {
+            canvas.width = cssWidth * 2;
+            canvas.height = cssHeight * 2;
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(2, 2);
+        ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+        // ===== РАЗМЕР СЕРДЦА =====
+        // 0.5 — половина высоты canvas (34 из 68); 26 — потолок для крупных экранов.
+        // Итог: сердце ~26px в маленьком canvas 68×68 — вписывается с запасом.
+        const heartSize = Math.min(cssWidth, cssHeight) * 0.5 * 0.65;
+
+        // Центр canvas — сердце ровно по центру
+        const cx = cssWidth / 2;
+        const cy = cssHeight / 2;
+
+        // Пульс ±8%, 3 рад/сек; без пульса, если жизней 0
+        const pulse = this.lives > 0
+            ? 1 + Math.sin(t * 3) * 0.08
+            : 1;
+
+        // Рисуем сердце
+        this.drawHeart(ctx, cx, cy, heartSize * pulse, this.lives > 0);
+
+        // ===== ЧИСЛО ВНУТРИ СЕРДЦА =====
+        // Белое при lives > 0, полупрозрачное при 0
+        ctx.fillStyle = this.lives > 0 ? '#fff' : 'rgba(255,255,255,0.4)';
+
+        // РАЗМЕР ЧИСЛА: 18px. heartSize=26 → цифра занимает «тело» сердца,
+        // не вылезает за края и не выглядит мелкой.
+        ctx.font = 'bold 18px "Segoe UI", sans-serif';
+
+        // Центрируем число по X и Y
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Тень для читаемости на красном фоне
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 6;
+
+        // СМЕЩЕНИЕ ВНИЗ: 0.25 от размера сердца — попадаем в «тело»,
+        // а не в выемку сверху. 0.25 → чуть ниже центра, ровно в яблочко.
+        ctx.fillText(String(this.lives), cx, cy + heartSize * 0.70);
+
+        // Сброс тени
+        ctx.shadowBlur = 0;
+    }
+    drawHeart(ctx, cx, cy, size, alive) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.3);
+        ctx.bezierCurveTo(0, 0, -size, 0, -size, size * 0.5);
+        ctx.bezierCurveTo(-size, size, 0, size * 1.1, 0, size * 1.4);
+        ctx.bezierCurveTo(0, size * 1.1, size, size, size, size * 0.5);
+        ctx.bezierCurveTo(size, 0, 0, 0, 0, size * 0.3);
+        ctx.closePath();
+
+        if (alive) {
+            const grad = ctx.createRadialGradient(-size * 0.3, -size * 0.3, 1, 0, 0, size * 1.4);
+            grad.addColorStop(0, '#ff8899');
+            grad.addColorStop(1, '#cc2244');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = '#ff4466';
+            ctx.shadowBlur = 12;
+        } else {
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 0;
+        }
+        ctx.fill();
+        if (!alive) ctx.stroke();
+        ctx.restore();
     }
 
     handleTap(x, y) {

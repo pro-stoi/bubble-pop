@@ -351,6 +351,49 @@ bonusPinkEarned() {
         }, 180);
     } catch (e) {}
 }
+       // ========================================
+    // 8.5. ЗВУК СЕРДЕЧКА (волшебное арпеджио)
+    // ========================================
+    heartPop() {
+        if (!this.enabled || !this.ctx) return;
+        try {
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+
+            // Восходящее арпеджио — «магия»
+            const notes = [523, 659, 784, 1046, 1318];
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    this._popTone(freq, 0.12, 0.18);
+                }, i * 70);
+            });
+
+            // «Искры» — короткий высокочастотный шум
+            setTimeout(() => {
+                const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.25, this.ctx.sampleRate);
+                const data = buf.getChannelData(0);
+                for (let i = 0; i < data.length; i++) {
+                    data[i] = (Math.random() * 2 - 1) * 0.05;
+                }
+                const src = this.ctx.createBufferSource();
+                src.buffer = buf;
+                const g = this.ctx.createGain();
+                g.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+                src.connect(g);
+                g.connect(this.ctx.destination);
+                src.start();
+                src.stop(this.ctx.currentTime + 0.25);
+            }, 350);
+        } catch (e) {}
+    }
+
+       // ========================================
+    // 8.6. АЛИАС ДЛЯ СОВМЕСТИМОСТИ (challengeTracker вызывает sound.bonus())
+    // ========================================
+    bonus() {
+        this.bonusHappy();
+    }
+
     // ========================================
     // 9. УПРАВЛЕНИЕ
     // ========================================

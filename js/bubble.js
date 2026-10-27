@@ -57,6 +57,11 @@ if (window.innerWidth < 768) {
 draw(ctx) {
     if (!this.alive) return;
 
+    if (this.isHeart) {
+        this.drawHeartBubble(ctx);
+        return;
+    }
+
     const r = this.radius;
     const x = this.x;
     const y = this.y;
@@ -153,6 +158,45 @@ draw(ctx) {
     ctx.arc(x, y, r - 1, 0, Math.PI * 2);
     ctx.stroke();
 }
+
+     drawHeartBubble(ctx) {
+        const x = this.x;
+        const y = this.y;
+        const r = this.radius;
+        const t = Date.now() / 500;
+        const pulse = 1 + Math.sin(t) * 0.06;
+
+        // Свечение
+        const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 2);
+        glow.addColorStop(0, 'rgba(255,80,120,0.45)');
+        glow.addColorStop(1, 'rgba(255,80,120,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(x, y, r * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Сердце
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(pulse, pulse);
+        ctx.beginPath();
+        const s = r * 0.7;
+        ctx.moveTo(0, s * 0.3);
+        ctx.bezierCurveTo(0, 0, -s, 0, -s, s * 0.5);
+        ctx.bezierCurveTo(-s, s, 0, s * 1.1, 0, s * 1.4);
+        ctx.bezierCurveTo(0, s * 1.1, s, s, s, s * 0.5);
+        ctx.bezierCurveTo(s, 0, 0, 0, 0, s * 0.3);
+        ctx.closePath();
+        const grad = ctx.createRadialGradient(-s * 0.3, -s * 0.3, 1, 0, 0, s * 1.5);
+        grad.addColorStop(0, '#ff99aa');
+        grad.addColorStop(1, '#dd2255');
+        ctx.fillStyle = grad;
+        ctx.shadowColor = '#ff4466';
+        ctx.shadowBlur = 20;
+        ctx.fill();
+        ctx.restore();
+        ctx.shadowBlur = 0;
+    }
 
     contains(x, y) {
         const dx = this.x - x;

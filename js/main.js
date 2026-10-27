@@ -65,8 +65,11 @@ async function startGame() {
             }
         });
         
-        if (isOnUI) return;
-        
+           if (isOnUI) return;
+
+        // Не пропускаем тапы, если игра на паузе, в game over или идёт реклама
+        if (game.isPaused || game.isGameOver || game.isAdPlaying) return;
+
         game.handleTap(x, y);
     }
 
@@ -86,12 +89,18 @@ async function startGame() {
     const exitModalMultiplier = document.getElementById('exitModalMultiplier');
     const exitModalPopped = document.getElementById('exitModalPopped');
 
-    function showExitModal() {
+     function showExitModal() {
         const stats = game.getStats();
         exitModalScore.textContent = stats.score;
         exitModalCombo.textContent = stats.maxCombo;
         exitModalMultiplier.textContent = '×' + stats.maxMultiplier;
         exitModalPopped.textContent = stats.totalPopped;
+
+        const title = document.getElementById('exitModalTitle');
+        if (title) title.textContent = '🏆 ИТОГИ ИГРЫ';
+        const continueBtn = document.getElementById('exitModalContinue');
+        if (continueBtn) continueBtn.style.display = 'none';
+
         exitModal.style.display = 'flex';
     }
 
@@ -99,12 +108,14 @@ async function startGame() {
         exitModal.style.display = 'none';
     }
 
-    // ===== КНОПКА "ДОМИК" =====
+     // ===== КНОПКА "ДОМИК" =====
     document.getElementById('backMenuBtn').addEventListener('click', function() {
+        game.pauseGame();
         showExitModal();
     });
     document.getElementById('backMenuBtn').addEventListener('touchend', function(e) {
         e.preventDefault();
+        game.pauseGame();
         showExitModal();
     });
 
@@ -129,13 +140,76 @@ async function startGame() {
         });
     }
 
-    // ===== КНОПКА "ВЕРНУТЬСЯ" =====
+    // ===== КНОПКА "ПРОДОЛЖИТЬ" (после game over за рекламу) =====
+    async function handleContinueFromGameOver() {
+        hideExitModal();
+        game.isAdPlaying = true;
+
+        try {
+            if (typeof vkBridge !== 'undefined') {
+                await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' });
+            }
+        } catch (e) {
+            console.warn('⚠️ Реклама не показана:', e);
+        }
+
+        game.isAdPlaying = false;
+
+        // Восстанавливаем состояние игры
+        game.lives = game.maxLives;
+        game.isGameOver = false;
+        game.isRunning = true;
+        game.combo = 0;
+        game.multiplier = 1;
+        game.slowFactor = 1.0;
+        game.targetSlow = 1.0;
+
+        // Жёстко снимаем паузу и восстанавливаем скорости
+        game.isPaused = false;
+        game.pauseStartedAt = 0;
+        if (game.bonusManager && game.bonusManager.slowMotion) {
+            game.bonusManager.slowMotion = false;
+            game.bonusManager.slowMotionTimer = 0;
+        }
+        for (const b of game.bubbles) {
+            if (b.originalSpeed !== undefined) {
+                b.speed = b.originalSpeed;
+                b.originalSpeed = undefined;
+            }
+        }
+
+        // Точка отсчёта комбо — «сейчас», чтобы не сгорело
+        game.lastPopTime = Date.now();
+
+        game.updateLivesUI();
+
+        const title = document.getElementById('exitModalTitle');
+        if (title) title.textContent = '🏆 ИТОГИ ИГРЫ';
+        const continueBtn = document.getElementById('exitModalContinue');
+        if (continueBtn) continueBtn.style.display = 'none';
+        const backBtn = document.getElementById('exitModalBack');
+        if (backBtn) backBtn.style.display = '';
+        const shareBtn = document.getElementById('exitModalShare');
+        if (shareBtn) shareBtn.style.display = '';
+
+        sound.bonusHappy();
+    }
+
+    document.getElementById('exitModalContinue').addEventListener('click', handleContinueFromGameOver);
+    document.getElementById('exitModalContinue').addEventListener('touchend', function(e) {
+        e.preventDefault();
+        handleContinueFromGameOver();
+    });
+
+     // ===== КНОПКА "ВЕРНУТЬСЯ" =====
     document.getElementById('exitModalBack').addEventListener('click', function() {
         hideExitModal();
+        game.resumeGame();
     });
     document.getElementById('exitModalBack').addEventListener('touchend', function(e) {
         e.preventDefault();
         hideExitModal();
+        game.resumeGame();
     });
 
     // ===== КНОПКА "ПОДЕЛИТЬСЯ" =====
@@ -189,9 +263,12 @@ async function startGame() {
     });
 
     // ===== ИГРОВОЙ ЦИКЛ =====
-    function gameLoop() {
-        game.update();
+       function gameLoop() {
+        if (!game.isAdPlaying && !game.isGameOver && !game.isPaused) {
+            game.update();
+        }
         game.draw();
+        game.updateLivesUI();
         
         if (pendingEl) {
             pendingEl.textContent = '+'.concat(game.pendingScore);

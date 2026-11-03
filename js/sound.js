@@ -13,6 +13,7 @@ class SoundGenerator {
         if (saved === 'false') {
             this.enabled = false;
         }
+        console.log('🔊 [SOUND] enabled =', this.enabled);
     }
 
     // ========================================
@@ -418,22 +419,15 @@ bonusPinkEarned() {
 
 const sound = new SoundGenerator();
 
+// sound.js — замените
 window.toggleSoundGlobal = function() {
+    if (typeof audioManager !== 'undefined') {
+        return audioManager.toggle();  // единый переключатель
+    }
     sound.toggle();
     return sound.enabled;
 };
 
-window.updateSoundIcon = function() {
-    const icons = document.querySelectorAll('.sound-icon');
-    const labels = document.querySelectorAll('.sound-label');
-    const enabled = localStorage.getItem('bubbleSound') !== 'false';
-    icons.forEach(el => {
-        if (el) el.textContent = enabled ? '🔊' : '🔇';
-    });
-    labels.forEach(el => {
-        if (el) el.textContent = enabled ? 'ВКЛ' : 'ВЫКЛ';
-    });
-};
 
 document.addEventListener('touchstart', () => {
     sound.resume();

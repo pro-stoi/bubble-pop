@@ -65,6 +65,8 @@ addBonusesFromDB(bonuses) {
         }
     });
     this.updateUI();
+    
+   
 }
 
     // ===== ОБРАБОТКА ЛОПАНИЯ ПУЗЫРЬКА (ВРУЧНУЮ) =====

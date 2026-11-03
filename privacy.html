@@ -112,7 +112,26 @@
         <h2>10. Заключительные положения</h2>
         <p>Настоящая Политика составлена в соответствии с требованиями Федерального закона № 152-ФЗ «О персональных данных». В случае возникновения вопросов рекомендуется обратиться к Оператору по контактам, указанным в разделе 1.</p>
 
-        <a href="index.html" class="back-btn">← Вернуться в игру</a>
+        <button class="back-btn" id="backToGameBtn">← Вернуться в игру</button>
     </div>
+    
+    <script>
+    document.getElementById('backToGameBtn').addEventListener('click', function() {
+        // Пытаемся закрыть вкладку
+        window.close();
+
+        // Если браузер не дал закрыть (вкладка открыта вручную, не через window.open) —
+        // пробуем вернуться назад по истории
+        setTimeout(function() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                // Крайний случай — просто уходим на index.html
+                // (но это откроет новую копию, поэтому только если совсем никак)
+                window.location.href = 'index.html';
+            }
+        }, 100);
+    });
+</script>
 </body>
 </html>

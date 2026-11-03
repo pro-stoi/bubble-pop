@@ -43,25 +43,32 @@
             </table>
         </div>
     </div>
-
     <!-- ===== АУДИО МЕНЕДЖЕР ===== -->
-<script src="js/audioManager.js"></script>
+    <script src="js/audioManager.js"></script>
     <!-- ===== АУДИО ===== -->
-<audio id="bgMusic" loop preload="auto">
-    <source src="audio/menu.mp3" type="audio/mpeg">
-</audio>
+    <audio id="bgMusic" loop preload="auto">
+        <source src="audio/menu.mp3" type="audio/mpeg">
+    </audio>
 
-    
-<script>
-    console.log('🔴🔴🔴 HTML ЗАГРУЖЕН! 🔴🔴🔴');
-    console.log('Текущее время:', new Date());
-</script>
+    <!-- ===== ССЫЛКА НА ПОЛИТИКУ КОНФИДЕНЦИАЛЬНОСТИ ===== -->
+    <div style="position:fixed;bottom:4px;left:0;right:0;text-align:center;z-index:100;pointer-events:auto;">
+        <a href="privacy.html" target="_blank" style="font-size:10px;color:rgba(255,255,255,0.25);text-decoration:underline;">
+            Политика конфиденциальности
+        </a>
+    </div>
+    <!-- ================================================== -->
+
+    <script>
+        console.log('🔴🔴🔴 HTML ЗАГРУЖЕН! 🔴🔴🔴');
+        console.log('Текущее время:', new Date());
+    </script>
+
     <!-- ===== НОВАЯ СИСТЕМА ===== -->
     <script src="js/core/api.js"></script>
     <script src="js/core/dataMapper.js"></script>
     <script src="js/core/dataStore.js"></script>
     <script src="js/core/repository.js"></script>
-    
+
     <script src="js/nav.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/stats.js"></script>

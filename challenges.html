@@ -1,64 +1,24 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>Испытания 🏆</title>
-    <link rel="stylesheet" href="css/style.css" />
-    <link rel="stylesheet" href="css/challenges.css" />
-    
-    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
-</head>
-<body>
-    <div class="challenges-container">
-        <!-- Шапка -->
-        <div class="challenges-header">
-            <h1>🏆 ИСПЫТАНИЯ</h1>
-            <div class="challenges-header-right">
-                <span class="total-rewards" id="totalRewardsDisplay">⭐ 0</span>
-                <button class="game-btn back-btn" id="backBtnChallenges">
-                    <span>🏠</span>
-                </button>
-                <button class="game-btn sound-btn" id="soundToggleChallenges">
-                    <span class="sound-icon">🔊</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Таблица -->
-        <div class="challenges-table-wrapper">
-            <table class="challenges-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Иконка</th>
-                        <th>Название</th>
-                        <th>Прогресс</th>
-                        <th>Награда</th>
-                        <th>Уровень</th>
-                    </tr>
-                </thead>
-                <tbody id="challengesBody">
-                    <tr><td colspan="6" class="challenges-empty">⏳ Загрузка...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
     <!-- ===== АУДИО МЕНЕДЖЕР ===== -->
-<script src="js/audioManager.js"></script>
+    <script src="js/audioManager.js"></script>
     <!-- ===== АУДИО ===== -->
-<audio id="bgMusic" loop preload="auto">
-    <source src="audio/menu.mp3" type="audio/mpeg">
-</audio>
+    <audio id="bgMusic" loop preload="auto">
+        <source src="audio/menu.mp3" type="audio/mpeg">
+    </audio>
 
-    
+    <!-- ===== ССЫЛКА НА ПОЛИТИКУ КОНФИДЕНЦИАЛЬНОСТИ ===== -->
+    <div style="position:fixed;bottom:4px;left:0;right:0;text-align:center;z-index:100;pointer-events:auto;">
+        <a href="privacy.html" target="_blank" style="font-size:10px;color:rgba(255,255,255,0.25);text-decoration:underline;">
+            Политика конфиденциальности
+        </a>
+    </div>
+    <!-- ================================================== -->
+
     <!-- ===== НОВАЯ СИСТЕМА ===== -->
     <script src="js/core/api.js"></script>
     <script src="js/core/dataMapper.js"></script>
     <script src="js/core/dataStore.js"></script>
     <script src="js/core/repository.js"></script>
-    
+
     <script src="js/nav.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/stats.js"></script>

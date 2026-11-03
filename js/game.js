@@ -1,332 +1,1118 @@
-// js/tutorial.js
+class Game {
+    constructor(canvas) {
+        
+        // ===== ОПРЕДЕЛЯЕМ МОБИЛЬНОЕ УСТРОЙСТВО =====
+this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
-console.log('🎓 [TUTORIAL] Файл загружен');
-
-class TutorialManager {
-    constructor() {
-        this.isActive = false;
-        this.currentStep = 0;
-        this.overlay = null;      // полупрозрачный оверлей
-        this.modal = null;        // модалка с кнопкой
-        this.arrow = null;        // стрелка на бонус
-        this.checkInterval = null;
-        this.bonusWasActive = false;
-        this.waitingForBonusClick = false;
-    }
-
-    shouldShowTutorial() {
-        return !localStorage.getItem('tutorialDone');
-    }
-
-    // ===== ЗАПУСК =====
-    start() {
-        if (this.isActive) return;
-        this.isActive = true;
-        this.currentStep = 0;
-        this.bonusWasActive = false;
-
-        console.log('🎓 [TUTORIAL] Старт');
-        this.showWelcomeModal();
-    }
-
-    // ===== ШАГ 1: МОДАЛКА С КНОПКОЙ "ПРОДОЛЖИТЬ" =====
-    showWelcomeModal() {
-        const old = document.getElementById('tutorialModal');
-        if (old) old.remove();
-
-        this.modal = document.createElement('div');
-        this.modal.id = 'tutorialModal';
-        this.modal.className = 'exit-modal';
-        this.modal.style.cssText = `
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        `;
-        this.modal.innerHTML = `
-            <div style="
-                background: rgba(20, 20, 50, 0.95);
-                border-radius: 24px;
-                padding: 28px 24px;
-                max-width: 340px;
-                width: 90%;
-                border: 1px solid rgba(255, 215, 0, 0.25);
-                box-shadow: 0 0 60px rgba(255, 215, 0, 0.15);
-                text-align: center;
-                box-sizing: border-box;
-            ">
-                <div style="
-                    font-size: clamp(16px, 4.5vw, 19px);
-                    font-weight: 700;
-                    color: #ffcc00;
-                    line-height: 1.5;
-                    margin-bottom: 20px;
-                    letter-spacing: 0.5px;
-                ">
-                    🎯 Набери зелёный бонус —<br>
-                    лопни 8 зелёных пузырьков подряд
-                </div>
-                <button id="tutorialContinueBtn" style="
-                    width: 100%;
-                    padding: 14px 20px;
-                    border: none;
-                    border-radius: 16px;
-                    font-size: clamp(14px, 4vw, 16px);
-                    font-weight: 700;
-                    cursor: pointer;
-                    touch-action: manipulation;
-                    background: linear-gradient(135deg, #ffcc00, #f0a500);
-                    color: #1a1a2a;
-                    box-shadow: 0 0 30px rgba(255, 200, 0, 0.3);
-                ">
-                    ▶ Продолжить
-                </button>
-            </div>
-        `;
-        document.body.appendChild(this.modal);
-
-        const btn = document.getElementById('tutorialContinueBtn');
-        const handler = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.hideWelcomeModal();
-            this.goToStep2();
-        };
-        btn.addEventListener('click', handler);
-        btn.addEventListener('touchend', handler);
-    }
-
-    hideWelcomeModal() {
-        if (this.modal) {
-            this.modal.remove();
-            this.modal = null;
-        }
-    }
-
-    // ===== ШАГ 2: ЖДЁМ, ПОКА НАБЕРЁТСЯ ЗЕЛЁНЫЙ БОНУС =====
-    goToStep2() {
-        this.currentStep = 2;
-        console.log('🎓 [TUTORIAL] Шаг 2: ждём зелёный бонус');
-        this.startWatcher();
-    }
-
-    // ===== ШАГ 3: СТРЕЛКА НА БОНУС =====
-showArrowToBonus() {
-    this.currentStep = 3;
-
-    const old = document.getElementById('tutorialArrow');
-    if (old) old.remove();
-
-    this.arrow = document.createElement('div');
-    this.arrow.id = 'tutorialArrow';
-    this.arrow.style.cssText = `
-        position: fixed;
-        z-index: 1001;
-        pointer-events: none;
-        font-size: 40px;
-        animation: arrowBounce 0.8s ease-in-out infinite;
-    `;
-    document.body.appendChild(this.arrow);
-
-    this.positionArrow();
-    window.addEventListener('resize', () => this.positionArrow());
+// ===== НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ =====
+if (this.isMobile) {
+    this.maxBubbles = 20;        // максимум шаров
+    this.spawnRateMin = 15;      // мин. спавн
+    this.spawnRateMax = 40;      // макс. спавн
+    this.speedMultiplier = 0.6;  // скорость шаров
+} else {
+    this.maxBubbles = 35;
+    this.spawnRateMin = 8;
+    this.spawnRateMax = 25;
+    this.speedMultiplier = 1.0;
 }
+        
+        
+        
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        
+        this.bubbles = [];
+        this.particles = [];
+        this.score = 0;
+        this.combo = 0;
+        this.maxCombo = 0;
+        this.totalPopped = 0;
+        
+        this.pendingScore = 0;
+        this.multiplier = 1;
+        this.maxMultiplier = 1; 
+        this.lastPopTime = 0;
+        this.comboTimeout = 3000;
+        this.isProcessing = false;
+        this.scorePopups = [];
+        
+                this.spawnRate = 20;
+        this.frame = 0;
+        this.isRunning = true;
+        this.difficulty = 1;
+        
+        this.flyingNumbers = [];
 
-positionArrow() {
-    if (!this.arrow) return;
-    const container = document.getElementById('bonusContainer');
-    if (!container) {
-        this.arrow.style.display = 'none';
-        return;
+        // ===== ЖИЗНИ =====
+        this.lives = 5;
+        this.maxLives = 5;
+        this.isGameOver = false;
+        this.isAdPlaying = false;
+        this.heartBubbleChance = 0.04;
+
+        // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ (по серии) =====
+               
+        this.slowFactor = 1.0;
+        this.targetSlow = 1.0;
+        this.minSlow = 0.4;
+
+        // ===== ПАУЗА =====
+        this.isPaused = false;
+        this.pauseStartedAt = 0;
+        // Бонусы
+        this.bonusManager = new BonusManager(this);
+        
+        // Испытания
+        challengeTracker.newGame();
+        
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        
+        this.bonusManager.updateUI();
+        
+         // =====  ОТПРАВКА В ТОП ПРИ ЗАВЕРШЕНИИ =====
+    // Сохраняем результат при выходе
+    this._originalSaveResult = this.saveGameResult.bind(this);
+    this.saveGameResult = this.saveGameResult.bind(this);
+        
+          if (typeof statsManager === 'undefined') {
+        
+    } else {
+        
+    }
+        
+        
+        
     }
 
-    // Ищем кнопку зелёного бонуса
-    let greenBtn = null;
-    for (const btn of container.querySelectorAll('.bonus-btn')) {
-        if (btn.dataset.type === 'green') {
-            greenBtn = btn;
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+    }
+
+spawnBubble() {
+    // ===== ШАРИК-СЕРДЕЧКО =====
+    // Появляется только если жизней меньше максимума.
+    if (this.lives < this.maxLives && Math.random() < this.heartBubbleChance) {
+        const hb = new Bubble(this.width, this.height);
+        hb.isHeart = true;
+        hb.radius = 22;
+        hb.points = 0;
+        hb.speed = 0.5 + Math.random() * 0.5;
+        hb.hue = 0;
+        this.bonusManager.applyEffects(hb);
+        return hb;
+    }
+
+    const types = [
+        { radius: 12, points: 10, hue: 320, weight: 15 },
+        { radius: 18, points: 7, hue: 200, weight: 20 },
+        { radius: 26, points: 4, hue: 120, weight: 25 },
+        { radius: 36, points: 2, hue: 45, weight: 25 },
+        { radius: 50, points: 1, hue: 0, weight: 15 }
+    ];
+    
+    let totalWeight = types.reduce((s, t) => s + t.weight, 0);
+    let rand = Math.random() * totalWeight;
+    let chosen = types[0];
+    for (const t of types) {
+        rand -= t.weight;
+        if (rand <= 0) {
+            chosen = t;
             break;
         }
     }
-    if (!greenBtn) {
-        this.arrow.style.display = 'none';
-        return;
-    }
-
-    const rect = greenBtn.getBoundingClientRect();
-    this.arrow.style.display = 'block';
-    // 👈 — смотрит ВЛЕВО, прямо на кнопку бонуса
-    this.arrow.textContent = '👈';
-    this.arrow.style.left = (rect.right + 8) + 'px';
-    this.arrow.style.top = (rect.top + rect.height / 2 - 20) + 'px';
+    
+    const b = new Bubble(this.width, this.height);
+    b.radius = chosen.radius + (Math.random() - 0.5) * 6;
+    b.points = chosen.points;
+    b.hue = chosen.hue + (Math.random() - 0.5) * 20;
+    b.type = chosen;
+    // ===== СКОРОСТЬ ДЛЯ МОБИЛЬНЫХ =====
+if (this.isMobile) {
+    b.speed *= this.speedMultiplier;
 }
-
-    hideArrow() {
-        if (this.arrow) {
-            this.arrow.remove();
-            this.arrow = null;
-        }
+    
+    
+    
+    // ===== ШАРИКИ СПАВНЯТСЯ НИЖЕ ГРАНИЦЫ =====
+    const topBoundary = 70;
+    if (b.y < topBoundary + b.radius) {
+        b.y = topBoundary + b.radius + Math.random() * 50;
     }
-
-    // ===== ШАГ 4: ЖДЁМ, ПОКА ПОЛЬЗОВАТЕЛЬ НАЖМЁТ НА БОНУС =====
-waitForBonusClick() {
-    this.waitingForBonusClick = true;
-
-    // capture: true — ловим событие ДО stopPropagation() в bonus.js
-    const captureHandler = (e) => {
-        if (!this.waitingForBonusClick) return;
-        const btn = e.target.closest('.bonus-btn');
-        if (btn && btn.dataset.type === 'green') {
-            this.waitingForBonusClick = false;
-            document.removeEventListener('click', captureHandler, true);
-            document.removeEventListener('touchend', captureHandler, true);
-            this.hideArrow();
-            setTimeout(() => this.goToStep5(), 100);
-        }
-    };
-    document.addEventListener('click', captureHandler, true);
-    document.addEventListener('touchend', captureHandler, true);
+    // ==========================================
+    
+    this.bonusManager.applyEffects(b);
+    return b;
 }
+// game.js
 
-    // ===== ШАГ 5: ПОЛУПРОЗРАЧНЫЙ ОВЕРЛЕЙ "ЛОПНИ ПУЗЫРЁК" =====
-    goToStep5() {
-        this.currentStep = 5;
-        this.hideArrow();
-
-        // Проверяем, что бонус реально активировал режим выбора цвета
-        if (typeof bonusManager === 'undefined' || !bonusManager.isSelectingColor()) {
-            console.log('🎓 [TUTORIAL] Режим выбора цвета не активен — завершаем');
-            this.finish();
-            return;
-        }
-
-        this.createOverlay();
-        this.waitForBubblePop();
+spawnGoldenBubble() {
+    let goldenCount = 0;
+    for (let i = 0; i < this.bubbles.length; i++) {
+        if (this.bubbles[i].isGolden) goldenCount++;
     }
-
-createOverlay() {
-    const old = document.getElementById('tutorialOverlay');
-    if (old) old.remove();
-
-    this.overlay = document.createElement('div');
-    this.overlay.id = 'tutorialOverlay';
-    // Только лёгкое затемнение, без текста — текст уже показывает bonus.js через showEffect
-    this.overlay.style.cssText = `
-        position: fixed;
-        inset: 0;
-        z-index: 5;
-        pointer-events: none;
-        background: rgba(0, 0, 0, 0.35);
-    `;
-    document.body.appendChild(this.overlay);
+    if (goldenCount >= 3) return;
+    
+    const b = new Bubble(this.width, this.height);
+    b.isGolden = true;
+    b.radius = 25 + Math.random() * 15;
+    b.x = 50 + Math.random() * (this.width - 100);
+    b.y = this.height + b.radius + Math.random() * 100;
+    
+    b.speed = this.isMobile 
+    ? 0.8 + Math.random() * 0.8 
+    : 1.2 + Math.random() * 1.5;
+    
+    b.hue = 45;
+    b.saturation = 95;
+    b.lightness = 60;
+    b.points = 100;
+    b.goldenChildren = 5 + Math.floor(Math.random() * 6);
+    
+    this.bubbles.push(b);
 }
+    
+  // game.js
 
-    hideOverlay() {
-        if (this.overlay) {
-            this.overlay.remove();
-            this.overlay = null;
-        }
+popGoldenBubble(goldenBubble) {
+    // ===== 100 ОЧКОВ =====
+    this.pendingScore += 100;
+    this.score += 100;
+    
+    // ===== ВСПЛЫВАЮЩАЯ НАДПИСЬ =====
+    this.scorePopups.push({
+        x: goldenBubble.x,
+        y: goldenBubble.y - 30,
+        text: '⭐ +100',
+        subtext: 'ЗОЛОТОЙ ШАР!',
+        life: 70,
+        maxLife: 70,
+        hue: 45,
+        big: true,
+        customColor: '#ffd700'
+    });
+    
+    // ===== ЧАСТИЦЫ (золотые) - ИСПРАВЛЕНО! =====
+    for (let i = 0; i < 30; i++) {
+        const p = new Particle(goldenBubble.x, goldenBubble.y, 45, 1);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed - 2;
+        p.radius = 2 + Math.random() * 4;
+        p.hue = 45 + (Math.random() - 0.5) * 20;
+        p.life = 40 + Math.random() * 30;
+        p.maxLife = 70;
+        p.gravity = 0.06;
+        this.particles.push(p);
     }
+    
+    // ===== СОЗДАЁМ 5-10 СЛУЧАЙНЫХ ШАРОВ =====
+    const count = 8 + Math.floor(Math.random() * 8);
+    const colors = ['red', 'yellow', 'green', 'blue', 'pink'];
+    const hueMap = { 'red': 0, 'yellow': 45, 'green': 120, 'blue': 200, 'pink': 320 };
+    
+    for (let i = 0; i < Math.min(count, 40 - this.bubbles.length); i++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const newBubble = new Bubble(this.width, this.height);
+        newBubble.radius = 15 + Math.random() * 25;
+        newBubble.hue = hueMap[color] + (Math.random() - 0.5) * 20;
+        if (newBubble.hue < 0) newBubble.hue += 360;
+        if (newBubble.hue >= 360) newBubble.hue -= 360;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 30 + Math.random() * 60;
+        newBubble.x = goldenBubble.x + Math.cos(angle) * distance;
+        newBubble.y = goldenBubble.y + Math.sin(angle) * distance;
+        newBubble.speed = 0.3 + Math.random() * 0.5;
+        newBubble.points = Math.floor(Math.random() * 3) + 1;
+        
+        if (newBubble.x < newBubble.radius) newBubble.x = newBubble.radius;
+        if (newBubble.x > this.width - newBubble.radius) newBubble.x = this.width - newBubble.radius;
+        if (newBubble.y < newBubble.radius) newBubble.y = newBubble.radius;
+        
+        this.bubbles.push(newBubble);
+    }
+    
+    // ===== ЗВУК =====
+    sound.bonusHappy();
+}
+   // ===== ДИНАМИЧЕСКОЕ ВРЕМЯ СБРОСА КОМБО =====
+getComboTimeout() {
+    const minTimeout = 2000;   // минимальное время (при ×20)
+    const maxTimeout = 4000;   // максимальное время (при ×1)
+    const maxMultiplier = 20;
+    
+    // Чем больше множитель, тем меньше время
+    const progress = (this.multiplier - 1) / (maxMultiplier - 1);
+    const timeout = maxTimeout - progress * (maxTimeout - minTimeout);
+    
+    return Math.round(timeout);
+} 
+popBubble(x, y) {
+    let popped = false;
+    for (let i = this.bubbles.length - 1; i >= 0; i--) {
+        const b = this.bubbles[i];
+        if (b.contains(x, y)) {
 
-    // ===== ЖДЁМ ЛОПАНИЯ ПУЗЫРЬКА =====
-    waitForBubblePop() {
-        // Слушаем на канвасе — когда пользователь лопает, game.handleTap → popBubble
-        // Проще всего: интервал, который проверяет isSelectingColor
-        const check = setInterval(() => {
-            if (typeof bonusManager === 'undefined') return;
-
-            // Бонус сработал → режим выбора цвета выключился
-            if (!bonusManager.isSelectingColor()) {
-                clearInterval(check);
-                this.hideOverlay();
-                this.finish();
+            // ===== ЛОПАНИЕ СЕРДЕЧКА =====
+            if (b.isHeart) {
+                if (this.lives < this.maxLives) {
+                    this.lives++;
+                    this.updateLivesUI();
+                    sound.heartPop();
+                    this.scorePopups.push({
+                        x: b.x,
+                        y: b.y - 10,
+                        text: '❤️ +1 жизнь',
+                        subtext: '',
+                        life: 60,
+                        maxLife: 60,
+                        hue: 0,
+                        big: true,
+                        customColor: '#ff4477'
+                    });
+                }
+                for (let j = 0; j < 20; j++) {
+                    this.particles.push(new Particle(b.x, b.y, 0, 1.5));
+                }
+                this.bubbles.splice(i, 1);
+                this.lastPopTime = Date.now();
+                popped = true;
+                
+                if (typeof tutorialManager !== 'undefined' && tutorialManager.isActive) {
+    tutorialManager.onBubblePopped(b, this);
+}
+                break;
             }
-        }, 100);
 
-        // Таймаут-предохранитель на 60 секунд
-        setTimeout(() => {
-            clearInterval(check);
-            this.hideOverlay();
-            this.finish();
-        }, 60000);
+           if (b.isGolden) {
+    this.lastPopTime = Date.now();
+    this.combo++;
+    if (this.combo > this.maxCombo) {
+        this.maxCombo = this.combo;
     }
+    
+    // ===== МНОЖИТЕЛЬ РАБОТАЕТ! =====
+    const bonusMultiplier = this.bonusManager.getMultiplier();
+    const earned = 100 * this.multiplier * bonusMultiplier;
+    this.pendingScore += earned;
+    
+    this.scorePopups.push({
+        x: b.x,
+        y: b.y - 30,
+        text: `⭐ +${earned}`,
+        subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
+        life: 70,
+        maxLife: 70,
+        hue: 45,
+        big: true,
+        customColor: '#ffd700'
+    });
+    
+    // Частицы (золотые)
+    for (let j = 0; j < 30; j++) {
+        const p = new Particle(b.x, b.y, 45, 1);
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 6;
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed - 2;
+        p.radius = 2 + Math.random() * 4;
+        p.hue = 45 + (Math.random() - 0.5) * 20;
+        p.life = 40 + Math.random() * 30;
+        p.maxLife = 70;
+        p.gravity = 0.06;
+        this.particles.push(p);
+    }
+    
+    // 8-15 случайных шаров
+    const count = 8 + Math.floor(Math.random() * 8);
+    const colors = ['red', 'yellow', 'green', 'blue', 'pink'];
+    const hueMap = { 'red': 0, 'yellow': 45, 'green': 120, 'blue': 200, 'pink': 320 };
+    
+    for (let j = 0; j < Math.min(count, 40 - this.bubbles.length); j++) {
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const newBubble = new Bubble(this.width, this.height);
+        newBubble.radius = 15 + Math.random() * 25;
+        newBubble.hue = hueMap[color] + (Math.random() - 0.5) * 20;
+        if (newBubble.hue < 0) newBubble.hue += 360;
+        if (newBubble.hue >= 360) newBubble.hue -= 360;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 30 + Math.random() * 60;
+        newBubble.x = b.x + Math.cos(angle) * distance;
+        newBubble.y = b.y + Math.sin(angle) * distance;
+        newBubble.speed = 0.3 + Math.random() * 0.5;
+        newBubble.points = Math.floor(Math.random() * 3) + 1;
+        
+        if (newBubble.x < newBubble.radius) newBubble.x = newBubble.radius;
+        if (newBubble.x > this.width - newBubble.radius) newBubble.x = this.width - newBubble.radius;
+        if (newBubble.y < newBubble.radius) newBubble.y = newBubble.radius;
+        
+        this.bubbles.push(newBubble);
+    }
+    
+    this.bubbles.splice(i, 1);
+    this.totalPopped++;
+    sound.bonusHappy();
+    return true;
+}
+            
+          const now = Date.now();
+const timeSinceLastPop = now - this.lastPopTime;
+const currentTimeout = this.getComboTimeout();
 
-    // ===== НАБЛЮДАТЕЛЬ (ждём зелёный бонус) =====
-    startWatcher() {
-        if (this.checkInterval) clearInterval(this.checkInterval);
-
-        this.checkInterval = setInterval(() => {
-            if (!this.isActive) return;
-
-            // Шаг 2: ждём, пока наберётся зелёный бонус
-            if (this.currentStep === 2) {
-                if (typeof bonusManager !== 'undefined' && bonusManager) {
-                    const greenCount = bonusManager.bonuses['green'].count || 0;
-                    if (greenCount > 0) {
-                        clearInterval(this.checkInterval);
-                        console.log('🎓 [TUTORIAL] Зелёный бонус набран!');
-                        this.showArrowToBonus();
-                        this.waitForBonusClick();
-                    }
+if (timeSinceLastPop > currentTimeout && this.lastPopTime > 0) {
+    console.log('⏰ ТАЙМАУТ! Сбрасываем серию (таймаут:', currentTimeout, 'мс)');
+    sound.comboReset();
+    this.combo = 0;
+    this.multiplier = 1;
+    this.flushScore();
+}
+            
+            this.combo++;
+            if (this.combo > this.maxCombo) {
+                this.maxCombo = this.combo;
+            }
+            
+            if (this.combo <= 3) this.multiplier = this.combo;
+            else if (this.combo <= 6) this.multiplier = 3 + Math.floor((this.combo - 3) / 2);
+            else this.multiplier = 5 + Math.floor((this.combo - 6) / 3);
+            this.multiplier = Math.min(this.multiplier, 20);
+            
+            const bonusMultiplier = this.bonusManager.getMultiplier();
+            const points = b.points || 1;
+            const earned = points * this.multiplier * bonusMultiplier;
+            this.pendingScore += earned;
+            this.lastPopTime = now;
+            
+            // ===== ЗВУК =====
+            var colorTypeSound = this.bonusManager.getColorType(b.hue);
+            
+            if (this.combo > 1) {
+                if (colorTypeSound) {
+                    sound.popByColorWithCombo(colorTypeSound, this.combo, 0.3);
+                } else {
+                    var pitch = 600 + b.points * 60 + this.combo * 20;
+                    sound.pop(pitch, 0.15, 0.3);
+                }
+            } else {
+                if (colorTypeSound) {
+                    sound.popByColor(colorTypeSound, 0.3);
+                } else {
+                    var pitch = 600 + b.points * 60;
+                    sound.pop(pitch, 0.15, 0.3);
                 }
             }
-        }, 200);
+            
+            this.scorePopups.push({
+                x: b.x,
+                y: b.y - 10,
+                text: `+${earned}`,
+                subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
+                life: 60,
+                maxLife: 60,
+                hue: b.hue
+            });
+            
+            const count = 8 + Math.floor(Math.random() * 12) + Math.floor(this.combo / 3);
+            for (let j = 0; j < count; j++) {
+                this.particles.push(new Particle(b.x, b.y, b.hue, 1 + this.combo * 0.05));
+            }
+            
+            this.bonusManager.onBubblePopped(b);
+            
+            const colorType = this.bonusManager.getColorType(b.hue);
+            if (colorType) {
+                statsManager.onBubblePopped(colorType);
+            }
+            statsManager.onCombo(this.combo);
+            statsManager.onScore(this.score);
+            
+            challengeTracker.onBubblePopped(b, this);
+            
+            if (this.combo >= 10 && this.combo % 10 === 0) {
+                challengeTracker.onCombo(this.combo);
+            }
+            
+            this.bubbles.splice(i, 1);
+            this.totalPopped++;
+            popped = true;
+            
+            this.splitBubble(b);
+            
+            break;
+        }
+    }
+    
+    if (!popped) {
+        console.log('❌ ПРОМАХ!');
+        sound.missSound();
+        this.combo = 0;
+        this.multiplier = 1;
+        this.flushScore();
+        this.bonusManager.resetCounters();
+        this.bonusManager.currentColor = null;
+        this.bonusManager.comboCount = 0;
+        challengeTracker.onMiss();
+        this.loseLife();
+    }
+    
+    return popped;
+}
+
+loseLife() {
+    if (this.lives <= 0 || this.isGameOver) return;
+    this.lives--;
+    this.updateLivesUI();
+    if (this.lives <= 0) {
+        this.triggerGameOver();
+    }
+}
+
+triggerGameOver() {
+    this.isGameOver = true;
+    this.isRunning = false;
+    this.showGameOverModal();
+}
+
+    showGameOverModal() {
+        const modal = document.getElementById('exitModal');
+        if (!modal) return;
+
+        const scoreEl = document.getElementById('exitModalScore');
+        const comboEl = document.getElementById('exitModalCombo');
+        const multEl = document.getElementById('exitModalMultiplier');
+        const poppedEl = document.getElementById('exitModalPopped');
+        if (scoreEl) scoreEl.textContent = this.score;
+        if (comboEl) comboEl.textContent = this.maxCombo;
+        if (multEl) multEl.textContent = '×' + this.maxMultiplier;
+        if (poppedEl) poppedEl.textContent = this.totalPopped;
+
+        const title = document.getElementById('exitModalTitle');
+        if (title) title.textContent = '💔 Жизни кончились!';
+
+        // Показать "Продолжить", скрыть "Вернуться" и "Поделиться"
+        const continueBtn = document.getElementById('exitModalContinue');
+        if (continueBtn) continueBtn.style.display = 'block';
+        const backBtn = document.getElementById('exitModalBack');
+        if (backBtn) backBtn.style.display = 'none';
+        const shareBtn = document.getElementById('exitModalShare');
+        if (shareBtn) shareBtn.style.display = 'none';
+
+        modal.style.display = 'flex';
     }
 
-    // ===== ЗАВЕРШЕНИЕ =====
-finish() {
-    console.log('🎓 [TUTORIAL] Завершено');
-
-    this.waitingForBonusClick = false;
-
-    if (this.checkInterval) {
-        clearInterval(this.checkInterval);
-        this.checkInterval = null;
+    // ===== ПАУЗА / РЕЗЮМ =====
+    // pauseGame(): замораживает мир, запоминает время начала паузы
+    // resumeGame(): размораживает мир, сдвигает lastPopTime на длительность паузы,
+    //               чтобы комбо не сгорало за время паузы/рекламы/модалки.
+    pauseGame() {
+        if (this.isPaused) return;
+        this.isPaused = true;
+        this.pauseStartedAt = Date.now();
     }
 
-    this.hideWelcomeModal();
-    this.hideArrow();
-    this.hideOverlay();
+    resumeGame() {
+        // Если paused не был — всё равно сдвигаем lastPopTime,
+        // чтобы комбо не сгорело за время рекламы (если lastPopTime валиден).
+        const pausedMs = this.isPaused
+            ? Date.now() - (this.pauseStartedAt || Date.now())
+            : 0;
 
-    localStorage.setItem('tutorialDone', 'true');
-    localStorage.setItem('lastVisit', String(Date.now()));
+        this.isPaused = false;
+        this.pauseStartedAt = 0;
 
-    this.isActive = false;
+        // Комбо не должно сгорать за время паузы
+        if (this.lastPopTime > 0 && pausedMs > 0) {
+            this.lastPopTime += pausedMs;
+        }
+
+        // Жёстко восстанавливаем скорости
+        if (this.bonusManager && this.bonusManager.slowMotion) {
+            this.bonusManager.slowMotion = false;
+            this.bonusManager.slowMotionTimer = 0;
+        }
+        for (const b of this.bubbles) {
+            if (b.originalSpeed !== undefined) {
+                b.speed = b.originalSpeed;
+                b.originalSpeed = undefined;
+            }
+        }
+    }
+    
+splitBubble(bubble) {
+    // ===== ЗОЛОТОЙ ШАР НЕ РАСПАДАЕТСЯ =====
+    if (bubble.isGolden) return;
+    
+    var colorType = this.bonusManager.getColorType(bubble.hue);
+    if (!colorType) return;
+    if (this.bubbles.length >= 40) return;
+    
+    var options = this.getSplitOptions(colorType);
+    if (!options || options.children.length === 0) return;
+    
+    // ===== СТАНДАРТНЫЕ РАЗМЕРЫ И ОЧКИ ДЛЯ ЦВЕТОВ =====
+    var sizeMap = {
+        'red': { min: 40, max: 55, points: 1 },
+        'yellow': { min: 30, max: 45, points: 2 },
+        'green': { min: 22, max: 35, points: 4 },
+        'blue': { min: 16, max: 25, points: 7 },
+        'pink': { min: 12, max: 18, points: 10 }
+    };
+    
+    var maxNew = Math.min(options.children.length, 40 - this.bubbles.length);
+    for (var s = 0; s < maxNew; s++) {
+        var childColor = options.children[s];
+        var newBubble = new Bubble(this.width, this.height);
+        
+        // ===== РАЗМЕР ПО ЦВЕТУ =====
+        var size = sizeMap[childColor] || { min: 20, max: 30, points: 3 };
+        newBubble.radius = size.min + Math.random() * (size.max - size.min);
+        
+        // ===== ОЧКИ ПО ЦВЕТУ (СВОИ!) =====
+        newBubble.points = size.points;
+        
+        // Цвет
+        var hueMap = { 'red': 0, 'yellow': 45, 'green': 120, 'blue': 200, 'pink': 320 };
+        newBubble.hue = hueMap[childColor] + (Math.random() - 0.5) * 20;
+        if (newBubble.hue < 0) newBubble.hue += 360;
+        if (newBubble.hue >= 360) newBubble.hue -= 360;
+        
+        // Позиция с разлётом
+        var angle = Math.random() * Math.PI * 2;
+        var distance = 20 + Math.random() * 30;
+        newBubble.x = bubble.x + Math.cos(angle) * distance;
+        newBubble.y = bubble.y + Math.sin(angle) * distance;
+        newBubble.speed = bubble.speed * (0.7 + Math.random() * 0.6) * (this.isMobile ? 0.7 : 1);
+        
+        this.bubbles.push(newBubble);
+    }
+}
+
+getSplitOptions(colorType) {
+    var options = {
+        'red': [
+            { children: ['yellow', 'green'], chance: 0.25 },
+            { children: ['green', 'blue', 'pink'], chance: 0.20 },
+            { children: ['yellow', 'blue'], chance: 0.20 },
+            { children: ['green', 'pink'], chance: 0.20 },
+            { children: ['blue', 'pink'], chance: 0.10 },
+            { children: [], chance: 0.05 }
+        ],
+        'yellow': [
+            { children: ['green'], chance: 0.30 },
+            { children: ['blue', 'pink'], chance: 0.25 },
+            { children: ['green', 'blue'], chance: 0.20 },
+            { children: ['pink'], chance: 0.15 },
+            { children: [], chance: 0.10 }
+        ],
+        'green': [
+            { children: ['blue'], chance: 0.35 },
+            { children: ['pink'], chance: 0.30 },
+            { children: ['blue', 'pink'], chance: 0.15 },
+            { children: [], chance: 0.20 }
+        ],
+        'blue': [
+            { children: ['pink'], chance: 0.25 },
+            { children: [], chance: 0.75 }
+        ],
+        'pink': [
+            { children: [], chance: 1.00 }
+        ]
+    };
+    
+    var colorOptions = options[colorType] || [];
+    var rand = Math.random();
+    var cumulative = 0;
+    
+    for (var i = 0; i < colorOptions.length; i++) {
+        cumulative += colorOptions[i].chance;
+        if (rand < cumulative) {
+            return colorOptions[i];
+        }
+    }
+    return colorOptions[colorOptions.length - 1] || { children: [], chance: 1 };
+}  
+    
+    
+popBubbleAt(x, y, isBonus = false) {
+    for (let i = this.bubbles.length - 1; i >= 0; i--) {
+        const b = this.bubbles[i];
+        if (b.contains(x, y)) {
+            
+                      // ===== ЗОЛОТОЙ ШАР И СЕРДЕЧКО НЕ ТРОГАЕМ БОНУСАМИ =====
+            if (b.isGolden || b.isHeart) {
+                return false;
+            }
+            // ===== ОБНОВЛЯЕМ ВРЕМЯ ПОСЛЕДНЕГО ЛОПАНИЯ =====
+            this.lastPopTime = Date.now();
+            
+            // ===== ЗВУК ПРИ ЛОПАНИИ (ДАЖЕ БОНУСНОМ) =====
+            var colorTypeSound = this.bonusManager.getColorType(b.hue);
+            if (colorTypeSound) {
+                sound.popByColor(colorTypeSound, 0.2);
+            } else {
+                var pitch = 600 + b.points * 60;
+                sound.pop(pitch, 0.12, 0.2);
+            }
+            
+            const count = 8 + Math.floor(Math.random() * 12);
+            for (let j = 0; j < count; j++) {
+                this.particles.push(new Particle(b.x, b.y, b.hue, 1));
+            }
+            
+            if (isBonus) {
+                const points = b.points || 1;
+                const bonusMultiplier = this.bonusManager.getMultiplier();
+                const earned = points * this.multiplier * bonusMultiplier;
+                this.pendingScore += earned;
+                this.score += earned;
+                
+                this.combo++;
+                if (this.combo > this.maxCombo) {
+                    this.maxCombo = this.combo;
+                }
+                
+                this.bonusManager.processBonusPopped(b);
+                
+                this.scorePopups.push({
+                    x: b.x,
+                    y: b.y - 10,
+                    text: `+${earned}`,
+                    subtext: this.multiplier > 1 ? `×${this.multiplier}` : '',
+                    life: 50,
+                    maxLife: 50,
+                    hue: b.hue
+                });
+            }
+            
+            this.bubbles.splice(i, 1);
+            this.totalPopped++;
+            return true;
+        }
+    }
+    return false;
+}
+
+    flushScore() {
+        if (this.pendingScore > 0) {
+            let bonus = 0;
+            if (this.pendingScore > 10) {
+                bonus = Math.floor(this.pendingScore * 0.1);
+            }
+            
+            const total = this.pendingScore + bonus;
+            this.score += total;
+            
+            // ===== ИСПЫТАНИЯ: БОЛЬШОЙ БОНУС =====
+            challengeTracker.onBigBonus(total);
+            
+            if (total > 0) {
+                
+                
+                this.scorePopups.push({
+                    x: this.width / 2,
+                    y: this.height / 2 - 60,
+                    text: `💎 +${total}`,
+                    subtext: bonus > 0 ? `(бонус +${bonus})` : '',
+                    life: 80,
+                    maxLife: 80,
+                    hue: 50,
+                    big: true
+                });
+            }
+            
+            this.pendingScore = 0;
+        }
+    }
+
+    update() {
+    this.frame++;
+    this.difficulty = 1 + this.score / 80;
+
+      // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
+    // combo 0   → множитель 1.0 (обычная скорость)
+    // combo 25+ → множитель 0.4 (мир заметно замедлен)
+    // Плавная интерполяция, чтобы не дёргалось.
+    const SLOW_FULL_AT_COMBO = 30;   // ← сколько комбо до максимума замедления
+    const SLOW_LERP = 0.03;          // ← скорость плавного перехода
+
+    const comboProgress = Math.min(this.combo / SLOW_FULL_AT_COMBO, 1);
+    this.targetSlow = 1.0 - comboProgress * (1.0 - this.minSlow);
+    this.slowFactor += (this.targetSlow - this.slowFactor) * SLOW_LERP;
+
+    this.bonusManager.applyToAllBubbles(this.bubbles);
+    
+   const maxBubbles = this.isMobile ? this.maxBubbles + 5 : 40;
+if (this.bubbles.length > maxBubbles) {
+    this.bubbles.splice(0, 3);
+}
+    
+ // ===== СПАВН С УЧЁТОМ МОБИЛЬНОГО =====
+const spawnRate = this.isMobile 
+    ? Math.max(this.spawnRateMin, Math.floor(this.spawnRateMax / this.difficulty))
+    : Math.max(8, Math.floor(25 / this.difficulty));
+
+if (this.frame % spawnRate === 0) {
+    const b = this.spawnBubble();
+    if (b && this.bubbles.length < this.maxBubbles) {
+        this.bubbles.push(b);
+    }
+    if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < this.maxBubbles) {
+        const b2 = this.spawnBubble();
+        if (b2) {
+            this.bubbles.push(b2);
+        }
+    }
+}
+
+    for (let i = this.bubbles.length - 1; i >= 0; i--) {
+        this.bubbles[i].update();
+        if (!this.bubbles[i].alive) {
+            this.bubbles.splice(i, 1);
+        }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+        this.particles[i].update();
+        if (this.particles[i].isDead()) {
+            this.particles.splice(i, 1);
+        }
+    }
+
+    for (let i = this.scorePopups.length - 1; i >= 0; i--) {
+        this.scorePopups[i].life--;
+        this.scorePopups[i].y -= 0.8;
+        if (this.scorePopups[i].life <= 0) {
+            this.scorePopups.splice(i, 1);
+        }
+    }
+
+    this.bonusManager.update();
+
+ // ===== СБРОС СЕРИИ ПО ТАЙМАУТУ =====
+const currentTimeout = this.getComboTimeout();
+if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
+    console.log('⏰ ТАЙМАУТ! Сбрасываем серию в update() (таймаут:', currentTimeout, 'мс)');
+    sound.comboReset();
+    this.flushScore();
+}
+          for (let i = this.flyingNumbers.length - 1; i >= 0; i--) {
+        const fn = this.flyingNumbers[i];
+        
+        // Двигаем к цели
+        const dx = fn.targetX - fn.x;
+        const dy = fn.targetY - fn.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        
+        if (dist < 5) {
+            // Долетели
+            fn.x = fn.targetX;
+            fn.y = fn.targetY;
+            fn.life--;
+            if (fn.life <= 0) {
+                this.flyingNumbers.splice(i, 1);
+                // ===== ПУЛЬСАЦИЯ ПРИ ДОСТИЖЕНИИ =====
+                this.triggerPulse(fn.isMultiplier);
+            }
+        } else {
+            // Летим
+            const speed = Math.min(fn.speed, dist);
+            fn.x += (dx / dist) * speed;
+            fn.y += (dy / dist) * speed;
+            fn.life--;
+            if (fn.life <= 0) {
+                this.flyingNumbers.splice(i, 1);
+            }
+        }
+    }
+}
+
+    drawPopups(ctx) {
+        for (const popup of this.scorePopups) {
+            const alpha = popup.life / popup.maxLife;
+            const scale = 1 + (1 - alpha) * 0.3;
+            const fontSize = popup.big ? 42 : 26;
+            
+            ctx.globalAlpha = alpha;
+            ctx.font = `bold ${fontSize * scale}px 'Segoe UI', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            if (popup.customColor) {
+                ctx.shadowColor = popup.customColor + '66';
+                ctx.fillStyle = popup.customColor;
+            } else {
+                ctx.shadowColor = `hsla(${popup.hue}, 100%, 50%, 0.3)`;
+                ctx.fillStyle = `hsl(${popup.hue}, 100%, 70%)`;
+            }
+            
+            ctx.shadowBlur = 30;
+            ctx.fillText(popup.text, popup.x, popup.y);
+            
+            if (popup.subtext) {
+                ctx.font = `${16 * scale}px 'Segoe UI', sans-serif`;
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText(popup.subtext, popup.x, popup.y + 30 * scale);
+            }
+            
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, '#0a0a2a');
+        grad.addColorStop(0.5, '#1a0a3a');
+        grad.addColorStop(1, '#0a0a2a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        if (!this._stars) {
+            this._stars = [];
+            for (let i = 0; i < 80; i++) {
+                this._stars.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: 0.5 + Math.random() * 1.5,
+                    a: 0.2 + Math.random() * 0.5
+                });
+            }
+        }
+        for (const star of this._stars) {
+            ctx.globalAlpha = star.a;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        for (const b of this.bubbles) {
+            b.draw(ctx);
+        }
+
+        for (const p of this.particles) {
+            p.draw(ctx);
+        }
+
+              this.drawPopups(ctx);
+
+        // ===== ВИНЬЕТКА ПРИ ЗАМЕДЛЕНИИ =====
+        // Появляется, когда slowFactor < 0.7 (серия длинная).
+        // Лёгкий синий оттенок по краям — визуальное «мир замирает».
+        if (this.slowFactor < 0.7) {
+            const intensity = (0.7 - this.slowFactor) / 0.3;
+            const vg = ctx.createRadialGradient(
+                w / 2, h / 2, h * 0.3,
+                w / 2, h / 2, h * 0.85
+            );
+            vg.addColorStop(0, 'rgba(0,80,200,0)');
+            vg.addColorStop(1, 'rgba(0,80,200,' + (0.25 * intensity) + ')');
+            ctx.fillStyle = vg;
+            ctx.fillRect(0, 0, w, h);
+        }
+
+            for (const fn of this.flyingNumbers) {
+        const alpha = fn.life / fn.maxLife;
+        const scale = 1 + (1 - alpha) * 0.3;
+        
+        ctx.globalAlpha = alpha;
+        ctx.font = `bold ${28 * scale}px 'Segoe UI', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = fn.color + '66';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = fn.color;
+        ctx.fillText(fn.text, fn.x, fn.y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+    }
+        
+    }
+
+     getStats() {
+        return {
+            score: this.score,
+            combo: this.combo,
+            maxCombo: this.maxCombo,
+            maxMultiplier: this.maxMultiplier,
+            
+            totalPopped: this.totalPopped,
+            bubbles: this.bubbles.length,
+            particles: this.particles.length,
+            difficulty: this.difficulty,
+            pendingScore: this.pendingScore,
+            multiplier: this.multiplier
+        };
+    }
+
+    updateLivesUI() {
+        const canvas = document.getElementById('livesCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const t = Date.now() / 1000;
+
+        // CSS-размеры (страховка — если CSS не применился)
+        const cssWidth = canvas.clientWidth || 68;
+        const cssHeight = canvas.clientHeight || 68;
+
+        // Физический буфер ×2 для резкости
+        if (canvas.width !== cssWidth * 2 || canvas.height !== cssHeight * 2) {
+            canvas.width = cssWidth * 2;
+            canvas.height = cssHeight * 2;
+        }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(2, 2);
+        ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+        // ===== РАЗМЕР СЕРДЦА =====
+        // 0.5 — половина высоты canvas (34 из 68); 26 — потолок для крупных экранов.
+        // Итог: сердце ~26px в маленьком canvas 68×68 — вписывается с запасом.
+        const heartSize = Math.min(cssWidth, cssHeight) * 0.5 * 0.65;
+
+        // Центр canvas — сердце ровно по центру
+        const cx = cssWidth / 2;
+        const cy = cssHeight / 2;
+
+        // Пульс ±8%, 3 рад/сек; без пульса, если жизней 0
+        const pulse = this.lives > 0
+            ? 1 + Math.sin(t * 3) * 0.08
+            : 1;
+
+        // Рисуем сердце
+        this.drawHeart(ctx, cx, cy, heartSize * pulse, this.lives > 0);
+
+        // ===== ЧИСЛО ВНУТРИ СЕРДЦА =====
+        // Белое при lives > 0, полупрозрачное при 0
+        ctx.fillStyle = this.lives > 0 ? '#fff' : 'rgba(255,255,255,0.4)';
+
+        // РАЗМЕР ЧИСЛА: 18px. heartSize=26 → цифра занимает «тело» сердца,
+        // не вылезает за края и не выглядит мелкой.
+        ctx.font = 'bold 18px "Segoe UI", sans-serif';
+
+        // Центрируем число по X и Y
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Тень для читаемости на красном фоне
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 6;
+
+        // СМЕЩЕНИЕ ВНИЗ: 0.25 от размера сердца — попадаем в «тело»,
+        // а не в выемку сверху. 0.25 → чуть ниже центра, ровно в яблочко.
+        ctx.fillText(String(this.lives), cx, cy + heartSize * 0.70);
+
+        // Сброс тени
+        ctx.shadowBlur = 0;
+    }
+    drawHeart(ctx, cx, cy, size, alive) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.beginPath();
+        ctx.moveTo(0, size * 0.3);
+        ctx.bezierCurveTo(0, 0, -size, 0, -size, size * 0.5);
+        ctx.bezierCurveTo(-size, size, 0, size * 1.1, 0, size * 1.4);
+        ctx.bezierCurveTo(0, size * 1.1, size, size, size, size * 0.5);
+        ctx.bezierCurveTo(size, 0, 0, 0, 0, size * 0.3);
+        ctx.closePath();
+
+        if (alive) {
+            const grad = ctx.createRadialGradient(-size * 0.3, -size * 0.3, 1, 0, 0, size * 1.4);
+            grad.addColorStop(0, '#ff8899');
+            grad.addColorStop(1, '#cc2244');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = '#ff4466';
+            ctx.shadowBlur = 12;
+        } else {
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 0;
+        }
+        ctx.fill();
+        if (!alive) ctx.stroke();
+        ctx.restore();
+    }
+
+    handleTap(x, y) {
+        if (this.bonusManager.isSelectingColor()) {
+            if (this.bonusManager.handleColorSelection(x, y)) {
+                return;
+            }
+            return;
+        }
+        
+        this.popBubble(x, y);
+    }
+    
+saveGameResult(callback) {
+    console.log('💾 СОХРАНЕНИЕ РЕЗУЛЬТАТА...');
+    
+    // Обновляем максимальный счёт
+    statsManager.onScore(this.score);
+    
+    // Сохраняем статистику
+    statsManager.save().then((success) => {
+        console.log('✅ Статистика сохранена:', success);
+        
+        // Сохраняем в топ через repository
+        const challengePoints = challengeTracker.getTotalRewards();
+        const userId = statsManager.userId || localStorage.getItem('bubbleUserId');
+        
+        console.log('📊 Сохраняем в топ: userId=' + userId + ', score=' + this.score + ', combo=' + this.maxCombo + ', points=' + challengePoints + ', popped=' + this.totalPopped);
+        
+        repository.saveToTop(
+            userId,
+            this.score,
+            this.maxCombo,
+            challengePoints,
+            this.totalPopped
+        ).then((result) => {
+            console.log('✅ Топ сохранён:', result);
+            if (callback) callback(true);
+        }).catch((error) => {
+            console.error('❌ Ошибка сохранения топа:', error);
+            if (callback) callback(false);
+        });
+    }).catch((error) => {
+        console.error('❌ Ошибка сохранения статистики:', error);
+        if (callback) callback(false);
+    });
+}
+    triggerPulse(isMultiplier) {
+    if (isMultiplier) {
+        // Пульсация множителя
+        const el = document.getElementById('multiplier');
+        if (el) {
+            el.style.transition = 'transform 0.1s ease';
+            el.style.transform = 'scale(1.5)';
+            setTimeout(() => {
+                el.style.transform = 'scale(1)';
+            }, 150);
+        }
+    } else {
+        // Пульсация pendingScore
+        const el = document.getElementById('pendingScore');
+        if (el) {
+            el.style.transition = 'transform 0.1s ease';
+            el.style.transform = 'scale(1.5)';
+            el.style.color = '#44ff88';
+            setTimeout(() => {
+                el.style.transform = 'scale(1)';
+                el.style.color = '#ffcc00';
+            }, 150);
+        }
+    }
 }
 }
-
-// ===== ГЛОБАЛЬНЫЙ ЭКЗЕМПЛЯР =====
-const tutorialManager = new TutorialManager();
-
-// ===== ЗАПУСК =====
-// ===== ЗАПУСК =====
-document.addEventListener('DOMContentLoaded', function() {
-    localStorage.setItem('lastVisit', String(Date.now()));
-
-    // ===== ТЕСТОВЫЙ ФЛАЖОК =====
-    // true  — обучение запускается ВСЕГДА (для отладки)
-    // false — обучение только если ещё не пройдено (для продакшена)
-    const FORCE_TUTORIAL = true;
-
-    if (!FORCE_TUTORIAL && !tutorialManager.shouldShowTutorial()) {
-        console.log('🎓 [TUTORIAL] Обучение уже пройдено');
-        return;
-    }
-
-    // При FORCE_TUTORIAL=true сбрасываем флаг, чтобы finish() потом корректно поставил его заново
-    if (FORCE_TUTORIAL) {
-        localStorage.removeItem('tutorialDone');
-        console.log('🎓 [TUTORIAL] ТЕСТОВЫЙ РЕЖИМ: обучение запускается принудительно');
-    }
-
-    console.log('🎓 [TUTORIAL] DOM загружен, запускаем через 1.5 сек');
-
-    setTimeout(() => {
-        tutorialManager.start();
-    }, 1500);
-});

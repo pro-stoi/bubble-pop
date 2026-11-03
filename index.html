@@ -77,26 +77,62 @@
         </div>
     </div>
     <!-- ================================= -->
+    <!-- ===== ССЫЛКА НА ПОЛИТИКУ КОНФИДЕНЦИАЛЬНОСТИ ===== -->
+    <div style="position:fixed;bottom:4px;left:0;right:0;text-align:center;z-index:100;pointer-events:auto;">
+        <a href="privacy.html" target="_blank" style="font-size:10px;color:rgba(255,255,255,0.25);text-decoration:underline;">
+            Политика конфиденциальности
+        </a>
+    </div>
+    <!-- ================================================== -->
 
     <!-- ===== АУДИО МЕНЕДЖЕР ===== -->
-<script src="js/audioManager.js"></script>
+    <script src="js/audioManager.js"></script>
     <!-- ===== АУДИО ===== -->
-<audio id="bgMusic" loop preload="auto">
-    <source src="audio/menu.mp3" type="audio/mpeg">
-</audio>
-    
-    
+    <audio id="bgMusic" loop preload="auto">
+        <source src="audio/menu.mp3" type="audio/mpeg">
+    </audio>
+
     <script src="js/core/api.js"></script>
-<script src="js/core/dataMapper.js"></script>
-<script src="js/core/dataStore.js"></script>
-<script src="js/core/repository.js"></script>
-    
-    
+    <script src="js/core/dataMapper.js"></script>
+    <script src="js/core/dataStore.js"></script>
+    <script src="js/core/repository.js"></script>
+
     <script src="js/bubble.js"></script>
     <script src="js/particle.js"></script>
-    <script src="js/stats.js"></script>  
+    <script src="js/stats.js"></script>
     <script src="js/vk.js"></script>
     <script src="js/nav.js"></script>
+
+    <script src="js/privacy.js"></script>
+
     <script src="js/menu.js"></script>
+
+    <!-- ===== МОДАЛКА СОГЛАСИЯ НА ОБРАБОТКУ ДАННЫХ ===== -->
+    <div id="privacyConsentModal" class="exit-modal" style="display:none;">
+        <div class="exit-modal-content" style="max-width:400px;">
+            <div class="exit-modal-title" style="font-size:20px;">🫧 Добро пожаловать!</div>
+            <div style="padding:12px 0;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.6;text-align:left;">
+                Для работы игры мы сохраняем:
+                <ul style="margin:8px 0 0 20px;color:rgba(255,255,255,0.6);font-size:13px;">
+                    <li>Ваш VK ID</li>
+                    <li>Имя из профиля</li>
+                    <li>Игровую статистику</li>
+                </ul>
+            </div>
+            <div style="padding:8px 0;color:rgba(255,255,255,0.5);font-size:12px;text-align:left;">
+                Подробнее: <a href="privacy.html" target="_blank" style="color:#66ccff;">Политика конфиденциальности</a>
+            </div>
+            <div class="exit-modal-buttons" style="flex-direction:column;gap:10px;margin-top:12px;">
+                <button class="exit-modal-btn exit-modal-btn-exit" id="privacyAcceptBtn" style="width:100%;padding:14px;font-size:15px;">
+                    ✅ Согласен
+                </button>
+                <button class="exit-modal-btn exit-modal-btn-back" id="privacyDeclineBtn" style="width:100%;padding:12px;font-size:14px;">
+                    ❌ Не согласен
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ================================================ -->
+
 </body>
 </html>

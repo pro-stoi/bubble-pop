@@ -1,397 +1,396 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // ===== ПРОВЕРЯЕМ, НЕ ЗАПУЩЕНА ЛИ УЖЕ ИГРА =====
-    let gameStarted = false;
-    
-async function startGame() {
-    if (gameStarted) return;
-    gameStarted = true;
-    
-    const userId = localStorage.getItem('bubbleUserId');
-    console.log('👤 ID пользователя:', userId);
-    
-    // ===== СОЗДАЁМ ИГРУ (ОДИН РАЗ!) =====
-    const canvas = document.getElementById('gameCanvas');
-    const game = new Game(canvas);
-    
-    if (userId) {
-        const userIdNum = parseInt(userId);
+// js/vk.js
+
+// ===== ГЛОБАЛЬНАЯ ПЕРЕМЕННАЯ ДЛЯ URL =====
+const isLocal = window.location.hostname === 'localhost' || 
+                window.location.hostname === '127.0.0.1' ||
+                window.location.hostname === '192.168.1.100' ||  // ← ТВОЙ IP
+                window.location.protocol === 'file:';
+const API_BASE_URL = isLocal 
+    ? 'http://170.168.10.167:8080/api/bubble'
+    : 'https://neurodrone-arena.ru/api/bubble';
+
+console.log('🌐 API_BASE_URL:', API_BASE_URL);
+
+// ============================================
+
+class VKManager {
+    constructor() {
+        // ===== ФЛАГ ЛОКАЛЬНОЙ РАЗРАБОТКИ =====
+        this.isLocal = isLocal;
         
-        // ===== ЗАГРУЖАЕМ ДАННЫЕ =====
-        await challengeTracker.loadFromServer(userIdNum).catch(() => {
-            console.warn('⚠️ Испытания не загружены');
-        });
-        await statsManager.load(userIdNum).catch(() => {
-            console.warn('⚠️ Статистика не загружена');
-        });
-        
-        // ===== СОХРАНЯЕМ СЕССИЮ =====
-        if (statsManager.userId) {
-            statsManager.sessions = (statsManager.sessions || 0) + 1;
-            statsManager.lastPlay = new Date().toISOString();
-            statsManager.sessionStart = Date.now();
-            await statsManager.saveSessionOnly();
-            console.log('✅ Сессия сохранена: #' + statsManager.sessions);
-        }
-        
-        // ===== ЗАГРУЖАЕМ БОНУСЫ =====
-        loadUserBonuses(userIdNum, game);
-    }
-    
-    // ===== ОБРАБОТКА ТАПА =====
-    function handleTap(e) {
-        const rect = canvas.getBoundingClientRect();
-        let clientX, clientY;
-        
-        if (e.touches) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-            e.preventDefault();
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        
-        const uiElements = document.querySelectorAll('.game-btn, .bonus-btn, #topBar, #bonusContainer, .exit-modal, .exit-modal-content, .exit-modal-btn');
-        let isOnUI = false;
-        
-        uiElements.forEach(function(el) {
-            const elRect = el.getBoundingClientRect();
-            if (clientX >= elRect.left && clientX <= elRect.right &&
-                clientY >= elRect.top && clientY <= elRect.bottom) {
-                isOnUI = true;
-            }
-        });
-        
-           if (isOnUI) return;
-
-        // Не пропускаем тапы, если игра на паузе, в game over или идёт реклама
-        if (game.isPaused || game.isGameOver || game.isAdPlaying) return;
-
-        game.handleTap(x, y);
-    }
-
-    canvas.addEventListener('click', handleTap);
-    canvas.addEventListener('touchstart', handleTap, { passive: false });
-
-    // ===== UI ЭЛЕМЕНТЫ =====
-    const scoreEl = document.getElementById('score');
-    const comboEl = document.getElementById('combo');
-    const pendingEl = document.getElementById('pendingScore');
-    const multiplierEl = document.getElementById('multiplier');
-
-    // ===== МОДАЛЬНОЕ ОКНО =====
-    const exitModal = document.getElementById('exitModal');
-    const exitModalScore = document.getElementById('exitModalScore');
-    const exitModalCombo = document.getElementById('exitModalCombo');
-    const exitModalMultiplier = document.getElementById('exitModalMultiplier');
-    const exitModalPopped = document.getElementById('exitModalPopped');
-
-     function showExitModal() {
-        const stats = game.getStats();
-        exitModalScore.textContent = stats.score;
-        exitModalCombo.textContent = stats.maxCombo;
-        exitModalMultiplier.textContent = '×' + stats.maxMultiplier;
-        exitModalPopped.textContent = stats.totalPopped;
-
-        const title = document.getElementById('exitModalTitle');
-        if (title) title.textContent = '🏆 ИТОГИ ИГРЫ';
-        const continueBtn = document.getElementById('exitModalContinue');
-        if (continueBtn) continueBtn.style.display = 'none';
-
-        exitModal.style.display = 'flex';
-    }
-
-    function hideExitModal() {
-        exitModal.style.display = 'none';
-    }
-
-     // ===== КНОПКА "ДОМИК" =====
-    document.getElementById('backMenuBtn').addEventListener('click', function() {
-        game.pauseGame();
-        showExitModal();
-    });
-    document.getElementById('backMenuBtn').addEventListener('touchend', function(e) {
-        e.preventDefault();
-        game.pauseGame();
-        showExitModal();
-    });
-
-    // ===== КНОПКА "ПРИГЛАСИТЬ" =====
-    const inviteBtn = document.getElementById('inviteFriendBtn');
-    if (inviteBtn) {
-        inviteBtn.addEventListener('click', function() {
-            if (typeof vk !== 'undefined' && vk.inviteFriend) {
-                vk.inviteFriend();
-            } else {
-                console.warn('⚠️ VK не инициализирован');
-                alert('👥 В локальном режиме приглашение не работает');
-            }
-        });
-        inviteBtn.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            if (typeof vk !== 'undefined' && vk.inviteFriend) {
-                vk.inviteFriend();
-            } else {
-                alert('👥 В локальном режиме приглашение не работает');
-            }
-        });
-    }
-
-    // ===== КНОПКА "ПРОДОЛЖИТЬ" (после game over за рекламу) =====
-    async function handleContinueFromGameOver() {
-        hideExitModal();
-        game.isAdPlaying = true;
-
-        try {
-            if (typeof vkBridge !== 'undefined') {
-                await vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'rewarded' });
-            }
-        } catch (e) {
-            console.warn('⚠️ Реклама не показана:', e);
-        }
-
-        game.isAdPlaying = false;
-
-        // Восстанавливаем состояние игры
-        game.lives = game.maxLives;
-        game.isGameOver = false;
-        game.isRunning = true;
-        game.combo = 0;
-        game.multiplier = 1;
-        game.slowFactor = 1.0;
-        game.targetSlow = 1.0;
-
-        // Жёстко снимаем паузу и восстанавливаем скорости
-        game.isPaused = false;
-        game.pauseStartedAt = 0;
-        if (game.bonusManager && game.bonusManager.slowMotion) {
-            game.bonusManager.slowMotion = false;
-            game.bonusManager.slowMotionTimer = 0;
-        }
-        for (const b of game.bubbles) {
-            if (b.originalSpeed !== undefined) {
-                b.speed = b.originalSpeed;
-                b.originalSpeed = undefined;
-            }
-        }
-
-        // Точка отсчёта комбо — «сейчас», чтобы не сгорело
-        game.lastPopTime = Date.now();
-
-        game.updateLivesUI();
-
-        const title = document.getElementById('exitModalTitle');
-        if (title) title.textContent = '🏆 ИТОГИ ИГРЫ';
-        const continueBtn = document.getElementById('exitModalContinue');
-        if (continueBtn) continueBtn.style.display = 'none';
-        const backBtn = document.getElementById('exitModalBack');
-        if (backBtn) backBtn.style.display = '';
-        const shareBtn = document.getElementById('exitModalShare');
-        if (shareBtn) shareBtn.style.display = '';
-
-        sound.bonusHappy();
-    }
-
-    document.getElementById('exitModalContinue').addEventListener('click', handleContinueFromGameOver);
-    document.getElementById('exitModalContinue').addEventListener('touchend', function(e) {
-        e.preventDefault();
-        handleContinueFromGameOver();
-    });
-
-     // ===== КНОПКА "ВЕРНУТЬСЯ" =====
-    document.getElementById('exitModalBack').addEventListener('click', function() {
-        hideExitModal();
-        game.resumeGame();
-    });
-    document.getElementById('exitModalBack').addEventListener('touchend', function(e) {
-        e.preventDefault();
-        hideExitModal();
-        game.resumeGame();
-    });
-
-    // ===== КНОПКА "ПОДЕЛИТЬСЯ" =====
-    document.getElementById('exitModalShare').addEventListener('click', function() {
-        const stats = game.getStats();
-        if (typeof vk !== 'undefined' && vk.shareResult) {
-            vk.shareResult(stats.score, stats.maxCombo);
-        } else {
-            alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
-        }
-    });
-    document.getElementById('exitModalShare').addEventListener('touchend', function(e) {
-        e.preventDefault();
-        const stats = game.getStats();
-        if (typeof vk !== 'undefined' && vk.shareResult) {
-            vk.shareResult(stats.score, stats.maxCombo);
-        } else {
-            alert('📤 Поделиться: ' + stats.score + ' очков, комбо: ' + stats.maxCombo);
-        }
-    });
-
-    // ===== КНОПКА "ВЫЙТИ" =====
-    document.getElementById('exitModalExit').addEventListener('click', function() {
-        game.saveGameResult();
-        setTimeout(function() {
-            hideExitModal();
-            if (typeof vkBridge !== 'undefined') {
-                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                    .finally(function() {
-                        goTo('index.html');
-                    });
-            } else {
-                goToWithAd('index.html');
-            }
-        }, 500);
-    });
-    document.getElementById('exitModalExit').addEventListener('touchend', function(e) {
-        e.preventDefault();
-        game.saveGameResult();
-        setTimeout(function() {
-            hideExitModal();
-            if (typeof vkBridge !== 'undefined') {
-                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
-                    .finally(function() {
-                        goTo('index.html');
-                    });
-            } else {
-                goToWithAd('index.html');
-            }
-        }, 500);
-    });
-
-    // ===== ИГРОВОЙ ЦИКЛ =====
-       function gameLoop() {
-        if (!game.isAdPlaying && !game.isGameOver && !game.isPaused) {
-            game.update();
-        }
-        game.draw();
-        game.updateLivesUI();
-        
-        if (pendingEl) {
-            pendingEl.textContent = '+'.concat(game.pendingScore);
-            var size = 20 + Math.min(game.pendingScore / 20, 16);
-            pendingEl.style.fontSize = size + 'px';
-            if (game.pendingScore > 500) {
-                pendingEl.style.color = '#00ff88';
-            } else if (game.pendingScore > 100) {
-                pendingEl.style.color = '#88ff44';
-            } else {
-                pendingEl.style.color = '#ffcc00';
-            }
-        }
-        
-        if (multiplierEl) {
-            multiplierEl.textContent = '×'.concat(game.multiplier);
-            var multSize = 16 + Math.min(game.multiplier * 1.5, 24);
-            multiplierEl.style.fontSize = multSize + 'px';
-        }
-        
-        scoreEl.textContent = '💎 '.concat(game.score);
-        
-        if (game.combo > 1) {
-            comboEl.textContent = '🔥 x'.concat(game.combo);
-            comboEl.classList.add('show');
-        } else {
-            comboEl.classList.remove('show');
-        }
-
-        requestAnimationFrame(gameLoop);
-    }
-
-    gameLoop();
-
-    window.addEventListener('resize', function() {
-        game.resize();
-    });
-
-    let bestScore = parseInt(localStorage.getItem('bubbleBest') || '0');
-    
-    setInterval(function() {
-        if (game.score > bestScore) {
-            bestScore = game.score;
-            localStorage.setItem('bubbleBest', String(bestScore));
-        }
-    }, 5000);
-
-    console.log('🫧 Пузырьки запущены!');
-    console.log('🏆 Рекорд:', bestScore);
-}
-
-    // ===== ЗАГРУЗКА БОНУСОВ =====
-// ===== ЗАГРУЗКА БОНУСОВ =====
-async function loadUserBonuses(userId, game) {
-    try {
-        // Определяем URL в зависимости от окружения
-        const isLocal = window.location.hostname === 'localhost' || 
-                       window.location.hostname === '127.0.0.1' ||
-                       window.location.hostname.startsWith('192.168.') ||
-                       window.location.protocol === 'file:';
-        
-        const apiUrl = isLocal 
-            ? `http://170.168.10.167:8080/api/bubble/user-bonus/${userId}`
-            : `https://neurodrone-arena.ru/api/bubble/user-bonus/${userId}`;
-        
-        console.log('📡 Загрузка бонусов:', apiUrl);
-        
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        if (data.success && data.availableBonuses && data.availableBonuses.length > 0) {
-            console.log('🎁 Загружено бонусов:', data.availableBonuses.length);
+        if (this.isLocal) {
+            console.log('🧪 ЛОКАЛЬНЫЙ РЕЖИМ: имитация пользователя #2');
+            this.isReady = true;
+            this.userId = 'test_user_2';
+            this.userName = 'Тестовый Игрок #2';
+            this.dbUserId = 2;
+            this.bridge = null;
+            this.serverUrl = API_BASE_URL;
             
-            if (game && game.bonusManager) {
-                game.bonusManager.addBonusesFromDB(data.availableBonuses);
+            localStorage.setItem('bubbleUserId', String(this.dbUserId));
+            localStorage.setItem('username', this.userName);
+            
+            if (typeof statsManager !== 'undefined') {
+                statsManager.userId = this.dbUserId;
+                statsManager.load(this.dbUserId);
             }
-        } else {
-            console.log('📭 Нет бонусов');
+            if (typeof challengeTracker !== 'undefined') {
+                challengeTracker.loadFromServer(this.dbUserId);
+            }
+            return;
         }
-    } catch (error) {
-        console.error('❌ Ошибка загрузки бонусов:', error);
+
+        // ===== РЕАЛЬНЫЙ VK =====
+        this.isReady = false;
+        this.userId = null;
+        this.userName = 'Игрок';
+        this.appId = 54650664;
+        this.bridge = null;
+        this.dbUserId = null;
+        this.topCache = null;
+        this.topCacheTime = 0;
+        this.serverUrl = API_BASE_URL;
+    }
+
+init() {
+    if (typeof vkBridge !== 'undefined') {
+        this.bridge = vkBridge;
+        this.isReady = true;
+        
+        // ===== ЗАПРАШИВАЕМ ПРАВА =====
+        this.bridge.send('VKWebAppGetAuthToken', {
+            scope: 'wall,share'
+        })
+        .then(() => {
+            console.log('✅ Права wall получены');
+            return this.bridge.send('VKWebAppInit');
+        })
+        .then(() => {
+            console.log('✅ VK Bridge инициализирован');
+            return this.getUserInfo();
+        })
+        .then(() => {
+            console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
+            document.dispatchEvent(new CustomEvent('vkReady', { 
+                detail: { userId: this.dbUserId } 
+            }));
+        })
+        .catch((error) => {
+            console.warn('⚠️ Ошибка получения прав:', error);
+            // ===== ЕСЛИ ПРАВА НЕ ПОЛУЧЕНЫ - ВСЁ РАВНО ПРОДОЛЖАЕМ =====
+            // Пользователь может отказать в правах, но игра должна работать
+            this.bridge.send('VKWebAppInit')
+                .then(() => {
+                    console.log('✅ VK Bridge инициализирован (без прав wall)');
+                    return this.getUserInfo();
+                })
+                .then(() => {
+                    console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
+                    document.dispatchEvent(new CustomEvent('vkReady', { 
+                        detail: { userId: this.dbUserId } 
+                    }));
+                })
+                .catch((err) => {
+                    console.warn('⚠️ Ошибка инициализации VK:', err);
+                    document.dispatchEvent(new CustomEvent('vkReady', { 
+                        detail: { userId: null } 
+                    }));
+                });
+        });
+    } else {
+        console.warn('⚠️ VK Bridge не загружен');
+        this.loadBridge();
     }
 }
 
-    function updateBonusDisplay(bonuses) {
-        const container = document.getElementById('bonusDisplay');
-        if (!container) return;
+    loadBridge() {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
+        script.onload = () => {
+            if (typeof vkBridge !== 'undefined') {
+                this.bridge = vkBridge;
+                this.isReady = true;
+                this.bridge.send('VKWebAppInit')
+                    .then(() => {
+                        console.log('✅ VK Bridge загружен и инициализирован');
+                        return this.getUserInfo();
+                    })
+                    .then(() => {
+                        document.dispatchEvent(new CustomEvent('vkReady', { 
+                            detail: { userId: this.dbUserId } 
+                        }));
+                    })
+                    .catch(console.warn);
+            }
+        };
+        script.onerror = () => {
+            console.warn('⚠️ Не удалось загрузить VK Bridge');
+            document.dispatchEvent(new CustomEvent('vkReady', { 
+                detail: { userId: null } 
+            }));
+        };
+        document.head.appendChild(script);
+    }
+
+    async getUserInfo() {
+        if (!this.isReady) return;
         
-        if (!bonuses || bonuses.length === 0) {
-            container.innerHTML = '🎁 Нет бонусов';
+        try {
+            const data = await this.bridge.send('VKWebAppGetUserInfo');
+            this.userId = String(data.id);
+            this.userName = data.first_name + ' ' + data.last_name;
+            console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
+            
+            await this.loginToServer();
+            
+        } catch (error) {
+            console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+        }
+    }
+
+    async loginToServer() {
+        if (!this.userId) {
+            console.warn('⚠️ Нет userId для авторизации');
             return;
         }
         
-        const emojis = {
-            red: '🐢',
-            yellow: '🧲',
-            green: '🎯',
-            blue: '⚡',
-            pink: '💥'
-        };
+           // ===== ПРОВЕРКА СОГЛАСИЯ =====
+    if (typeof window.hasPrivacyConsent === 'function' && !window.hasPrivacyConsent()) {
+        console.warn('🔒 [VK] Нет согласия на обработку данных — локальный режим');
+        this.dbUserId = null;
+        return;
+    }
         
-        let html = '🎁 Бонусы: ';
-        bonuses.forEach(type => {
-            html += emojis[type] || '🎁';
-        });
-        
-        container.innerHTML = html;
+        try {
+            const response = await fetch(`${this.serverUrl}/user/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    vkId: this.userId,
+                    userName: this.userName
+                })
+            });
+            
+            const user = await response.json();
+            this.dbUserId = user.id;
+            console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
+            
+            localStorage.setItem('bubbleUserId', String(this.dbUserId));
+            localStorage.setItem('username', this.userName);
+            
+            if (typeof statsManager !== 'undefined') {
+                statsManager.userId = this.dbUserId;
+                await statsManager.load(this.dbUserId);
+            }
+            if (typeof challengeTracker !== 'undefined') {
+                await challengeTracker.loadFromServer(this.dbUserId);
+            }
+            
+        } catch (error) {
+            console.error('❌ Ошибка авторизации:', error);
+            this.dbUserId = null;
+        }
     }
 
-    // ===== ЗАПУСК ИГРЫ =====
-    if (typeof vk !== 'undefined' && vk.isReady && vk.dbUserId) {
-        startGame();
-    } else {
-        document.addEventListener('vkReady', function(e) {
-            console.log('🎮 VK готов, запускаем игру!', e.detail);
-            startGame();
-        });
-        
-        setTimeout(function() {
-            if (!gameStarted) {
-                console.warn('⏱ VK не ответил, запускаем игру принудительно');
-                startGame();
+    async saveToGlobalTop(score, maxCombo, challengePoints, totalPopped) {
+        if (!this.dbUserId) {
+            await this.loginToServer();
+            if (!this.dbUserId) {
+                this.saveToLocalTop(score, maxCombo, challengePoints);
+                return false;
             }
-        }, 5000);
+        }
+        
+        try {
+            const response = await fetch(`${this.serverUrl}/top/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: this.dbUserId,
+                    score: score || 0,
+                    maxCombo: maxCombo || 0,
+                    challengePoints: challengePoints || 0,
+                    totalPopped: totalPopped || 0
+                })
+            });
+            
+            const data = await response.json();
+            return data.success;
+        } catch (error) {
+            console.error('❌ Ошибка:', error);
+            return false;
+        }
     }
+
+    async getGlobalTop() {
+        try {
+            const response = await fetch(`${this.serverUrl}/top`);
+            const top = await response.json();
+            
+            if (Array.isArray(top)) {
+                console.log('📊 Загружено записей с сервера:', top.length);
+                this.topCache = top;
+                this.topCacheTime = Date.now();
+                return top;
+            } else {
+                return this.getLocalTop();
+            }
+        } catch (error) {
+            console.error('❌ Ошибка соединения с сервером:', error);
+            return this.getLocalTop();
+        }
+    }
+
+    saveToLocalTop(score, maxCombo, challengePoints) {
+        let top = JSON.parse(localStorage.getItem('globalTop') || '[]');
+        
+        const userEntry = {
+            userId: this.dbUserId || 'local',
+            userName: this.userName || 'Игрок',
+            score: score || 0,
+            maxCombo: maxCombo || 0,
+            challengePoints: challengePoints || 0
+        };
+        
+        const existingIndex = top.findIndex(item => item.userId === userEntry.userId);
+        if (existingIndex >= 0) {
+            if (userEntry.score > top[existingIndex].score) {
+                top[existingIndex] = userEntry;
+            }
+        } else {
+            top.push(userEntry);
+        }
+        
+        top.sort((a, b) => (b.score || 0) - (a.score || 0));
+        if (top.length > 100) top = top.slice(0, 100);
+        
+        localStorage.setItem('globalTop', JSON.stringify(top));
+        console.log('✅ Результат сохранён локально');
+    }
+
+    getLocalTop() {
+        return JSON.parse(localStorage.getItem('globalTop') || '[]');
+    }
+
+async shareResult(score, combo) {
+    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\nhttps://vk.com/app54650664`;
+
+    try {
+        await this.bridge.send('VKWebAppShare', {
+            message: message,
+            link: 'https://vk.com/app54650664'
+        });
+        this.showNotification('✅ Готово!');
+    } catch (error) {
+        console.error('Ошибка:', error);
+        this.fallbackShare(score, combo);
+    }
+}
+
+    fallbackShare(score, combo) {
+        const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;
+        const url = 'https://pro-stoi.github.io/bubble-pop/';
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text + ' ' + url);
+            this.showNotification('📋 Текст скопирован!');
+        } else {
+            this.showNotification(text + '\n' + url);
+        }
+    }
+
+    showNotification(text) {
+        const popup = document.createElement('div');
+        popup.style.cssText = `
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 16px;
+            font-size: 16px;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            max-width: 90%;
+            text-align: center;
+        `;
+        popup.textContent = text;
+        document.body.appendChild(popup);
+        
+        setTimeout(() => { popup.style.opacity = '1'; }, 50);
+        setTimeout(() => {
+            popup.style.opacity = '0';
+            setTimeout(() => popup.remove(), 400);
+        }, 3000);
+    }
+
+    async getChallenges() {
+        try {
+            const response = await fetch(`${this.serverUrl}/challenges`);
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка загрузки испытаний:', error);
+            return [];
+        }
+    }
+
+    async getUserChallengeProgress(userId) {
+        try {
+            const response = await fetch(`${this.serverUrl}/challenges/progress/${userId}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка загрузки прогресса:', error);
+            return [];
+        }
+    }
+
+    async updateChallenge(userId, challengeId, progressDelta) {
+        try {
+            const response = await fetch(`${this.serverUrl}/challenges/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, challengeId, progressDelta })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка обновления прогресса:', error);
+            return { success: false };
+        }
+    }
+
+    async getUserTotalRewards(userId) {
+        try {
+            const response = await fetch(`${this.serverUrl}/challenges/total/${userId}`);
+            return await response.json();
+        } catch (error) {
+            console.error('Ошибка получения наград:', error);
+            return { totalReward: 0 };
+        }
+    }
+    
+    // ===== ПРИГЛАСИТЬ ДРУГА =====
+async inviteFriend() {
+    try {
+        const result = await this.bridge.send('VKWebAppShowInviteBox', {});
+        
+        if (result && result.result) {
+            // Друг приглашён, ждём его регистрации
+            this.showNotification('👥 Приглашение отправлено! Когда друг зайдёт в игру, вы получите бонус! 🎁');
+        }
+    } catch (error) {
+        console.error('Ошибка приглашения:', error);
+        this.showNotification('❌ Не удалось отправить приглашение');
+    }
+}
+}
+
+const vk = new VKManager();
+
+document.addEventListener('DOMContentLoaded', () => {
+    vk.init();
 });

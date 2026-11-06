@@ -177,19 +177,19 @@ toggle() {
     localStorage.setItem('bubbleSound', String(this.enabled));
     sessionStorage.setItem('musicEnabled', this.enabled ? 'true' : 'false');
 
-    // ===== СИНХРОНИЗИРУЕМ С sound.js =====
+    console.log('🔊 [AUDIO] toggle: enabled =', this.enabled);
+
+    // ===== СИНХРОНИЗИРУЕМ С sound.js (игровые звуки) =====
     if (typeof sound !== 'undefined' && sound) {
         sound.enabled = this.enabled;
     }
 
-    const audio = document.getElementById('bgMusic');
-    if (audio) {
-        audio.muted = !this.enabled;  // ✅ muted, а не pause
+    // ===== СИНХРОНИЗИРУЕМ С musicEngine (интерактивная музыка) =====
+    if (typeof musicEngine !== 'undefined') {
+        musicEngine.setEnabled(this.enabled);
     }
 
-    if (this.enabled && audio && !this.isPlaying) {
-        this.startPlaylist();
-    }
+    // MP3 больше нет — блок с audio.muted и startPlaylist убран
 
     if (window.updateSoundIcon) {
         window.updateSoundIcon();
@@ -205,38 +205,29 @@ init() {
 
     console.log('🎵 [AUDIO] Инициализация...');
 
-    // ===== СИНХРОНИЗИРУЕМ С sound.js (единый флаг) =====
     if (typeof sound !== 'undefined' && sound) {
         sound.enabled = this.enabled;
-        console.log('🔊 [AUDIO] sound.enabled синхронизирован =', sound.enabled);
+        console.log('🔊 [AUDIO] sound.enabled =', sound.enabled);
     }
 
-    // ===== ВОССТАНАВЛИВАЕМ СОСТОЯНИЕ (может сразу запустить музыку) =====
-    this.restoreState();
+    if (typeof musicEngine !== 'undefined') {
+        musicEngine.setEnabled(this.enabled);
+        console.log('🔊 [AUDIO] musicEngine.enabled =', this.enabled);
+    }
 
-    // ===== СОХРАНЯЕМ ПРИ УХОДЕ =====
     window.addEventListener('beforeunload', () => this.saveState());
     window.addEventListener('pagehide', () => this.saveState());
 
-    // ===== СТАРТ ПО ПЕРВОМУ КЛИКУ =====
-    // Если restoreState() уже поднял музыку — обработчики не нужны
-    if (this.isPlaying || !this.enabled) {
-        console.log('✅ [AUDIO] Инициализирован (музыка уже играет или выключена)');
-        return;
-    }
-
     const startAudio = () => {
-        if (this.enabled && !this.isPlaying) {
-            console.log('🎵 [AUDIO] Первый клик — запускаем музыку');
-            this.startPlaylist();
-        }
+        console.log('🎵 [AUDIO] Первый клик — musicEngine запустится сам');
+        document.removeEventListener('click', startAudio);
+        document.removeEventListener('touchstart', startAudio);
     };
 
-    // once: true — обработчик снимает себя сам после первого срабатывания
-    document.addEventListener('click', startAudio, { once: true });
-    document.addEventListener('touchstart', startAudio, { once: true, passive: true });
+    document.addEventListener('click', startAudio);
+    document.addEventListener('touchstart', startAudio);
 
-    console.log('✅ [AUDIO] Инициализирован (ждём первый клик)');
+    console.log('✅ [AUDIO] Инициализирован');
 }
 }
 

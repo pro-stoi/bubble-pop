@@ -222,8 +222,19 @@ body {
 }
 
 .bonus-btn .bonus-icon {
-    font-size: 20px;
-    line-height: 1;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+.bonus-btn .bonus-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
 .bonus-btn .bonus-count {
@@ -372,8 +383,9 @@ body {
         width: 44px;
         height: 44px;
     }
-    .bonus-btn .bonus-icon {
-        font-size: 16px;
+       .bonus-btn .bonus-icon {
+        width: 22px;
+        height: 22px;
     }
     .bonus-btn .bonus-count {
         font-size: 9px;
@@ -423,8 +435,9 @@ body {
         width: 36px;
         height: 36px;
     }
-    .bonus-btn .bonus-icon {
-        font-size: 13px;
+       .bonus-btn .bonus-icon {
+        width: 18px;
+        height: 18px;
     }
 }
 /* ===== МОДАЛЬНОЕ ОКНО ВЫХОДА ===== */

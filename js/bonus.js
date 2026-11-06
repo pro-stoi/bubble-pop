@@ -1,23 +1,42 @@
 // js/bonus.js
-
+const BONUS_ICONS = {
+    red: `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 2h12M6 22h12M6 2c0 4 3 6 6 8 3-2 6-4 6-8M6 22c0-4 3-6 6-8 3 2 6 4 6 8"/>
+    </svg>`,
+    yellow: `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 3v8a6 6 0 0 0 12 0V3M6 3h4M14 3h4M9 21h6M12 21v-4"/>
+    </svg>`,
+    green: `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" stroke="none">
+        <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>
+    </svg>`,
+    blue: `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <text x="12" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="900" fill="currentColor" stroke="none">×2×</text>
+    </svg>`,
+    pink: `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" stroke="none">
+        <path d="M12 2l2.4 7.2H22l-6.2 4.5 2.4 7.2-6.2-4.5-6.2 4.5 2.4-7.2L2 9.2h7.6z"/>
+    </svg>`,
+};  
 class BonusManager {
-    constructor(game) {
-        this.game = game;
-        this.bonuses = {
-            red: { name: 'Замедление', count: 0, maxCount: 8, color: '#ff4444', icon: '🐢' },
-            yellow: { name: 'Магнит', count: 0, maxCount: 8, color: '#ffcc00', icon: '🧲' },
-            green: { name: 'Цветной взрыв', count: 0, maxCount: 8, color: '#44ff44', icon: '🎯' },
-            blue: { name: 'Умножение', count: 0, maxCount: 8, color: '#4488ff', icon: '⚡' },
-            pink: { name: 'Всё поле', count: 0, maxCount: 8, color: '#ff44ff', icon: '💥' }
-        };
-        
-        this.colorCounters = {
-            pink: 0,
-            blue: 0,
-            green: 0,
-            yellow: 0,
-            red: 0
-        };
+  constructor(game) {
+    this.game = game;
+
+    // ===== ТАЙМЕРЫ БОНУСОВ (ОБЯЗАТЕЛЬНО ДО updateUI!) =====
+    this.bonusTimers = {
+        red: 0,
+        yellow: 0,
+        green: 0,
+        blue: 0,
+        pink: 0
+    };
+    this.bonusTimerMax = 90;
+
+    this.colorCounters = {
+        pink: 0,
+        blue: 0,
+        green: 0,
+        yellow: 0,
+        red: 0
+    };
         this.requiredHits = 8;
         this.currentColor = null;
         this.comboCount = 0;
@@ -34,14 +53,14 @@ class BonusManager {
         
         
       // ===== ТАЙМЕРЫ БОНУСОВ =====
-    this.bonusTimers = {
-        red: 0,
-        yellow: 0,
-        green: 0,
-        blue: 0,
-        pink: 0
-    };
-    this.bonusTimerMax = 90; // 90 секунд    
+  this.bonuses = {
+    red:    { name: 'Замедление',     count: 0, maxCount: 8, color: '#ff4444', icon: BONUS_ICONS.red },
+    yellow: { name: 'Магнит',         count: 0, maxCount: 8, color: '#ffcc00', icon: BONUS_ICONS.yellow },
+    green:  { name: 'Цепная молния',  count: 0, maxCount: 8, color: '#44ff44', icon: BONUS_ICONS.green },
+    blue:   { name: 'Умножение',      count: 0, maxCount: 8, color: '#4488ff', icon: BONUS_ICONS.blue },
+    pink:   { name: 'Всё поле',       count: 0, maxCount: 8, color: '#ff44ff', icon: BONUS_ICONS.pink },
+};
+      
         
           // ===== ТЕСТОВЫЙ РЕЖИМ (true = реклама всегда срабатывает) =====
         
@@ -96,12 +115,11 @@ addBonusesFromDB(bonuses) {
             this.colorCounters[colorType] = 0;
             this.updateUI();
             
-            const icon = this.bonuses[colorType].icon;
-            this.game.scorePopups.push({
+           this.game.scorePopups.push({
                 x: this.game.width / 2,
                 y: this.game.height / 2,
-                text: `🎉 Бонус ${icon}!`,
-                subtext: `+1 ${this.bonuses[colorType].name}`,
+                text: `🎉 Бонус: ${this.bonuses[colorType].name}!`,
+                subtext: `+1`,
                 life: 70,
                 maxLife: 70,
                 hue: 0,
@@ -145,7 +163,7 @@ addBonusesFromDB(bonuses) {
             this.game.scorePopups.push({
                 x: this.game.width / 2,
                 y: this.game.height / 2,
-                text: `🎉 Бонус ${icon}! (бонусная цепь!)`,
+                text: `🎉 Бонус: ${this.bonuses[colorType].name}!`,
                 subtext: `+1 ${this.bonuses[colorType].name}`,
                 life: 70,
                 maxLife: 70,
@@ -307,13 +325,71 @@ activateMultiplier() {
 }
 
     // ===== 🟣 ЛОПНУТЬ ВСЁ ПОЛЕ =====
-    activateFullClear() {
-        const count = this.game.bubbles.length;
-        for (let i = this.game.bubbles.length - 1; i >= 0; i--) {
-            const b = this.game.bubbles[i];
-            this.game.popBubbleAt(b.x, b.y, true);
+     activateFullClear() {
+        const game = this.game;
+        if (!game) return;
+
+        const total = game.bubbles.length;
+        if (total === 0) {
+            this.showEffect('💥 0 пузырьков!', '#ff44ff');
+            return;
         }
-        this.showEffect(`💥 ${count} пузырьков!`, '#ff44ff');
+
+        // ===== СТАРТОВАЯ ТОЧКА — ЦЕНТР ЭКРАНА =====
+        // (визуально «взрыв из центра»)
+        let prev = { x: game.width / 2, y: game.height / 2 };
+
+        // Копия массива (чтобы не ломать game.bubbles во время итерации)
+        const targets = game.bubbles.slice();
+
+        let index = 0;
+        const stepDelay = 35; // мс между лопаниями (быстрее, чем зелёный)
+
+        const popNext = () => {
+            if (targets.length === 0) {
+                // Конец цепочки
+                this.showEffect(`💥 ${total} пузырьков!`, '#ff44ff');
+                return;
+            }
+
+            // Ближайший к предыдущему
+            let bestIdx = -1;
+            let bestDist = Infinity;
+            for (let i = 0; i < targets.length; i++) {
+                const t = targets[i];
+                const dx = t.x - prev.x;
+                const dy = t.y - prev.y;
+                const d = dx * dx + dy * dy;
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = i;
+                }
+            }
+
+            if (bestIdx === -1) {
+                this.showEffect(`💥 ${total} пузырьков!`, '#ff44ff');
+                return;
+            }
+
+            const target = targets[bestIdx];
+            targets.splice(bestIdx, 1);
+
+            // Лопаем
+            game.popBubbleAt(target.x, target.y, true);
+
+            // Звук — питч растёт
+            const pitch = 600 + index * 25;
+            if (typeof sound !== 'undefined' && sound.pop) {
+                sound.pop(Math.min(pitch, 2000), 0.06, 0.18);
+            }
+
+            prev = target;
+            index++;
+            setTimeout(popNext, stepDelay);
+        };
+
+        // Запускаем через мгновение
+        setTimeout(popNext, 30);
     }
 
     // ===== ОБРАБОТКА ВЫБОРА ЦВЕТА =====
@@ -339,19 +415,11 @@ activateMultiplier() {
                     }
                     this.showEffect(`🧲 ${count} пузырьков!`, '#ffcc00');
                     
-                } else if (this.selectedBonusType === 'color_explosion') {
+                            } else if (this.selectedBonusType === 'color_explosion') {
                     const targetHue = b.hue;
-                    let count = 0;
-                    for (let i = this.game.bubbles.length - 1; i >= 0; i--) {
-                        const target = this.game.bubbles[i];
-                        if (Math.abs(target.hue - targetHue) < 20) {
-                            this.game.popBubbleAt(target.x, target.y, true);
-                            count++;
-                        }
-                    }
-                    this.showEffect(`🎯 ${count} пузырьков!`, '#44ff44');
+                    // ===== ЦЕПНАЯ РЕАКЦИЯ =====
+                    this.startChainReaction(b, targetHue);
                 }
-                
                 this.isColorSelectionMode = false;
                 this.selectedBonusType = null;
                 return true;
@@ -362,6 +430,81 @@ activateMultiplier() {
         return false;
     }
 
+        // ===== ЦЕПНАЯ РЕАКЦИЯ (зелёный бонус) =====
+    startChainReaction(startBubble, targetHue) {
+        const game = this.game;
+        if (!game) return;
+
+        // Собираем все пузырьки того же цвета
+        const targets = [];
+        for (const b of game.bubbles) {
+            if (b === startBubble) continue;
+            if (Math.abs(b.hue - targetHue) < 20) {
+                targets.push(b);
+            }
+        }
+
+        // Сортируем по расстоянию от стартового — «змейка» от точки клика
+        targets.sort((a, b) => {
+            const da = (a.x - startBubble.x) ** 2 + (a.y - startBubble.y) ** 2;
+            const db = (b.x - startBubble.x) ** 2 + (b.y - startBubble.y) ** 2;
+            return da - db;
+        });
+
+        // Первый лопаем сразу
+        game.popBubbleAt(startBubble.x, startBubble.y, true);
+
+        // Остальные — по одному, с задержкой
+        let index = 0;
+        let prev = startBubble;
+        const stepDelay = 60; // мс между лопаниями
+
+        const popNext = () => {
+            if (index >= targets.length) {
+                // Конец цепочки
+                this.showEffect(`🎯 ${targets.length + 1} пузырьков!`, '#44ff44');
+                return;
+            }
+
+            // Ищем ближайший к предыдущему (эффект «молнии»)
+            let bestIdx = -1;
+            let bestDist = Infinity;
+            for (let i = 0; i < targets.length; i++) {
+                if (targets[i].alive === false) continue;
+                const dx = targets[i].x - prev.x;
+                const dy = targets[i].y - prev.y;
+                const d = dx * dx + dy * dy;
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestIdx = i;
+                }
+            }
+
+            if (bestIdx === -1) {
+                this.showEffect(`🎯 ${targets.length + 1} пузырьков!`, '#44ff44');
+                return;
+            }
+
+            const target = targets[bestIdx];
+            targets.splice(bestIdx, 1);
+
+            // Лопаем
+            game.popBubbleAt(target.x, target.y, true);
+
+            // Звук — питч растёт с каждым шагом
+            const pitch = 500 + index * 40;
+            if (typeof sound !== 'undefined' && sound.pop) {
+                sound.pop(pitch, 0.08, 0.2);
+            }
+
+            prev = target;
+            index++;
+            setTimeout(popNext, stepDelay);
+        };
+
+        setTimeout(popNext, stepDelay);
+    }
+    
     // ===== ПОКАЗАТЬ ЭФФЕКТ =====
     showEffect(text, color) {
         this.game.scorePopups.push({
@@ -534,13 +677,7 @@ updateUI() {
     
     container.innerHTML = '';
     const types = ['red', 'yellow', 'green', 'blue', 'pink'];
-    const labels = {
-        red: '🐢',
-        yellow: '🧲',
-        green: '🎯',
-        blue: '⚡',
-        pink: '💥'
-    };
+const labels = BONUS_ICONS;
     
     for (const type of types) {
         const bonus = this.bonuses[type];
@@ -582,7 +719,7 @@ updateUI() {
             if (!hasBonus) btn.classList.add('inactive');
         }
         
-        btn.innerHTML = `
+               btn.innerHTML = `
             <span class="bonus-icon">${labels[type]}</span>
             ${countDisplay}
         `;

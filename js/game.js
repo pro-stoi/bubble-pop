@@ -731,45 +731,42 @@ popBubbleAt(x, y, isBonus = false) {
         }
     }
 
-    update() {
+  update() {
     this.frame++;
     this.difficulty = 1 + this.score / 80;
 
-      // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
-    // combo 0   → множитель 1.0 (обычная скорость)
-    // combo 25+ → множитель 0.4 (мир заметно замедлен)
-    // Плавная интерполяция, чтобы не дёргалось.
-    const SLOW_FULL_AT_COMBO = 30;   // ← сколько комбо до максимума замедления
-    const SLOW_LERP = 0.03;          // ← скорость плавного перехода
+    // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
+    const SLOW_FULL_AT_COMBO = 30;
+    const SLOW_LERP = 0.03;
 
     const comboProgress = Math.min(this.combo / SLOW_FULL_AT_COMBO, 1);
     this.targetSlow = 1.0 - comboProgress * (1.0 - this.minSlow);
     this.slowFactor += (this.targetSlow - this.slowFactor) * SLOW_LERP;
 
     this.bonusManager.applyToAllBubbles(this.bubbles);
-    
-   const maxBubbles = this.isMobile ? this.maxBubbles + 5 : 40;
-if (this.bubbles.length > maxBubbles) {
-    this.bubbles.splice(0, 3);
-}
-    
- // ===== СПАВН С УЧЁТОМ МОБИЛЬНОГО =====
-const spawnRate = this.isMobile 
-    ? Math.max(this.spawnRateMin, Math.floor(this.spawnRateMax / this.difficulty))
-    : Math.max(8, Math.floor(25 / this.difficulty));
 
-if (this.frame % spawnRate === 0) {
-    const b = this.spawnBubble();
-    if (b && this.bubbles.length < this.maxBubbles) {
-        this.bubbles.push(b);
+    const maxBubbles = this.isMobile ? this.maxBubbles + 5 : 40;
+    if (this.bubbles.length > maxBubbles) {
+        this.bubbles.splice(0, 3);
     }
-    if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < this.maxBubbles) {
-        const b2 = this.spawnBubble();
-        if (b2) {
-            this.bubbles.push(b2);
+
+    // ===== СПАВН С УЧЁТОМ МОБИЛЬНОГО =====
+    const spawnRate = this.isMobile
+        ? Math.max(this.spawnRateMin, Math.floor(this.spawnRateMax / this.difficulty))
+        : Math.max(8, Math.floor(25 / this.difficulty));
+
+    if (this.frame % spawnRate === 0) {
+        const b = this.spawnBubble();
+        if (b && this.bubbles.length < this.maxBubbles) {
+            this.bubbles.push(b);
+        }
+        if (this.difficulty > 2 && Math.random() < 0.15 && this.bubbles.length < this.maxBubbles) {
+            const b2 = this.spawnBubble();
+            if (b2) {
+                this.bubbles.push(b2);
+            }
         }
     }
-}
 
     for (let i = this.bubbles.length - 1; i >= 0; i--) {
         this.bubbles[i].update();
@@ -795,33 +792,31 @@ if (this.frame % spawnRate === 0) {
 
     this.bonusManager.update();
 
- // ===== СБРОС СЕРИИ ПО ТАЙМАУТУ =====
-const currentTimeout = this.getComboTimeout();
-if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
-    console.log('⏰ ТАЙМАУТ! Сбрасываем серию в update() (таймаут:', currentTimeout, 'мс)');
-    sound.comboReset();
-    this.flushScore();
-}
-          for (let i = this.flyingNumbers.length - 1; i >= 0; i--) {
+    // ===== СБРОС СЕРИИ ПО ТАЙМАУТУ =====
+    const currentTimeout = this.getComboTimeout();
+    if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
+        console.log('⏰ ТАЙМАУТ! Сбрасываем серию в update() (таймаут:', currentTimeout, 'мс)');
+        sound.comboReset();
+        this.flushScore();
+    }
+
+    // ===== ДВИЖЕНИЕ ВСПЛЫВАЮЩИХ ЧИСЕЛ =====
+    for (let i = this.flyingNumbers.length - 1; i >= 0; i--) {
         const fn = this.flyingNumbers[i];
-        
-        // Двигаем к цели
+
         const dx = fn.targetX - fn.x;
         const dy = fn.targetY - fn.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
         if (dist < 5) {
-            // Долетели
             fn.x = fn.targetX;
             fn.y = fn.targetY;
             fn.life--;
             if (fn.life <= 0) {
                 this.flyingNumbers.splice(i, 1);
-                // ===== ПУЛЬСАЦИЯ ПРИ ДОСТИЖЕНИИ =====
                 this.triggerPulse(fn.isMultiplier);
             }
         } else {
-            // Летим
             const speed = Math.min(fn.speed, dist);
             fn.x += (dx / dist) * speed;
             fn.y += (dy / dist) * speed;
@@ -830,6 +825,27 @@ if (this.pendingScore > 0 && Date.now() - this.lastPopTime > currentTimeout) {
                 this.flyingNumbers.splice(i, 1);
             }
         }
+    }
+
+    // ===== ИНТЕРАКТИВНАЯ МУЗЫКА =====
+    if (typeof musicEngine !== 'undefined' && musicEngine.started) {
+        let bonusCount = 0;
+        if (this.bonusManager) {
+            if (this.bonusManager.slowMotion) bonusCount++;
+            if (this.bonusManager.multiplierTimer > 0) bonusCount++;
+            for (const type in this.bonusManager.bonuses) {
+                if (this.bonusManager.bonuses[type].count > 0) bonusCount += 0.3;
+            }
+        }
+             musicEngine.setIntensity({
+            combo: this.combo,
+            multiplier: this.multiplier,
+            slowFactor: this.slowFactor,
+            bonusCount: bonusCount,
+            pendingScore: this.pendingScore,
+            lives: this.lives,
+            maxLives: this.maxLives
+        });
     }
 }
 

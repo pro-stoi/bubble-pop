@@ -325,7 +325,7 @@ activateMultiplier() {
 }
 
     // ===== 🟣 ЛОПНУТЬ ВСЁ ПОЛЕ =====
-     activateFullClear() {
+    activateFullClear() {
         const game = this.game;
         if (!game) return;
 
@@ -335,28 +335,50 @@ activateMultiplier() {
             return;
         }
 
+        // ===== ПОРЯДОК ЦВЕТОВ =====
+        const colorOrder = ['red', 'yellow', 'green', 'blue', 'pink'];
+
+        // ===== СОБИРАЕМ ПУЗЫРЬКИ ПО ЦВЕТАМ =====
+        const byColor = { red: [], yellow: [], green: [], blue: [], pink: [] };
+        for (const b of game.bubbles) {
+            const ct = this.getColorType(b.hue);
+            if (ct && byColor[ct]) byColor[ct].push(b);
+        }
+
         // ===== СТАРТОВАЯ ТОЧКА — ЦЕНТР ЭКРАНА =====
-        // (визуально «взрыв из центра»)
         let prev = { x: game.width / 2, y: game.height / 2 };
 
-        // Копия массива (чтобы не ломать game.bubbles во время итерации)
-        const targets = game.bubbles.slice();
-
         let index = 0;
-        const stepDelay = 35; // мс между лопаниями (быстрее, чем зелёный)
+        let colorIdx = 0;
+        let poppedCount = 0;
+        const stepDelay = 35;
+
+        // ===== ПЕРЕХОД К СЛЕДУЮЩЕМУ ЦВЕТУ =====
+        const nextColor = () => {
+            while (colorIdx < colorOrder.length) {
+                const color = colorOrder[colorIdx];
+                if (byColor[color].length > 0) {
+                    return byColor[color];
+                }
+                colorIdx++;
+            }
+            return null;
+        };
 
         const popNext = () => {
-            if (targets.length === 0) {
-                // Конец цепочки
-                this.showEffect(`💥 ${total} пузырьков!`, '#ff44ff');
+            let currentColor = nextColor();
+
+            // ===== ВСЁ ЛОПНУТО =====
+            if (!currentColor) {
+                this.showEffect(`💥 ${poppedCount} пузырьков!`, '#ff44ff');
                 return;
             }
 
-            // Ближайший к предыдущему
+            // ===== БЛИЖАЙШИЙ К ПРЕДЫДУЩЕМУ В ТЕКУЩЕМ ЦВЕТЕ =====
             let bestIdx = -1;
             let bestDist = Infinity;
-            for (let i = 0; i < targets.length; i++) {
-                const t = targets[i];
+            for (let i = 0; i < currentColor.length; i++) {
+                const t = currentColor[i];
                 const dx = t.x - prev.x;
                 const dy = t.y - prev.y;
                 const d = dx * dx + dy * dy;
@@ -367,24 +389,32 @@ activateMultiplier() {
             }
 
             if (bestIdx === -1) {
-                this.showEffect(`💥 ${total} пузырьков!`, '#ff44ff');
+                // Цвет пуст — переходим к следующему
+                colorIdx++;
+                setTimeout(popNext, stepDelay);
                 return;
             }
 
-            const target = targets[bestIdx];
-            targets.splice(bestIdx, 1);
+            const target = currentColor.splice(bestIdx, 1)[0];
 
-            // Лопаем
+            // ===== ЛОПАЕМ =====
             game.popBubbleAt(target.x, target.y, true);
+            poppedCount++;
 
-            // Звук — питч растёт
+            // ===== ЗВУК — ПИТЧ РАСТЁТ =====
             const pitch = 600 + index * 25;
             if (typeof sound !== 'undefined' && sound.pop) {
                 sound.pop(Math.min(pitch, 2000), 0.06, 0.18);
             }
 
-            prev = target;
+            prev = { x: target.x, y: target.y };
             index++;
+
+            // ===== ЕСЛИ ТЕКУЩИЙ ЦВЕТ ЗАКОНЧИЛСЯ — ПЕРЕХОДИМ К СЛЕДУЮЩЕМУ =====
+            if (currentColor.length === 0) {
+                colorIdx++;
+            }
+
             setTimeout(popNext, stepDelay);
         };
 
@@ -430,47 +460,43 @@ activateMultiplier() {
         return false;
     }
 
-        // ===== ЦЕПНАЯ РЕАКЦИЯ (зелёный бонус) =====
+    // ===== ЦЕПНАЯ РЕАКЦИЯ (зелёный бонус) =====
     startChainReaction(startBubble, targetHue) {
         const game = this.game;
         if (!game) return;
 
-        // Собираем все пузырьки того же цвета
+        // ===== ОПРЕДЕЛЯЕМ ЦВЕТ СТАРТОВОГО ПУЗЫРЬКА =====
+        const startColorType = this.getColorType(startBubble.hue);
+
+        // ===== СОБИРАЕМ ВСЕ ПУЗЫРЬКИ ТОГО ЖЕ ЦВЕТА (СРАЗУ) =====
+        // Никаких проверок .alive — просто все, кто сейчас на поле
         const targets = [];
         for (const b of game.bubbles) {
             if (b === startBubble) continue;
-            if (Math.abs(b.hue - targetHue) < 20) {
+            if (this.getColorType(b.hue) === startColorType) {
                 targets.push(b);
             }
         }
 
-        // Сортируем по расстоянию от стартового — «змейка» от точки клика
-        targets.sort((a, b) => {
-            const da = (a.x - startBubble.x) ** 2 + (a.y - startBubble.y) ** 2;
-            const db = (b.x - startBubble.x) ** 2 + (b.y - startBubble.y) ** 2;
-            return da - db;
-        });
-
-        // Первый лопаем сразу
+        // ===== ЛОПАЕМ СТАРТОВЫЙ СРАЗУ =====
         game.popBubbleAt(startBubble.x, startBubble.y, true);
 
-        // Остальные — по одному, с задержкой
+        const totalCount = targets.length + 1;
         let index = 0;
-        let prev = startBubble;
-        const stepDelay = 60; // мс между лопаниями
+        let prev = { x: startBubble.x, y: startBubble.y };
+        const stepDelay = 60;
 
         const popNext = () => {
-            if (index >= targets.length) {
-                // Конец цепочки
-                this.showEffect(`🎯 ${targets.length + 1} пузырьков!`, '#44ff44');
+            // ===== КОНЕЦ ЦЕПОЧКИ =====
+            if (targets.length === 0) {
+                this.showEffect(`🎯 ${totalCount} пузырьков!`, '#44ff44');
                 return;
             }
 
-            // Ищем ближайший к предыдущему (эффект «молнии»)
+            // ===== ИЩЕМ БЛИЖАЙШИЙ К ПРЕДЫДУЩЕМУ =====
             let bestIdx = -1;
             let bestDist = Infinity;
             for (let i = 0; i < targets.length; i++) {
-                if (targets[i].alive === false) continue;
                 const dx = targets[i].x - prev.x;
                 const dy = targets[i].y - prev.y;
                 const d = dx * dx + dy * dy;
@@ -481,23 +507,23 @@ activateMultiplier() {
             }
 
             if (bestIdx === -1) {
-                this.showEffect(`🎯 ${targets.length + 1} пузырьков!`, '#44ff44');
+                this.showEffect(`🎯 ${totalCount} пузырьков!`, '#44ff44');
                 return;
             }
 
-            const target = targets[bestIdx];
-            targets.splice(bestIdx, 1);
+            // ===== ЗАБИРАЕМ ИЗ МАССИВА (БОЛЬШЕ НЕ ВЕРНЁТСЯ) =====
+            const target = targets.splice(bestIdx, 1)[0];
 
-            // Лопаем
+            // ===== ЛОПАЕМ =====
             game.popBubbleAt(target.x, target.y, true);
 
-            // Звук — питч растёт с каждым шагом
+            // ===== ЗВУК =====
             const pitch = 500 + index * 40;
             if (typeof sound !== 'undefined' && sound.pop) {
-                sound.pop(pitch, 0.08, 0.2);
+                sound.pop(Math.min(pitch, 2000), 0.08, 0.2);
             }
 
-            prev = target;
+            prev = { x: target.x, y: target.y };
             index++;
             setTimeout(popNext, stepDelay);
         };

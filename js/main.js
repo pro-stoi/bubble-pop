@@ -24,14 +24,15 @@ async function startGame() {
             console.warn('⚠️ Статистика не загружена');
         });
         
-     // ===== СОХРАНЯЕМ СЕССИЮ (только если есть согласие) =====
-if (statsManager.userId && (typeof window.hasPrivacyConsent !== 'function' || window.hasPrivacyConsent())) {
-            statsManager.sessions = (statsManager.sessions || 0) + 1;
-            statsManager.lastPlay = new Date().toISOString();
-            statsManager.sessionStart = Date.now();
-            await statsManager.saveSessionOnly();
-            console.log('✅ Сессия сохранена: #' + statsManager.sessions);
-        }
+// ===== СОХРАНЯЕМ СЕССИЮ (согласие по умолчанию) =====
+if (statsManager.userId) {
+    localStorage.setItem('privacyConsent', 'true');
+    statsManager.sessions = (statsManager.sessions || 0) + 1;
+    statsManager.lastPlay = new Date().toISOString();
+    statsManager.sessionStart = Date.now();
+    await statsManager.saveSessionOnly();
+    console.log('✅ Сессия сохранена: #' + statsManager.sessions);
+}
         
         // ===== ЗАГРУЖАЕМ БОНУСЫ =====
         loadUserBonuses(userIdNum, game);

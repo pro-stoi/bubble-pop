@@ -422,6 +422,105 @@ activateMultiplier() {
         setTimeout(popNext, 30);
     }
 
+    
+    
+    
+        // ===== МАГНИТ + ВЗРЫВ (жёлтый бонус) =====
+    startMagnetPull(targetBubble) {
+        const game = this.game;
+        if (!game) return;
+
+              const PULL_DURATION = 600;   // мс — длительность притяжения
+        const EXPLODE_DELAY = 100;   // мс — пауза перед взрывом
+        const PULL_RADIUS = 200;     // радиус притяжения (px)
+
+        const cx = targetBubble.x;
+        const cy = targetBubble.y;
+
+        // ===== СОБИРАЕМ ВСЕ ПУЗЫРЬКИ В РАДИУСЕ =====
+        const attracted = [];
+        for (const b of game.bubbles) {
+            if (b === targetBubble) continue;
+            const dx = b.x - cx;
+            const dy = b.y - cy;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d <= PULL_RADIUS) {
+                attracted.push({
+                    bubble: b,
+                    startX: b.x,
+                    startY: b.y,
+                    startTime: performance.now(),
+                });
+            }
+        }
+
+        if (attracted.length === 0) {
+            game.popBubbleAt(cx, cy, true);
+            this.showEffect(`🧲 1 пузырёк!`, '#ffcc00');
+            return;
+        }
+
+        // ===== ЗВУК ПРИТЯЖЕНИЯ =====
+        if (typeof sound !== 'undefined' && sound.slowMotion) {
+            sound.slowMotion();
+        }
+
+        // ===== ФЛАГ: BUBBLE.UPDATE() НЕ ДВИГАЕТ ИХ =====
+        for (const a of attracted) {
+            a.bubble._magnetPulling = true;
+        }
+
+        // ===== АНИМАЦИЯ =====
+        const animatePull = () => {
+            const now = performance.now();
+            let done = 0;
+
+            for (const a of attracted) {
+                const elapsed = now - a.startTime;
+                const t = Math.min(elapsed / PULL_DURATION, 1);
+                const ease = t < 0.5
+                    ? 2 * t * t
+                    : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+                a.bubble.x = a.startX + (cx - a.startX) * ease;
+                a.bubble.y = a.startY + (cy - a.startY) * ease;
+
+                if (t >= 1) done++;
+            }
+
+            if (done < attracted.length) {
+                requestAnimationFrame(animatePull);
+            } else {
+                setTimeout(() => this._explodeMagnet(cx, cy, attracted), EXPLODE_DELAY);
+            }
+        };
+
+        requestAnimationFrame(animatePull);
+    }
+
+    // ===== ВЗРЫВ ПОСЛЕ ПРИТЯЖЕНИЯ =====
+    _explodeMagnet(cx, cy, attracted) {
+        const game = this.game;
+        if (!game) return;
+
+        // Лопаем целевой
+        game.popBubbleAt(cx, cy, true);
+
+        // Лопаем притянутые
+        for (const a of attracted) {
+            game.popBubbleAt(a.bubble.x, a.bubble.y, true);
+            a.bubble._magnetPulling = false;
+        }
+
+        // ===== ЗВУК ВЗРЫВА =====
+        if (typeof sound !== 'undefined' && sound.bonusHappy) {
+            sound.bonusHappy();
+        }
+
+        // ===== POPUP =====
+        this.showEffect(`🧲 ${attracted.length + 1} пузырьков!`, '#ffcc00');
+    }
+
     // ===== ОБРАБОТКА ВЫБОРА ЦВЕТА =====
     handleColorSelection(x, y) {
         if (!this.isColorSelectionMode) return false;
@@ -432,20 +531,9 @@ activateMultiplier() {
                 if (hint) hint.style.display = 'none';
                 
                 if (this.selectedBonusType === 'magnet') {
-                    const radius = 250;
-                    let count = 0;
-                    for (let i = this.game.bubbles.length - 1; i >= 0; i--) {
-                        const target = this.game.bubbles[i];
-                        const dx = target.x - b.x;
-                        const dy = target.y - b.y;
-                        if (dx*dx + dy*dy < radius*radius) {
-                            this.game.popBubbleAt(target.x, target.y, true);
-                            count++;
-                        }
-                    }
-                    this.showEffect(`🧲 ${count} пузырьков!`, '#ffcc00');
-                    
-                            } else if (this.selectedBonusType === 'color_explosion') {
+                    // ===== МАГНИТ + ВЗРЫВ =====
+                    this.startMagnetPull(b);
+                } else if (this.selectedBonusType === 'color_explosion') {
                     const targetHue = b.hue;
                     // ===== ЦЕПНАЯ РЕАКЦИЯ =====
                     this.startChainReaction(b, targetHue);
@@ -855,7 +943,10 @@ const labels = BONUS_ICONS;
         }
         return bubble;
     }
+    
     update() {
+         if (this._magnetPulling) return;
+        
         if (this.slowMotion) {
             this.slowMotionTimer--;
             if (this.slowMotionTimer <= 0) {

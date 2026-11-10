@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== РАННЯЯ РЕГИСТРАЦИЯ + ЕЖЕДНЕВНЫЙ БОНУС =====
     (async function earlyRegister() {
         try {
-            let waited = 0;
-            while ((!statsManager.userId) && waited < 5000) {
+        let waited = 0;
+while ((!statsManager.userId) && waited < 10000) {
                 await new Promise(r => setTimeout(r, 200));
                 waited += 200;
             }

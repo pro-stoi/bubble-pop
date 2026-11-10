@@ -55,8 +55,7 @@ class VKManager {
 init() {
     if (typeof vkBridge !== 'undefined') {
         this.bridge = vkBridge;
-        this.isReady = true;
-        
+
         // ===== ЗАПРАШИВАЕМ ПРАВА =====
         this.bridge.send('VKWebAppGetAuthToken', {
             scope: 'wall,share'
@@ -67,33 +66,34 @@ init() {
         })
         .then(() => {
             console.log('✅ VK Bridge инициализирован');
+            this.isReady = true;   // ← ЗДЕСЬ
             return this.getUserInfo();
         })
         .then(() => {
             console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
-            document.dispatchEvent(new CustomEvent('vkReady', { 
-                detail: { userId: this.dbUserId } 
+            document.dispatchEvent(new CustomEvent('vkReady', {
+                detail: { userId: this.dbUserId }
             }));
         })
         .catch((error) => {
             console.warn('⚠️ Ошибка получения прав:', error);
             // ===== ЕСЛИ ПРАВА НЕ ПОЛУЧЕНЫ - ВСЁ РАВНО ПРОДОЛЖАЕМ =====
-            // Пользователь может отказать в правах, но игра должна работать
             this.bridge.send('VKWebAppInit')
                 .then(() => {
                     console.log('✅ VK Bridge инициализирован (без прав wall)');
+                    this.isReady = true;   // ← ЗДЕСЬ
                     return this.getUserInfo();
                 })
                 .then(() => {
                     console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
-                    document.dispatchEvent(new CustomEvent('vkReady', { 
-                        detail: { userId: this.dbUserId } 
+                    document.dispatchEvent(new CustomEvent('vkReady', {
+                        detail: { userId: this.dbUserId }
                     }));
                 })
                 .catch((err) => {
                     console.warn('⚠️ Ошибка инициализации VK:', err);
-                    document.dispatchEvent(new CustomEvent('vkReady', { 
-                        detail: { userId: null } 
+                    document.dispatchEvent(new CustomEvent('vkReady', {
+                        detail: { userId: null }
                     }));
                 });
         });
@@ -103,34 +103,26 @@ init() {
     }
 }
 
-    loadBridge() {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
-        script.onload = () => {
-            if (typeof vkBridge !== 'undefined') {
-                this.bridge = vkBridge;
-                this.isReady = true;
-                this.bridge.send('VKWebAppInit')
-                    .then(() => {
-                        console.log('✅ VK Bridge загружен и инициализирован');
-                        return this.getUserInfo();
-                    })
-                    .then(() => {
-                        document.dispatchEvent(new CustomEvent('vkReady', { 
-                            detail: { userId: this.dbUserId } 
-                        }));
-                    })
-                    .catch(console.warn);
-            }
-        };
-        script.onerror = () => {
-            console.warn('⚠️ Не удалось загрузить VK Bridge');
-            document.dispatchEvent(new CustomEvent('vkReady', { 
-                detail: { userId: null } 
-            }));
-        };
-        document.head.appendChild(script);
-    }
+loadBridge() {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
+    script.onload = () => {
+        if (typeof vkBridge !== 'undefined') {
+            this.bridge = vkBridge;
+            this.bridge.send('VKWebAppInit')
+                .then(() => {
+                    console.log('✅ VK Bridge загружен и инициализирован');
+                    this.isReady = true;   // ← ЗДЕСЬ
+                    return this.getUserInfo();
+                })
+                .then(() => {
+                    document.dispatchEvent(new CustomEvent('vkReady', {
+                        detail: { userId: this.dbUserId }
+                    }));
+                })
+                .catch(console.warn);
+        }
+    };
 
     async getUserInfo() {
         if (!this.isReady) return;

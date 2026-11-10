@@ -55,6 +55,7 @@ class VKManager {
 init() {
     if (typeof vkBridge !== 'undefined') {
         this.bridge = vkBridge;
+        this.isReady = true;   // ← ВЕРНУЛИ (как было)
 
         // ===== ЗАПРАШИВАЕМ ПРАВА =====
         this.bridge.send('VKWebAppGetAuthToken', {
@@ -66,7 +67,6 @@ init() {
         })
         .then(() => {
             console.log('✅ VK Bridge инициализирован');
-            this.isReady = true;   // ← ЗДЕСЬ
             return this.getUserInfo();
         })
         .then(() => {
@@ -81,7 +81,6 @@ init() {
             this.bridge.send('VKWebAppInit')
                 .then(() => {
                     console.log('✅ VK Bridge инициализирован (без прав wall)');
-                    this.isReady = true;   // ← ЗДЕСЬ
                     return this.getUserInfo();
                 })
                 .then(() => {

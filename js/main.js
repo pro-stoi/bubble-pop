@@ -5,24 +5,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== РАННЯЯ РЕГИСТРАЦИЯ + ЕЖЕДНЕВНЫЙ БОНУС =====
     (async function earlyRegister() {
         try {
-        let waited = 0;
-while ((!statsManager.userId) && waited < 10000) {
+            let waited = 0;
+            while ((!statsManager.userId) && waited < 5000) {
                 await new Promise(r => setTimeout(r, 200));
                 waited += 200;
             }
 
-                     if (!statsManager.userId) {
+            if (!statsManager.userId) {
                 console.warn('⚠️ [REG] user_id не получен за 5 сек');
                 return;
             }
 
-            // ===== ЗАЩИТА ОТ ФЕЙКОВЫХ ID =====
-            const rawId = String(statsManager.userId);
-            const userIdNum = parseInt(rawId);
-            if (isNaN(userIdNum) || rawId === '1' || rawId === '2' || rawId === '3' || rawId.length < 6) {
-                console.warn('⚠️ [REG] Фейковый userId:', rawId, '— регистрация пропущена');
-                return;
-            }
+            const userIdNum = parseInt(statsManager.userId);
             const userName = statsManager.userName || 'Игрок';
             const isLocal = window.location.hostname === 'localhost' ||
                            window.location.hostname === '127.0.0.1' ||

@@ -1,8 +1,65 @@
 document.addEventListener('DOMContentLoaded', function() {
     // ===== ПРОВЕРЯЕМ, НЕ ЗАПУЩЕНА ЛИ УЖЕ ИГРА =====
     let gameStarted = false;
-    
+
+    // ===== РАННЯЯ РЕГИСТРАЦИЯ + ЕЖЕДНЕВНЫЙ БОНУС =====
+    (async function earlyRegister() {
+        try {
+            let waited = 0;
+            while ((!statsManager.userId) && waited < 5000) {
+                await new Promise(r => setTimeout(r, 200));
+                waited += 200;
+            }
+
+            if (!statsManager.userId) {
+                console.warn('⚠️ [REG] user_id не получен за 5 сек');
+                return;
+            }
+
+            const userIdNum = parseInt(statsManager.userId);
+            const userName = statsManager.userName || 'Игрок';
+            const isLocal = window.location.hostname === 'localhost' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.protocol === 'file:';
+            const baseUrl = isLocal
+                ? 'http://170.168.10.167:8080/api/bubble'
+                : 'https://neurodrone-arena.ru/api/bubble';
+
+            // 1. Логин (создаст пользователя + приветственный бонус, если новый)
+            const loginResp = await fetch(baseUrl + '/user/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vkId: String(userIdNum), userName: userName })
+            });
+            const loginData = await loginResp.json();
+
+            if (loginData.success) {
+                console.log('✅ [REG] Пользователь в БД, id=', loginData.id);
+
+                // 2. Ежедневный бонус (серия)
+                try {
+                    const dailyResp = await fetch(baseUrl + '/user-bonus/check-daily', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: loginData.id })
+                    });
+                    const dailyData = await dailyResp.json();
+                    if (dailyData.success && dailyData.newBonus) {
+                        console.log('🎁 [DAILY] Бонус за серию:', dailyData.streak, 'дней');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ [DAILY] Ошибка:', e.message);
+                }
+            } else {
+                console.warn('⚠️ [REG] Ошибка:', loginData.error);
+            }
+        } catch (e) {
+            console.warn('⚠️ [REG] Ошибка:', e.message);
+        }
+    })();
+
 async function startGame() {
+    if (gameStarted) return;
     if (gameStarted) return;
     gameStarted = true;
     

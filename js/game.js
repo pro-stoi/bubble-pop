@@ -6,10 +6,11 @@ this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
 
 // ===== НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ =====
 if (this.isMobile) {
-    this.maxBubbles = 20;        // максимум шаров
-    this.spawnRateMin = 15;      // мин. спавн
-    this.spawnRateMax = 40;      // макс. спавн
-    this.speedMultiplier = 0.6;  // скорость шаров
+    this.maxBubbles = 20;
+    this.spawnRateMin = 12;    // было 15 — чуть быстрее спавн
+    this.spawnRateMax = 30;    // было 40 — чуть быстрее
+    this.speedMultiplier = 0.7; // было 0.6 — чуть быстрее старт
+
 } else {
     this.maxBubbles = 35;
     this.spawnRateMin = 8;
@@ -731,9 +732,28 @@ popBubbleAt(x, y, isBonus = false) {
         }
     }
 
-  update() {
+    update() {
     this.frame++;
     this.difficulty = 1 + this.score / 80;
+
+    // ===== АДАПТИВНАЯ СКОРОСТЬ ПОД УСТРОЙСТВО =====
+    // Замеряем FPS за последние 60 кадров и подстраиваем множитель скорости
+    if (!this._fpsSamples) this._fpsSamples = [];
+    this._fpsSamples.push(performance.now());
+    if (this._fpsSamples.length > 60) this._fpsSamples.shift();
+
+    if (this._fpsSamples.length === 60) {
+        const elapsed = this._fpsSamples[59] - this._fpsSamples[0];
+        const fps = 59000 / elapsed;  // 59 интервалов за elapsed мс
+
+        // Если FPS < 40 — устройство слабое, замедляем
+        // Если FPS > 55 — устройство сильное, ускоряем
+        if (fps < 40) {
+            this.speedMultiplier = Math.max(0.4, this.speedMultiplier - 0.01);
+        } else if (fps > 55) {
+            this.speedMultiplier = Math.min(1.0, this.speedMultiplier + 0.005);
+        }
+    }
 
     // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
     const SLOW_FULL_AT_COMBO = 30;

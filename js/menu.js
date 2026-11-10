@@ -329,3 +329,32 @@ document.getElementById('exitBtn').addEventListener('touchend', (e) => {
     }, 300);
 });
 });
+// ===== БАННЕР ЧЕРЕЗ 3 СЕКУНДЫ =====
+setTimeout(() => {
+    if (typeof vkBridge !== 'undefined') {
+        vkBridge.send('VKWebAppGetAds')
+            .then((bannerInfo) => {
+                const container = document.getElementById('bannerContainer');
+                if (!container || !bannerInfo) return;
+                container.innerHTML = `
+                    <a href="${bannerInfo.trackingLink || '#'}" target="_blank" rel="nofollow noopener noreferrer" style="
+                        display:flex; align-items:center; gap:8px;
+                        background:rgba(20,20,50,0.95);
+                        border-radius:12px; padding:8px 12px;
+                        text-decoration:none; color:white;
+                        border:1px solid rgba(255,255,255,0.1);
+                    ">
+                        ${bannerInfo.iconLink ? `<img src="${bannerInfo.iconLink}" style="width:36px; height:36px; border-radius:6px;">` : ''}
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:bold; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${bannerInfo.title || ''}</div>
+                            <div style="font-size:11px; opacity:0.6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${bannerInfo.description || ''}</div>
+                        </div>
+                    </a>
+                `;
+                container.style.display = 'block';
+            })
+            .catch((error) => {
+                console.warn('⚠️ [BANNER] Реклама не загружена:', error);
+            });
+    }
+}, 3000);

@@ -346,8 +346,18 @@ if (soundToggleBtn) {
         }
     }, 5000);
 
-    console.log('🫧 Пузырьки запущены!');
+     console.log('🫧 Пузырьки запущены!');
     console.log('🏆 Рекорд:', bestScore);
+
+    // ===== СОХРАНЕНИЕ ПРИ ЗАКРЫТИИ ВКЛАДКИ =====
+    window.addEventListener('beforeunload', function() {
+        if (typeof statsManager !== 'undefined' && statsManager.userId) {
+            try {
+                statsManager.onScore(game.score);
+                statsManager.save();   // не ждём, браузер закроется
+            } catch (e) {}
+        }
+    });
 }
 
     // ===== ЗАГРУЗКА БОНУСОВ =====

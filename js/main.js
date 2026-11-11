@@ -2,67 +2,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== ПРОВЕРЯЕМ, НЕ ЗАПУЩЕНА ЛИ УЖЕ ИГРА =====
     let gameStarted = false;
 
-    // ===== РАННЯЯ РЕГИСТРАЦИЯ + ЕЖЕДНЕВНЫЙ БОНУС =====
-    (async function earlyRegister() {
-        try {
-            let waited = 0;
-            while ((!statsManager.userId) && waited < 5000) {
-                await new Promise(r => setTimeout(r, 200));
-                waited += 200;
-            }
-
-            if (!statsManager.userId) {
-                console.warn('⚠️ [REG] user_id не получен за 5 сек');
-                return;
-            }
-
-            const userIdNum = parseInt(statsManager.userId);
-            const userName = statsManager.userName || 'Игрок';
-            const isLocal = window.location.hostname === 'localhost' ||
-                           window.location.hostname === '127.0.0.1' ||
-                           window.location.protocol === 'file:';
-            const baseUrl = isLocal
-                ? 'http://170.168.10.167:8080/api/bubble'
-                : 'https://neurodrone-arena.ru/api/bubble';
-
-            // 1. Логин (создаст пользователя + приветственный бонус, если новый)
-            const loginResp = await fetch(baseUrl + '/user/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ vkId: String(userIdNum), userName: userName })
-            });
-            const loginData = await loginResp.json();
-
-            if (loginData.success) {
-                console.log('✅ [REG] Пользователь в БД, id=', loginData.id);
-
-                // 2. Ежедневный бонус (серия)
-                try {
-                    const dailyResp = await fetch(baseUrl + '/user-bonus/check-daily', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ userId: loginData.id })
-                    });
-                    const dailyData = await dailyResp.json();
-                    if (dailyData.success && dailyData.newBonus) {
-                        console.log('🎁 [DAILY] Бонус за серию:', dailyData.streak, 'дней');
-                    }
-                } catch (e) {
-                    console.warn('⚠️ [DAILY] Ошибка:', e.message);
-                }
-            } else {
-                console.warn('⚠️ [REG] Ошибка:', loginData.error);
-            }
-        } catch (e) {
-            console.warn('⚠️ [REG] Ошибка:', e.message);
-        }
-    })();
+    // ===== РАННЯЯ РЕГИСТРАЦИЯ УБРАНА =====
+    // Пользователь создаётся только при нажатии "Играть" (startGame)
+    // и при сохранении счёта (saveGameResult).
 
 async function startGame() {
     if (gameStarted) return;
-    if (gameStarted) return;
     gameStarted = true;
     
+    // ===== СНАЧАЛА ЛОГИНИМСЯ (создаём пользователя, если новый) =====
+    if (typeof vk !== 'undefined' && vk.userId) {
+        try {
+            await vk.loginToServer();
+            console.log('✅ [START] Пользователь зарегистрирован/найден, id=', vk.dbUserId);
+        } catch (e) {
+            console.warn('⚠️ [START] Ошибка логина:', e.message);
+        }
+    }
+    
+    // ===== ТЕПЕРЬ ЧИТАЕМ userId (ПОСЛЕ логина) =====
     const userId = localStorage.getItem('bubbleUserId');
     console.log('👤 ID пользователя:', userId);
     
@@ -451,19 +409,22 @@ async function loadUserBonuses(userId, game) {
     }
 
     // ===== ЗАПУСК ИГРЫ =====
-    if (typeof vk !== 'undefined' && vk.isReady && vk.dbUserId) {
-        startGame();
-    } else {
-        document.addEventListener('vkReady', function(e) {
-            console.log('🎮 VK готов, запускаем игру!', e.detail);
+    // vk.loginToServer() теперь вызывается ВНУТРИ startGame(),
+    // поэтому не ждём vk.dbUserId — ждём только vk.isReady
+    const tryStart = () => {
+        if (gameStarted) return;
+        if (typeof vk !== 'undefined' && vk.isReady) {
             startGame();
-        });
-        
-        setTimeout(function() {
-            if (!gameStarted) {
-                console.warn('⏱ VK не ответил, запускаем игру принудительно');
-                startGame();
-            }
-        }, 5000);
-    }
-});
+        } else {
+            setTimeout(tryStart, 300);
+        }
+    };
+    tryStart();
+    
+    // Fallback: через 8 сек принудительно
+    setTimeout(function() {
+        if (!gameStarted) {
+            console.warn('⏱ Принудительный запуск');
+            startGame();
+        }
+    }, 8000);

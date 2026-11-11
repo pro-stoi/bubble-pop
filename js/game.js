@@ -59,8 +59,9 @@ if (this.isMobile) {
         this.minSlow = 0.4;
 
         // ===== ПАУЗА =====
-        this.isPaused = false;
+               this.isPaused = false;
         this.pauseStartedAt = 0;
+        this._lastAutoSaveTime = 0;   // ← для троттлинга автосохранения
         // Бонусы
         this.bonusManager = new BonusManager(this);
         
@@ -714,8 +715,6 @@ popBubbleAt(x, y, isBonus = false) {
             challengeTracker.onBigBonus(total);
             
             if (total > 0) {
-                
-                
                 this.scorePopups.push({
                     x: this.width / 2,
                     y: this.height / 2 - 60,
@@ -729,6 +728,24 @@ popBubbleAt(x, y, isBonus = false) {
             }
             
             this.pendingScore = 0;
+
+            // ===== АВТОСОХРАНЕНИЕ В БД ПРИ СБРОСЕ КОМБО =====
+            // Троттлинг: не чаще раза в 5 секунд (чтобы не спамить БД)
+            const now = Date.now();
+            if (now - (this._lastAutoSaveTime || 0) > 5000 &&
+                typeof statsManager !== 'undefined' && statsManager.userId) {
+                this._lastAutoSaveTime = now;
+                try {
+                    statsManager.onScore(this.score);
+                    statsManager.save().then(() => {
+                        console.log('💾 [AUTO-SAVE] Статистика сохранена при сбросе комбо');
+                    }).catch((e) => {
+                        console.warn('⚠️ [AUTO-SAVE] Ошибка:', e.message);
+                    });
+                } catch (e) {
+                    console.warn('⚠️ [AUTO-SAVE] Ошибка:', e.message);
+                }
+            }
         }
     }
 

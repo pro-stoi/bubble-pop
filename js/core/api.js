@@ -28,14 +28,15 @@ class ApiClient {
         console.log('✅ [API] Экземпляр создан');
     }
 
-    async request(endpoint, options) {
+      async request(endpoint, options) {
         console.log('📌 [API] request() вызван, endpoint =', endpoint);
         
         var url = this.baseUrl + endpoint;
         var config = {
             headers: this.headers,
             ...options,
-            body: options && options.body ? JSON.stringify(options.body) : undefined
+            body: options && options.body ? JSON.stringify(options.body) : undefined,
+            keepalive: true   // ← позволяет fetch завершиться после закрытия вкладки
         };
 
         console.log('📌 [API] URL =', url);

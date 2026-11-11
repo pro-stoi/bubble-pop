@@ -132,7 +132,7 @@ init() {
         document.head.appendChild(script);
     }
 
-    async getUserInfo() {
+     async getUserInfo() {
         if (!this.isReady) return;
         
         try {
@@ -141,7 +141,8 @@ init() {
             this.userName = data.first_name + ' ' + data.last_name;
             console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
             
-            await this.loginToServer();
+            // ===== loginToServer() ВЫЗЫВАЕТСЯ ИЗ startGame() =====
+            // Это убирает дубликаты: пользователь создаётся только при нажатии "Играть"
             
         } catch (error) {
             console.warn('⚠️ Не удалось получить информацию о пользователе:', error);

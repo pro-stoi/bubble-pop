@@ -438,3 +438,4 @@ async function loadUserBonuses(userId, game) {
             startGame();
         }
     }, 8000);
+    }); 

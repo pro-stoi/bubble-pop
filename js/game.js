@@ -761,15 +761,16 @@ popBubbleAt(x, y, isBonus = false) {
 
     if (this._fpsSamples.length === 60) {
         const elapsed = this._fpsSamples[59] - this._fpsSamples[0];
-        const fps = 59000 / elapsed;  // 59 интервалов за elapsed мс
+        const fps = 59000 / elapsed;
 
-        // Если FPS < 40 — устройство слабое, замедляем
-        // Если FPS > 55 — устройство сильное, ускоряем
-              if (fps < 40) {
+        if (fps < 40) {
             this.speedMultiplier = Math.max(0.5, this.speedMultiplier - 0.01);
         } else if (fps > 55) {
-            this.speedMultiplier = Math.min(2.0, this.speedMultiplier + 0.005);   // ← было 1.0
+            this.speedMultiplier = Math.min(2.0, this.speedMultiplier + 0.005);
         }
+    }   // ← ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ if (this._fpsSamples.length === 60)
+
+    // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
 
     // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
     const SLOW_FULL_AT_COMBO = 30;

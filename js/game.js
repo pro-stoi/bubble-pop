@@ -7,9 +7,9 @@ this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
 // ===== НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ =====
 if (this.isMobile) {
     this.maxBubbles = 20;
-    this.spawnRateMin = 12;    // было 15 — чуть быстрее спавн
-    this.spawnRateMax = 30;    // было 40 — чуть быстрее
-    this.speedMultiplier = 0.7; // было 0.6 — чуть быстрее старт
+    this.spawnRateMin = 6;     // было 12 — в 2 раза чаще спавн
+    this.spawnRateMax = 15;    // было 30 — в 2 раза чаще
+    this.speedMultiplier = 1.4; // было 0.7 — в 2 раза быстрее
 
 } else {
     this.maxBubbles = 35;
@@ -765,12 +765,11 @@ popBubbleAt(x, y, isBonus = false) {
 
         // Если FPS < 40 — устройство слабое, замедляем
         // Если FPS > 55 — устройство сильное, ускоряем
-        if (fps < 40) {
-            this.speedMultiplier = Math.max(0.4, this.speedMultiplier - 0.01);
+              if (fps < 40) {
+            this.speedMultiplier = Math.max(0.5, this.speedMultiplier - 0.01);
         } else if (fps > 55) {
-            this.speedMultiplier = Math.min(1.0, this.speedMultiplier + 0.005);
+            this.speedMultiplier = Math.min(2.0, this.speedMultiplier + 0.005);   // ← было 1.0
         }
-    }
 
     // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
     const SLOW_FULL_AT_COMBO = 30;

@@ -155,13 +155,6 @@ init() {
             return;
         }
         
-           // ===== ПРОВЕРКА СОГЛАСИЯ =====
-    if (typeof window.hasPrivacyConsent === 'function' && !window.hasPrivacyConsent()) {
-        console.warn('🔒 [VK] Нет согласия на обработку данных — локальный режим');
-        this.dbUserId = null;
-        return;
-    }
-        
         try {
             const response = await fetch(`${this.serverUrl}/user/login`, {
                 method: 'POST',

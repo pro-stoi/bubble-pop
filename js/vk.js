@@ -132,38 +132,80 @@ init() {
         document.head.appendChild(script);
     }
 
-     async getUserInfo() {
+    async getUserInfo() {
         if (!this.isReady) return;
 
-        // ===== 1. LAUNCH PARAMS (работает на ПК и телефоне) =====
+        // ===== 1. LAUNCH PARAMS =====
         try {
             const params = await this.bridge.send('VKWebAppGetLaunchParams');
-            console.log('🔥 Launch params:', params);
             if (params && params.vk_user_id) {
                 this.userId = String(params.vk_user_id);
                 this.userName = params.vk_user_name || 'Игрок_' + this.userId;
-                console.log('👤 ID из Launch Params:', this.userId, '| Имя:', this.userName);
+                console.log('👤 ID из Launch Params:', this.userId);
                 return;
             }
         } catch (e) {
             console.warn('⚠️ Launch Params не сработали:', e);
         }
 
-        // ===== 2. VKWebAppGetUserInfo (fallback) =====
+        // ===== 2. VKWebAppGetUserInfo =====
         try {
             const data = await this.bridge.send('VKWebAppGetUserInfo');
-            this.userId = String(data.id);
-            this.userName = data.first_name + ' ' + data.last_name;
-            console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
-        } catch (error) {
-            console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+            if (data && data.id) {
+                this.userId = String(data.id);
+                this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
+                console.log('👤 ID из GetUserInfo:', this.userId);
+                return;
+            }
+        } catch (e) {
+            console.warn('⚠️ GetUserInfo не сработал:', e);
         }
+
+        // ===== 3. URL (query + hash) =====
+        try {
+            const qs = new URLSearchParams(window.location.search);
+            const hash = window.location.hash || '';
+            const hashQs = new URLSearchParams(hash.replace(/^#/, ''));
+            const fromUrl =
+                qs.get('vk_user_id') ||
+                hashQs.get('vk_user_id') ||
+                qs.get('viewer_id') ||
+                hashQs.get('viewer_id');
+            if (fromUrl) {
+                this.userId = String(fromUrl);
+                this.userName = 'Игрок_' + this.userId;
+                console.log('👤 ID из URL:', this.userId);
+                return;
+            }
+        } catch (e) {}
+
+        // ===== 4. Последняя попытка: VKWebAppInit + GetUserInfo =====
+        try {
+            await this.bridge.send('VKWebAppInit');
+            const data = await this.bridge.send('VKWebAppGetUserInfo');
+            if (data && data.id) {
+                this.userId = String(data.id);
+                this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
+                console.log('👤 ID после Init:', this.userId);
+                return;
+            }
+        } catch (e) {
+            console.warn('⚠️ Финальная попытка GetUserInfo провалилась:', e);
+        }
+
+        console.error('❌ [VK] Не удалось получить userId ни одним способом');
     }
-    async loginToServer() {
+     async loginToServer() {
         if (!this.userId) {
-            console.warn('⚠️ Нет userId для авторизации');
-            return;
+            console.log('🔥 [LOGIN] userId пуст — пробуем getUserInfo() ещё раз');
+            await this.getUserInfo();
         }
+        if (!this.userId) {
+            console.error('❌ [VK] loginToServer: userId отсутствует после повторной попытки');
+            throw new Error('NO_VK_USER_ID');
+        }
+        
+        console.log('🔥 [LOGIN] Отправляем userId =', this.userId, ', userName =', this.userName);
         
         try {
             const response = await fetch(`${this.serverUrl}/user/login`, {

@@ -1,11 +1,12 @@
 // js/vk.js
 
-// ===== ГЛОБАЛЬНАЯ ПЕРЕМЕННАЯ ДЛЯ URL =====
-const isLocal = window.location.hostname === 'localhost' || 
+// ===== ОПРЕДЕЛЕНИЕ ОКРУЖЕНИЯ =====
+const isLocal = window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1' ||
-                window.location.hostname === '192.168.1.100' ||  // ← ТВОЙ IP
+                window.location.hostname.startsWith('192.168.') ||
                 window.location.protocol === 'file:';
-const API_BASE_URL = isLocal 
+
+const API_BASE_URL = isLocal
     ? 'http://170.168.10.167:8080/api/bubble'
     : 'https://neurodrone-arena.ru/api/bubble';
 
@@ -15,9 +16,8 @@ console.log('🌐 API_BASE_URL:', API_BASE_URL);
 
 class VKManager {
     constructor() {
-        // ===== ФЛАГ ЛОКАЛЬНОЙ РАЗРАБОТКИ =====
         this.isLocal = isLocal;
-        
+
         if (this.isLocal) {
             console.log('🧪 ЛОКАЛЬНЫЙ РЕЖИМ: имитация пользователя #2');
             this.isReady = true;
@@ -26,10 +26,10 @@ class VKManager {
             this.dbUserId = 2;
             this.bridge = null;
             this.serverUrl = API_BASE_URL;
-            
+
             localStorage.setItem('bubbleUserId', String(this.dbUserId));
             localStorage.setItem('username', this.userName);
-            
+
             if (typeof statsManager !== 'undefined') {
                 statsManager.userId = this.dbUserId;
                 statsManager.load(this.dbUserId);
@@ -50,58 +50,55 @@ class VKManager {
         this.topCache = null;
         this.topCacheTime = 0;
         this.serverUrl = API_BASE_URL;
+
+        // Защита от параллельных логинов
+        this._loginInFlight = null;
     }
 
-init() {
-    if (typeof vkBridge !== 'undefined') {
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
+    init() {
+        if (typeof vkBridge === 'undefined') {
+            console.warn('⚠️ VK Bridge не загружен, грузим сами');
+            this.loadBridge();
+            return;
+        }
+
         this.bridge = vkBridge;
         this.isReady = true;
-        
-        // ===== ЗАПРАШИВАЕМ ПРАВА =====
-        this.bridge.send('VKWebAppGetAuthToken', {
-            scope: 'wall,share'
-        })
-        .then(() => {
-            console.log('✅ Права wall получены');
-            return this.bridge.send('VKWebAppInit');
-        })
-        .then(() => {
-            console.log('✅ VK Bridge инициализирован');
-            return this.getUserInfo();
-        })
-        .then(() => {
-            console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
-            document.dispatchEvent(new CustomEvent('vkReady', { 
-                detail: { userId: this.dbUserId } 
-            }));
-        })
-        .catch((error) => {
-            console.warn('⚠️ Ошибка получения прав:', error);
-            // ===== ЕСЛИ ПРАВА НЕ ПОЛУЧЕНЫ - ВСЁ РАВНО ПРОДОЛЖАЕМ =====
-            // Пользователь может отказать в правах, но игра должна работать
-            this.bridge.send('VKWebAppInit')
-                .then(() => {
-                    console.log('✅ VK Bridge инициализирован (без прав wall)');
-                    return this.getUserInfo();
-                })
-                .then(() => {
-                    console.log('✅ Пользователь авторизован, ID:', this.dbUserId);
-                    document.dispatchEvent(new CustomEvent('vkReady', { 
-                        detail: { userId: this.dbUserId } 
+
+        // ===== ПЫТАЕМСЯ ПОЛУЧИТЬ ПРАВА, НО НЕ БЛОКИРУЕМСЯ НА ЭТОМ =====
+        this.bridge.send('VKWebAppGetAuthToken', { scope: 'wall,share' })
+            .catch((e) => {
+                console.warn('⚠️ Права wall не получены (это не критично):', e);
+            })
+            .then(() => this.bridge.send('VKWebAppInit'))
+            .catch((e) => {
+                console.warn('⚠️ VKWebAppInit упал:', e);
+            })
+            .then(() => {
+                // ===== ГЛАВНОЕ: получаем userId и ЛОГИНИМСЯ =====
+                return this.getUserInfo();
+            })
+            .then(() => {
+                if (this.dbUserId) {
+                    console.log('✅ [VK] Готов, dbUserId =', this.dbUserId);
+                    document.dispatchEvent(new CustomEvent('vkReady', {
+                        detail: { userId: this.dbUserId }
                     }));
-                })
-                .catch((err) => {
-                    console.warn('⚠️ Ошибка инициализации VK:', err);
-                    document.dispatchEvent(new CustomEvent('vkReady', { 
-                        detail: { userId: null } 
+                } else {
+                    console.error('❌ [VK] dbUserId не получен — vkReady с null');
+                    document.dispatchEvent(new CustomEvent('vkReady', {
+                        detail: { userId: null }
                     }));
-                });
-        });
-    } else {
-        console.warn('⚠️ VK Bridge не загружен');
-        this.loadBridge();
+                }
+            })
+            .catch((err) => {
+                console.error('❌ [VK] Критическая ошибка init:', err);
+                document.dispatchEvent(new CustomEvent('vkReady', {
+                    detail: { userId: null }
+                }));
+            });
     }
-}
 
     loadBridge() {
         const script = document.createElement('script');
@@ -111,61 +108,69 @@ init() {
                 this.bridge = vkBridge;
                 this.isReady = true;
                 this.bridge.send('VKWebAppInit')
+                    .catch((e) => console.warn('⚠️ VKWebAppInit:', e))
+                    .then(() => this.getUserInfo())
                     .then(() => {
-                        console.log('✅ VK Bridge загружен и инициализирован');
-                        return this.getUserInfo();
-                    })
-                    .then(() => {
-                        document.dispatchEvent(new CustomEvent('vkReady', { 
-                            detail: { userId: this.dbUserId } 
+                        document.dispatchEvent(new CustomEvent('vkReady', {
+                            detail: { userId: this.dbUserId }
                         }));
                     })
-                    .catch(console.warn);
+                    .catch((e) => {
+                        console.error('❌ [VK] Ошибка загрузки bridge:', e);
+                        document.dispatchEvent(new CustomEvent('vkReady', {
+                            detail: { userId: null }
+                        }));
+                    });
             }
         };
         script.onerror = () => {
             console.warn('⚠️ Не удалось загрузить VK Bridge');
-            document.dispatchEvent(new CustomEvent('vkReady', { 
-                detail: { userId: null } 
+            document.dispatchEvent(new CustomEvent('vkReady', {
+                detail: { userId: null }
             }));
         };
         document.head.appendChild(script);
     }
 
+    // ===== ПОЛУЧЕНИЕ USER ID ИЗ ВСЕХ ВОЗМОЖНЫХ ИСТОЧНИКОВ =====
     async getUserInfo() {
-        if (!this.isReady) return;
+        if (!this.isReady || !this.bridge) return;
 
-        // ===== 1. LAUNCH PARAMS =====
+        // ===== 1. LAUNCH PARAMS (работает на телефоне почти всегда, на ПК иногда) =====
         try {
             const params = await this.bridge.send('VKWebAppGetLaunchParams');
+            console.log('🔥 [VK] Launch params:', params);
             if (params && params.vk_user_id) {
                 this.userId = String(params.vk_user_id);
-                this.userName = params.vk_user_name || 'Игрок_' + this.userId;
-                console.log('👤 ID из Launch Params:', this.userId);
+                this.userName = params.vk_user_name || ('Игрок_' + this.userId);
+                console.log('👤 [VK] ID из Launch Params:', this.userId, '| Имя:', this.userName);
+                await this.loginToServer();
                 return;
             }
         } catch (e) {
-            console.warn('⚠️ Launch Params не сработали:', e);
+            console.warn('⚠️ [VK] Launch Params не сработали:', e);
         }
 
-        // ===== 2. VKWebAppGetUserInfo =====
+        // ===== 2. VKWebAppGetUserInfo (главный рабочий способ на ПК) =====
         try {
             const data = await this.bridge.send('VKWebAppGetUserInfo');
             if (data && data.id) {
                 this.userId = String(data.id);
                 this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
-                console.log('👤 ID из GetUserInfo:', this.userId);
+                if (!this.userName.trim()) this.userName = 'Игрок_' + this.userId;
+                console.log('👤 [VK] ID из GetUserInfo:', this.userId);
+                await this.loginToServer();
                 return;
             }
         } catch (e) {
-            console.warn('⚠️ GetUserInfo не сработал:', e);
+            console.warn('⚠️ [VK] GetUserInfo не сработал:', e);
         }
 
-        // ===== 3. URL (query + hash) =====
+        // ===== 3. URL (query / hash) — иногда на ПК vk_user_id есть в URL =====
         try {
-            const qs = new URLSearchParams(window.location.search);
-            const hash = window.location.hash || '';
-            const hashQs = new URLSearchParams(hash.replace(/^#/, ''));
+            const qs = new URLSearchParams(window.location.search || '');
+            const hashRaw = (window.location.hash || '').replace(/^#/, '');
+            const hashQs = new URLSearchParams(hashRaw);
             const fromUrl =
                 qs.get('vk_user_id') ||
                 hashQs.get('vk_user_id') ||
@@ -174,79 +179,118 @@ init() {
             if (fromUrl) {
                 this.userId = String(fromUrl);
                 this.userName = 'Игрок_' + this.userId;
-                console.log('👤 ID из URL:', this.userId);
+                console.log('👤 [VK] ID из URL:', this.userId);
+                await this.loginToServer();
                 return;
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn('⚠️ [VK] URL fallback не сработал:', e);
+        }
 
-        // ===== 4. Последняя попытка: VKWebAppInit + GetUserInfo =====
+        // ===== 4. Финальная попытка: VKWebAppInit + GetUserInfo ещё раз =====
         try {
             await this.bridge.send('VKWebAppInit');
             const data = await this.bridge.send('VKWebAppGetUserInfo');
             if (data && data.id) {
                 this.userId = String(data.id);
                 this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
-                console.log('👤 ID после Init:', this.userId);
+                if (!this.userName.trim()) this.userName = 'Игрок_' + this.userId;
+                console.log('👤 [VK] ID после повторного Init:', this.userId);
+                await this.loginToServer();
                 return;
             }
         } catch (e) {
-            console.warn('⚠️ Финальная попытка GetUserInfo провалилась:', e);
+            console.warn('⚠️ [VK] Финальная попытка провалилась:', e);
         }
 
         console.error('❌ [VK] Не удалось получить userId ни одним способом');
     }
-     async loginToServer() {
-        if (!this.userId) {
-            console.log('🔥 [LOGIN] userId пуст — пробуем getUserInfo() ещё раз');
-            await this.getUserInfo();
+
+    // ===== ЛОГИН НА СЕРВЕР (с защитой от параллельных вызовов) =====
+    async loginToServer() {
+        // Если уже залогинены — выходим
+        if (this.dbUserId) return this.dbUserId;
+
+        // Если логин уже идёт — ждём его
+        if (this._loginInFlight) {
+            return this._loginInFlight;
         }
-        if (!this.userId) {
-            console.error('❌ [VK] loginToServer: userId отсутствует после повторной попытки');
-            throw new Error('NO_VK_USER_ID');
-        }
-        
-        console.log('🔥 [LOGIN] Отправляем userId =', this.userId, ', userName =', this.userName);
-        
-        try {
-            const response = await fetch(`${this.serverUrl}/user/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    vkId: this.userId,
-                    userName: this.userName
-                })
-            });
-            
-            const user = await response.json();
-            this.dbUserId = user.id;
-            console.log('✅ Авторизован в Bubble, ID:', this.dbUserId);
-            
-            localStorage.setItem('bubbleUserId', String(this.dbUserId));
-            localStorage.setItem('username', this.userName);
-            
-            if (typeof statsManager !== 'undefined') {
-                statsManager.userId = this.dbUserId;
-                await statsManager.load(this.dbUserId);
+
+        this._loginInFlight = (async () => {
+            try {
+                // Если userId ещё нет — пробуем получить
+                if (!this.userId) {
+                    try {
+                        const data = await this.bridge.send('VKWebAppGetUserInfo');
+                        if (data && data.id) {
+                            this.userId = String(data.id);
+                            this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
+                            if (!this.userName.trim()) this.userName = 'Игрок_' + this.userId;
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ [VK] loginToServer: не удалось получить userId:', e);
+                    }
+                }
+
+                if (!this.userId) {
+                    throw new Error('NO_VK_USER_ID');
+                }
+
+                const response = await fetch(`${this.serverUrl}/user/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vkId: this.userId,
+                        userName: this.userName
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('LOGIN_HTTP_' + response.status);
+                }
+
+                const user = await response.json();
+                if (!user || !user.id) {
+                    throw new Error('LOGIN_NO_ID_IN_RESPONSE');
+                }
+
+                this.dbUserId = user.id;
+                console.log('✅ [VK] Авторизован в Bubble, ID:', this.dbUserId);
+
+                localStorage.setItem('bubbleUserId', String(this.dbUserId));
+                localStorage.setItem('username', this.userName);
+
+                if (typeof statsManager !== 'undefined') {
+                    statsManager.userId = this.dbUserId;
+                    try { await statsManager.load(this.dbUserId); } catch (e) {}
+                }
+                if (typeof challengeTracker !== 'undefined') {
+                    try { await challengeTracker.loadFromServer(this.dbUserId); } catch (e) {}
+                }
+
+                return this.dbUserId;
+            } finally {
+                this._loginInFlight = null;
             }
-            if (typeof challengeTracker !== 'undefined') {
-                await challengeTracker.loadFromServer(this.dbUserId);
-            }
-            
-        } catch (error) {
-            console.error('❌ Ошибка авторизации:', error);
-            this.dbUserId = null;
-        }
+        })();
+
+        return this._loginInFlight;
     }
 
+    // ===== СОХРАНЕНИЕ В ТОП =====
     async saveToGlobalTop(score, maxCombo, challengePoints, totalPopped) {
         if (!this.dbUserId) {
-            await this.loginToServer();
+            try {
+                await this.loginToServer();
+            } catch (e) {
+                console.warn('⚠️ [VK] Не удалось залогиниться для сохранения топа:', e);
+            }
             if (!this.dbUserId) {
                 this.saveToLocalTop(score, maxCombo, challengePoints);
                 return false;
             }
         }
-        
+
         try {
             const response = await fetch(`${this.serverUrl}/top/save`, {
                 method: 'POST',
@@ -259,11 +303,11 @@ init() {
                     totalPopped: totalPopped || 0
                 })
             });
-            
+
             const data = await response.json();
             return data.success;
         } catch (error) {
-            console.error('❌ Ошибка:', error);
+            console.error('❌ [VK] Ошибка сохранения топа:', error);
             return false;
         }
     }
@@ -272,7 +316,7 @@ init() {
         try {
             const response = await fetch(`${this.serverUrl}/top`);
             const top = await response.json();
-            
+
             if (Array.isArray(top)) {
                 console.log('📊 Загружено записей с сервера:', top.length);
                 this.topCache = top;
@@ -289,7 +333,7 @@ init() {
 
     saveToLocalTop(score, maxCombo, challengePoints) {
         let top = JSON.parse(localStorage.getItem('globalTop') || '[]');
-        
+
         const userEntry = {
             userId: this.dbUserId || 'local',
             userName: this.userName || 'Игрок',
@@ -297,7 +341,7 @@ init() {
             maxCombo: maxCombo || 0,
             challengePoints: challengePoints || 0
         };
-        
+
         const existingIndex = top.findIndex(item => item.userId === userEntry.userId);
         if (existingIndex >= 0) {
             if (userEntry.score > top[existingIndex].score) {
@@ -306,10 +350,10 @@ init() {
         } else {
             top.push(userEntry);
         }
-        
+
         top.sort((a, b) => (b.score || 0) - (a.score || 0));
         if (top.length > 100) top = top.slice(0, 100);
-        
+
         localStorage.setItem('globalTop', JSON.stringify(top));
         console.log('✅ Результат сохранён локально');
     }
@@ -318,25 +362,26 @@ init() {
         return JSON.parse(localStorage.getItem('globalTop') || '[]');
     }
 
-async shareResult(score, combo) {
-    const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\nhttps://vk.com/app54650664`;
+    // ===== ПОДЕЛИТЬСЯ =====
+    async shareResult(score, combo) {
+        const message = `🎯 Я набрал ${score} очков в игре "Пузырьки"!\n🔥 Комбо: ${combo}\n\nПопробуй и ты! 🫧\nhttps://vk.com/app54650664`;
 
-    try {
-        await this.bridge.send('VKWebAppShare', {
-            message: message,
-            link: 'https://vk.com/app54650664'
-        });
-        this.showNotification('✅ Готово!');
-    } catch (error) {
-        console.error('Ошибка:', error);
-        this.fallbackShare(score, combo);
+        try {
+            await this.bridge.send('VKWebAppShare', {
+                message: message,
+                link: 'https://vk.com/app54650664'
+            });
+            this.showNotification('✅ Готово!');
+        } catch (error) {
+            console.error('Ошибка:', error);
+            this.fallbackShare(score, combo);
+        }
     }
-}
 
     fallbackShare(score, combo) {
         const text = `🎯 Я набрал ${score} очков в игре "Пузырьки"! Комбо: ${combo}`;
         const url = 'https://pro-stoi.github.io/bubble-pop/';
-        
+
         if (navigator.clipboard) {
             navigator.clipboard.writeText(text + ' ' + url);
             this.showNotification('📋 Текст скопирован!');
@@ -367,7 +412,7 @@ async shareResult(score, combo) {
         `;
         popup.textContent = text;
         document.body.appendChild(popup);
-        
+
         setTimeout(() => { popup.style.opacity = '1'; }, 50);
         setTimeout(() => {
             popup.style.opacity = '0';
@@ -375,6 +420,7 @@ async shareResult(score, combo) {
         }, 3000);
     }
 
+    // ===== ИСПЫТАНИЯ (дублируют repository, но пусть будут) =====
     async getChallenges() {
         try {
             const response = await fetch(`${this.serverUrl}/challenges`);
@@ -418,21 +464,20 @@ async shareResult(score, combo) {
             return { totalReward: 0 };
         }
     }
-    
+
     // ===== ПРИГЛАСИТЬ ДРУГА =====
-async inviteFriend() {
-    try {
-        const result = await this.bridge.send('VKWebAppShowInviteBox', {});
-        
-        if (result && result.result) {
-            // Друг приглашён, ждём его регистрации
-            this.showNotification('👥 Приглашение отправлено! Когда друг зайдёт в игру, вы получите бонус! 🎁');
+    async inviteFriend() {
+        try {
+            const result = await this.bridge.send('VKWebAppShowInviteBox', {});
+
+            if (result && result.result) {
+                this.showNotification('👥 Приглашение отправлено! Когда друг зайдёт в игру, вы получите бонус! 🎁');
+            }
+        } catch (error) {
+            console.error('Ошибка приглашения:', error);
+            this.showNotification('❌ Не удалось отправить приглашение');
         }
-    } catch (error) {
-        console.error('Ошибка приглашения:', error);
-        this.showNotification('❌ Не удалось отправить приглашение');
     }
-}
 }
 
 const vk = new VKManager();

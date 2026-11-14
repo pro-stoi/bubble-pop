@@ -132,22 +132,35 @@ init() {
         document.head.appendChild(script);
     }
 
-     async getUserInfo() {
-        if (!this.isReady) return;
+async getUserInfo() {
+    if (!this.isReady) return;
+
+    // 1. Пробуем получить ID из параметров запуска (работает всегда)
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const vkUserIdFromUrl = urlParams.get('vk_user_id');
         
-        try {
-            const data = await this.bridge.send('VKWebAppGetUserInfo');
-            this.userId = String(data.id);
-            this.userName = data.first_name + ' ' + data.last_name;
-            console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
-            
-            // ===== loginToServer() ВЫЗЫВАЕТСЯ ИЗ startGame() =====
-            // Это убирает дубликаты: пользователь создаётся только при нажатии "Играть"
-            
-        } catch (error) {
-            console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+        if (vkUserIdFromUrl) {
+            this.userId = vkUserIdFromUrl;
+            console.log('👤 ID из URL:', this.userId);
+            // Имя из URL не приходит, ставим заглушку
+            this.userName = 'Игрок_' + this.userId;
+            return; // Выходим, Bridge не нужен
         }
+    } catch (e) {
+        console.warn('⚠️ Ошибка чтения URL:', e);
     }
+
+    // 2. Если в URL пусто — пробуем Bridge (для телефона)
+    try {
+        const data = await this.bridge.send('VKWebAppGetUserInfo');
+        this.userId = String(data.id);
+        this.userName = data.first_name + ' ' + data.last_name;
+        console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
+    } catch (error) {
+        console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+    }
+}
 
     async loginToServer() {
         if (!this.userId) {

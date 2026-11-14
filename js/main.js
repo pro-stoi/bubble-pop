@@ -10,13 +10,27 @@ async function startGame() {
     if (gameStarted) return;
     gameStarted = true;
     
-    // ===== СНАЧАЛА ЛОГИНИМСЯ (создаём пользователя, если новый) =====
-    if (typeof vk !== 'undefined' && vk.userId) {
-        try {
-            await vk.loginToServer();
-            console.log('✅ [START] Пользователь зарегистрирован/найден, id=', vk.dbUserId);
-        } catch (e) {
-            console.warn('⚠️ [START] Ошибка логина:', e.message);
+      // ===== СНАЧАЛА ЛОГИНИМСЯ (создаём пользователя, если новый) =====
+    if (typeof vk !== 'undefined') {
+        // Если userId нет — пробуем получить ещё раз
+        if (!vk.userId) {
+            console.log('🔥 [START] vk.userId пустой, пробуем getUserInfo()');
+            try {
+                await vk.getUserInfo();
+            } catch (e) {
+                console.warn('⚠️ [START] getUserInfo() упал:', e.message);
+            }
+        }
+        
+        if (vk.userId) {
+            try {
+                await vk.loginToServer();
+                console.log('✅ [START] Пользователь зарегистрирован/найден, id=', vk.dbUserId);
+            } catch (e) {
+                console.warn('⚠️ [START] Ошибка логина:', e.message);
+            }
+        } else {
+            console.warn('⚠️ [START] vk.userId всё ещё пустой — логин пропущен');
         }
     }
     

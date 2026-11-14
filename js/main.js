@@ -6,23 +6,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // Пользователь создаётся только при нажатии "Играть" (startGame)
     // и при сохранении счёта (saveGameResult).
 
+async function ensureUserId(maxWaitMs = 10000) {
+    const start = Date.now();
+    while (Date.now() - start < maxWaitMs) {
+        if (typeof vk !== 'undefined') {
+            if (!vk.userId) {
+                try { await vk.getUserInfo(); } catch (e) {}
+            }
+            if (vk.userId && !vk.dbUserId) {
+                try { await vk.loginToServer(); } catch (e) {}
+            }
+            if (vk.dbUserId) return vk.dbUserId;
+        }
+        const ls = localStorage.getItem('bubbleUserId');
+        if (ls) return parseInt(ls);
+        await new Promise(r => setTimeout(r, 500));
+    }
+    console.error('❌ [START] userId не получен за ' + maxWaitMs + ' мс');
+    return null;
+}
+
 async function startGame() {
     if (gameStarted) return;
     gameStarted = true;
     
-      // ===== СНАЧАЛА ЛОГИНИМСЯ (создаём пользователя, если новый) =====
-    if (typeof vk !== 'undefined') {
-        // Если userId нет — пробуем получить ещё раз
-        if (!vk.userId) {
-            console.log('🔥 [START] vk.userId пустой, пробуем getUserInfo()');
-            try {
-                await vk.getUserInfo();
-            } catch (e) {
-                console.warn('⚠️ [START] getUserInfo() упал:', e.message);
-            }
-        }
-        
-        if (vk.userId) {
+    // ===== ЖДЁМ userId (с ретраями) =====
+    console.log('🔥 [START] Ждём userId...');
+    const userId = await ensureUserId();
+    console.log('👤 ID пользователя:', userId);
+    
+    // ===== СОЗДАЁМ ИГРУ (ОДИН РАЗ!) =====
+    const canvas = document.getElementById('gameCanvas');
+    const game = new Game(canvas);
+    
+    if (userId) {
             try {
                 await vk.loginToServer();
                 console.log('✅ [START] Пользователь зарегистрирован/найден, id=', vk.dbUserId);
@@ -433,23 +450,35 @@ async function loadUserBonuses(userId, game) {
     }
 
     // ===== ЗАПУСК ИГРЫ =====
-    // vk.loginToServer() теперь вызывается ВНУТРИ startGame(),
-    // поэтому не ждём vk.dbUserId — ждём только vk.isReady
+    // Ждём появления userId (localStorage или vk.dbUserId или vk.userId)
     const tryStart = () => {
         if (gameStarted) return;
-        if (typeof vk !== 'undefined' && vk.isReady) {
+
+        // Если уже есть userId — запускаем
+        const hasId = localStorage.getItem('bubbleUserId') ||
+                      (typeof vk !== 'undefined' && (vk.dbUserId || vk.userId));
+
+        if (hasId) {
+            console.log('🎮 [START] userId есть, запускаем startGame()');
             startGame();
-        } else {
-            setTimeout(tryStart, 300);
+            return;
         }
+
+        // Если vk.userId нет — пробуем получить (getUserInfo с 4 источниками)
+        if (typeof vk !== 'undefined' && !vk.userId && vk.isReady) {
+            vk.getUserInfo().catch(() => {});
+        }
+
+        // Ждём ещё
+        setTimeout(tryStart, 500);
     };
     tryStart();
-    
-    // Fallback: через 8 сек принудительно
+
+    // Fallback: через 15 сек принудительно
     setTimeout(function() {
         if (!gameStarted) {
-            console.warn('⏱ Принудительный запуск');
+            console.warn('⏱ 15 сек прошло — принудительный запуск (без userId)');
             startGame();
         }
-    }, 8000);
-    }); 
+    }, 15000);
+});

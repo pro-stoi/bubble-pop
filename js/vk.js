@@ -132,36 +132,33 @@ init() {
         document.head.appendChild(script);
     }
 
-async getUserInfo() {
-    if (!this.isReady) return;
+     async getUserInfo() {
+        if (!this.isReady) return;
 
-    // 1. Пробуем получить ID из параметров запуска (работает всегда)
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const vkUserIdFromUrl = urlParams.get('vk_user_id');
-        
-        if (vkUserIdFromUrl) {
-            this.userId = vkUserIdFromUrl;
-            console.log('👤 ID из URL:', this.userId);
-            // Имя из URL не приходит, ставим заглушку
-            this.userName = 'Игрок_' + this.userId;
-            return; // Выходим, Bridge не нужен
+        // ===== 1. LAUNCH PARAMS (работает на ПК и телефоне) =====
+        try {
+            const params = await this.bridge.send('VKWebAppGetLaunchParams');
+            console.log('🔥 Launch params:', params);
+            if (params && params.vk_user_id) {
+                this.userId = String(params.vk_user_id);
+                this.userName = params.vk_user_name || 'Игрок_' + this.userId;
+                console.log('👤 ID из Launch Params:', this.userId, '| Имя:', this.userName);
+                return;
+            }
+        } catch (e) {
+            console.warn('⚠️ Launch Params не сработали:', e);
         }
-    } catch (e) {
-        console.warn('⚠️ Ошибка чтения URL:', e);
-    }
 
-    // 2. Если в URL пусто — пробуем Bridge (для телефона)
-    try {
-        const data = await this.bridge.send('VKWebAppGetUserInfo');
-        this.userId = String(data.id);
-        this.userName = data.first_name + ' ' + data.last_name;
-        console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
-    } catch (error) {
-        console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+        // ===== 2. VKWebAppGetUserInfo (fallback) =====
+        try {
+            const data = await this.bridge.send('VKWebAppGetUserInfo');
+            this.userId = String(data.id);
+            this.userName = data.first_name + ' ' + data.last_name;
+            console.log('👤 Пользователь VK:', this.userName, 'ID:', this.userId);
+        } catch (error) {
+            console.warn('⚠️ Не удалось получить информацию о пользователе:', error);
+        }
     }
-}
-
     async loginToServer() {
         if (!this.userId) {
             console.warn('⚠️ Нет userId для авторизации');

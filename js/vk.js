@@ -66,17 +66,18 @@ class VKManager {
         this.bridge = vkBridge;
         this.isReady = true;
 
-        // ===== ПЫТАЕМСЯ ПОЛУЧИТЬ ПРАВА, НО НЕ БЛОКИРУЕМСЯ НА ЭТОМ =====
-        this.bridge.send('VKWebAppGetAuthToken', { scope: 'wall,share' })
-            .catch((e) => {
-                console.warn('⚠️ Права wall не получены (это не критично):', e);
-            })
-            .then(() => this.bridge.send('VKWebAppInit'))
-            .catch((e) => {
-                console.warn('⚠️ VKWebAppInit упал:', e);
+        // ===== ГЛАВНОЕ ПРАВИЛО: VKWebAppInit ДОЛЖЕН БЫТЬ ПЕРВЫМ =====
+        this.bridge.send('VKWebAppInit')
+            .then(() => {
+                console.log('✅ [VK] VKWebAppInit OK');
+                // ===== ПОСЛЕ ИНИЦИАЛИЗАЦИИ МОЖНО ЗАПРАШИВАТЬ ПРАВА =====
+                return this.bridge.send('VKWebAppGetAuthToken', { scope: 'wall,share' })
+                    .catch((e) => {
+                        console.warn('⚠️ Права wall не получены (не критично):', e);
+                    });
             })
             .then(() => {
-                // ===== ГЛАВНОЕ: получаем userId и ЛОГИНИМСЯ =====
+                // ===== ПОЛУЧАЕМ USER ID И ЛОГИНИМСЯ =====
                 return this.getUserInfo();
             })
             .then(() => {
@@ -100,16 +101,19 @@ class VKManager {
             });
     }
 
-    loadBridge() {
+     loadBridge() {
         const script = document.createElement('script');
         script.src = 'https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js';
         script.onload = () => {
             if (typeof vkBridge !== 'undefined') {
                 this.bridge = vkBridge;
                 this.isReady = true;
+                // ===== VKWebAppInit ПЕРВЫМ ДЕЛОМ =====
                 this.bridge.send('VKWebAppInit')
-                    .catch((e) => console.warn('⚠️ VKWebAppInit:', e))
-                    .then(() => this.getUserInfo())
+                    .then(() => {
+                        console.log('✅ [VK] VKWebAppInit OK (из loadBridge)');
+                        return this.getUserInfo();
+                    })
                     .then(() => {
                         document.dispatchEvent(new CustomEvent('vkReady', {
                             detail: { userId: this.dbUserId }
@@ -189,15 +193,14 @@ class VKManager {
         console.warn('⚠️ [VK] URL fallback не сработал:', e);
     }
 
-    // ===== 4. Финальная попытка: VKWebAppInit + GetUserInfo ещё раз =====
+    // ===== 4. Финальная попытка: GetUserInfo ещё раз (БЕЗ повторного Init!) =====
     try {
-        await this.bridge.send('VKWebAppInit');
         const data = await this.bridge.send('VKWebAppGetUserInfo');
         if (data && data.id) {
             this.userId = String(data.id);
             const fullName = ((data.first_name || '') + ' ' + (data.last_name || '')).trim();
             if (fullName) this.userName = fullName;
-            console.log('👤 [VK] ID после повторного Init:', this.userId, '| Имя:', this.userName);
+            console.log('👤 [VK] ID из финальной попытки:', this.userId, '| Имя:', this.userName);
             await this.loginToServer();
             return;
         }

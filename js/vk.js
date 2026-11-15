@@ -136,74 +136,73 @@ class VKManager {
     async getUserInfo() {
         if (!this.isReady || !this.bridge) return;
 
-        // ===== 1. LAUNCH PARAMS (работает на телефоне почти всегда, на ПК иногда) =====
-        try {
-            const params = await this.bridge.send('VKWebAppGetLaunchParams');
-            console.log('🔥 [VK] Launch params:', params);
-            if (params && params.vk_user_id) {
-                this.userId = String(params.vk_user_id);
-                this.userName = params.vk_user_name || ('Игрок_' + this.userId);
-                console.log('👤 [VK] ID из Launch Params:', this.userId, '| Имя:', this.userName);
-                await this.loginToServer();
-                return;
+    // ===== 1. LAUNCH PARAMS (даёт userId, имя тут на ПК часто пустое) =====
+    try {
+        const params = await this.bridge.send('VKWebAppGetLaunchParams');
+        console.log('🔥 [VK] Launch params:', params);
+        if (params && params.vk_user_id) {
+            this.userId = String(params.vk_user_id);
+            // Имя берём ТОЛЬКО если оно реально есть в launch params
+            if (params.vk_user_name && String(params.vk_user_name).trim()) {
+                this.userName = String(params.vk_user_name).trim();
             }
-        } catch (e) {
-            console.warn('⚠️ [VK] Launch Params не сработали:', e);
+            console.log('👤 [VK] ID из Launch Params:', this.userId, '| Имя из LP:', this.userName);
+            await this.loginToServer();
+            return;
         }
+    } catch (e) {
+        console.warn('⚠️ [VK] Launch Params не сработали:', e);
+    }
 
-        // ===== 2. VKWebAppGetUserInfo (главный рабочий способ на ПК) =====
-        try {
-            const data = await this.bridge.send('VKWebAppGetUserInfo');
-            if (data && data.id) {
-                this.userId = String(data.id);
-                this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
-                if (!this.userName.trim()) this.userName = 'Игрок_' + this.userId;
-                console.log('👤 [VK] ID из GetUserInfo:', this.userId);
-                await this.loginToServer();
-                return;
-            }
-        } catch (e) {
-            console.warn('⚠️ [VK] GetUserInfo не сработал:', e);
+          // ===== 2. VKWebAppGetUserInfo (главный источник имени на ПК) =====
+    try {
+        const data = await this.bridge.send('VKWebAppGetUserInfo');
+        if (data && data.id) {
+            this.userId = String(data.id);
+            const fullName = ((data.first_name || '') + ' ' + (data.last_name || '')).trim();
+            if (fullName) this.userName = fullName;
+            console.log('👤 [VK] ID из GetUserInfo:', this.userId, '| Имя:', this.userName);
+            await this.loginToServer();
+            return;
         }
+    } catch (e) {
+        console.warn('⚠️ [VK] GetUserInfo не сработал:', e);
+    }
 
-        // ===== 3. URL (query / hash) — иногда на ПК vk_user_id есть в URL =====
-        try {
-            const qs = new URLSearchParams(window.location.search || '');
-            const hashRaw = (window.location.hash || '').replace(/^#/, '');
-            const hashQs = new URLSearchParams(hashRaw);
-            const fromUrl =
-                qs.get('vk_user_id') ||
-                hashQs.get('vk_user_id') ||
-                qs.get('viewer_id') ||
-                hashQs.get('viewer_id');
-            if (fromUrl) {
-                this.userId = String(fromUrl);
-                this.userName = 'Игрок_' + this.userId;
-                console.log('👤 [VK] ID из URL:', this.userId);
-                await this.loginToServer();
-                return;
-            }
-        } catch (e) {
-            console.warn('⚠️ [VK] URL fallback не сработал:', e);
+    // ===== 3. URL (query / hash) — даёт userId, имени тут нет =====
+    try {
+        const qs = new URLSearchParams(window.location.search || '');
+        const hashRaw = (window.location.hash || '').replace(/^#/, '');
+        const hashQs = new URLSearchParams(hashRaw);
+        const fromUrl =
+            qs.get('vk_user_id') ||
+            hashQs.get('vk_user_id') ||
+            qs.get('viewer_id') ||
+            hashQs.get('viewer_id');
+        if (fromUrl) {
+            this.userId = String(fromUrl);
+            console.log('👤 [VK] ID из URL:', this.userId, '(имя пока неизвестно)');
+            await this.loginToServer();
+            return;
         }
+    } catch (e) {
+        console.warn('⚠️ [VK] URL fallback не сработал:', e);
+    }
 
-        // ===== 4. Финальная попытка: VKWebAppInit + GetUserInfo ещё раз =====
-        try {
-            await this.bridge.send('VKWebAppInit');
-            const data = await this.bridge.send('VKWebAppGetUserInfo');
-            if (data && data.id) {
-                this.userId = String(data.id);
-                this.userName = (data.first_name || '') + ' ' + (data.last_name || '');
-                if (!this.userName.trim()) this.userName = 'Игрок_' + this.userId;
-                console.log('👤 [VK] ID после повторного Init:', this.userId);
-                await this.loginToServer();
-                return;
-            }
-        } catch (e) {
-            console.warn('⚠️ [VK] Финальная попытка провалилась:', e);
+    // ===== 4. Финальная попытка: VKWebAppInit + GetUserInfo ещё раз =====
+    try {
+        await this.bridge.send('VKWebAppInit');
+        const data = await this.bridge.send('VKWebAppGetUserInfo');
+        if (data && data.id) {
+            this.userId = String(data.id);
+            const fullName = ((data.first_name || '') + ' ' + (data.last_name || '')).trim();
+            if (fullName) this.userName = fullName;
+            console.log('👤 [VK] ID после повторного Init:', this.userId, '| Имя:', this.userName);
+            await this.loginToServer();
+            return;
         }
-
-        console.error('❌ [VK] Не удалось получить userId ни одним способом');
+    } catch (e) {
+        console.warn('⚠️ [VK] Финальная попытка провалилась:', e);
     }
 
     // ===== ЛОГИН НА СЕРВЕР (с защитой от параллельных вызовов) =====
@@ -232,8 +231,40 @@ class VKManager {
                     }
                 }
 
-                if (!this.userId) {
+                             if (!this.userId) {
                     throw new Error('NO_VK_USER_ID');
+                }
+
+                // ===== ПРОБУЕМ ДОПОЛУЧИТЬ ИМЯ, ЕСЛИ ОНО "Игрок"/"Игрок_xxx" =====
+                const nameLooksBad = !this.userName ||
+                    /^Игрок_/.test(this.userName) ||
+                    this.userName === 'Игрок';
+
+                if (nameLooksBad) {
+                    try {
+                        const data = await this.bridge.send('VKWebAppGetUserInfo');
+                        if (data && data.id) {
+                            const fullName = ((data.first_name || '') + ' ' + (data.last_name || '')).trim();
+                            if (fullName) this.userName = fullName;
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ [VK] loginToServer: не удалось получить имя:', e);
+                    }
+                }
+
+                // ===== СТРАХОВКА: если имени нет — берём из localStorage =====
+                if (/^Игрок_/.test(this.userName || '') || this.userName === 'Игрок' || !this.userName) {
+                    const savedName = localStorage.getItem('username');
+                    if (savedName && !/^Игрок_/.test(savedName) && savedName !== 'Игрок') {
+                        this.userName = savedName;
+                    }
+                }
+
+                // ===== ФИНАЛЬНАЯ СТРАХОВКА: шлём пустую строку, =====
+                // чтобы сервер не перезаписал нормальное имя на "Игрок_xxx"
+                let nameForServer = this.userName;
+                if (!nameForServer || /^Игрок_/.test(nameForServer) || nameForServer === 'Игрок') {
+                    nameForServer = '';
                 }
 
                 const response = await fetch(`${this.serverUrl}/user/login`, {
@@ -241,7 +272,7 @@ class VKManager {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         vkId: this.userId,
-                        userName: this.userName
+                        userName: nameForServer
                     })
                 });
 
@@ -254,11 +285,14 @@ class VKManager {
                     throw new Error('LOGIN_NO_ID_IN_RESPONSE');
                 }
 
-                this.dbUserId = user.id;
-                console.log('✅ [VK] Авторизован в Bubble, ID:', this.dbUserId);
+                           this.dbUserId = user.id;
+                console.log('✅ [VK] Авторизован в Bubble, ID:', this.dbUserId, '| имя на сервер:', nameForServer || '(пусто)');
 
                 localStorage.setItem('bubbleUserId', String(this.dbUserId));
-                localStorage.setItem('username', this.userName);
+                // В localStorage пишем имя ТОЛЬКО если оно нормальное
+                if (nameForServer) {
+                    localStorage.setItem('username', nameForServer);
+                }
 
                 if (typeof statsManager !== 'undefined') {
                     statsManager.userId = this.dbUserId;

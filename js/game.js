@@ -7,17 +7,16 @@ this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i
 // ===== НАСТРОЙКИ ДЛЯ МОБИЛЬНЫХ =====
 if (this.isMobile) {
     this.maxBubbles = 20;
-    this.spawnRateMin = 6;     // было 12 — в 2 раза чаще спавн
-    this.spawnRateMax = 15;    // было 30 — в 2 раза чаще
-    this.speedMultiplier = 1.4; // было 0.7 — в 2 раза быстрее
+    this.spawnRateMin = 6;      // было 12 — в 2 раза чаще спавн
+    this.spawnRateMax = 15;     // было 30 — в 2 раза чаще
+    this.speedMultiplier = 2.0; // было 1.4 → 2.0 — на 40% быстрее
 
 } else {
     this.maxBubbles = 35;
     this.spawnRateMin = 8;
     this.spawnRateMax = 25;
     this.speedMultiplier = 1.0;
-}
-        
+}     
         
         
         this.canvas = canvas;
@@ -763,11 +762,11 @@ popBubbleAt(x, y, isBonus = false) {
         const elapsed = this._fpsSamples[59] - this._fpsSamples[0];
         const fps = 59000 / elapsed;
 
-        if (fps < 40) {
-            this.speedMultiplier = Math.max(0.5, this.speedMultiplier - 0.01);
-        } else if (fps > 55) {
-            this.speedMultiplier = Math.min(2.0, this.speedMultiplier + 0.005);
-        }
+      if (fps < 40) {
+    this.speedMultiplier = Math.max(1.2, this.speedMultiplier - 0.01);
+} else if (fps > 55) {
+    this.speedMultiplier = Math.min(3.0, this.speedMultiplier + 0.005);
+}
     }   // ← ЗАКРЫВАЮЩАЯ СКОБКА ДЛЯ if (this._fpsSamples.length === 60)
 
     // ===== ДИНАМИЧЕСКОЕ ЗАМЕДЛЕНИЕ ПО СЕРИИ =====
